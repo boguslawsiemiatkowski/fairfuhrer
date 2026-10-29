@@ -1,12 +1,8 @@
-// lib/directus.ts - Next.js 16.0.7 + React 19.2.1 compatible
+// lib/directus.ts
 // ✅ Server-only protection - prevents accidental client-side imports
 import "server-only";
 
-import { createDirectus, rest } from "@directus/sdk";
 import type {
-  Place,
-  Category,
-  ContactMessage,
   HomePageContent,
   FeaturedPin,
   ImpressumContent,
@@ -15,7 +11,6 @@ import type {
   ContactInfoContent,
   SupportSectionContent,
   PayPalDonation,
-  DirectusPayPalDonation,
   WebhookLog,
   PremiumPageContent,
   PremiumComparisonFeature,
@@ -37,31 +32,9 @@ if (!DIRECTUS_URL) {
 
 const DIRECTUS_TOKEN = process.env.DIRECTUS_TOKEN;
 
-export const directus = createDirectus(DIRECTUS_URL).with(
-  rest({
-    onRequest: (opts) => ({
-      ...opts,
-      // Cache GET requesty (miejsca, kategorie) - oszczędność kosztów
-      // Nie cache'uj POST/PUT/DELETE - zawsze świeże dane
-      cache: opts.method === "GET" ? "default" : "no-store",
-    }),
-  })
-);
-
-// Typ dla Directus Schema z moimi kolekcjami + PayPal
-export interface DirectusSchema {
-  Orte: Place[]; // Niemiecka nazwa
-  Kategorie: Category[]; // Niemiecka nazwa
-  contact_messages: ContactMessage[];
-  home_page_content: HomePageContent[];
-  featured_pins: FeaturedPin[];
-  impressum_content: ImpressumContent[];
-  datenschutz_content: DatenschutzContent[];
-  contact_info_content: ContactInfoContent[];
-  // NOWE kolekcje PayPal:
-  paypal_donations: DirectusPayPalDonation[];
-  webhook_logs: WebhookLog[];
-}
+// Alle Abfragen unten laufen über `fetch`, nicht über das Directus-SDK: nur so
+// greifen Next.js' `next: { revalidate, tags }` und damit ISR + die
+// Tag-Invalidierung aus den Directus Flows (POST /api/revalidate).
 
 export async function getHomePageContent(): Promise<HomePageContent | null> {
   try {
