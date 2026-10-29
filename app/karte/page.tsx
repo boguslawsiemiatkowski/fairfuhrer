@@ -207,45 +207,97 @@ export default async function KartePage() {
   // FETCH ORTE (PLACES) - Updated with Beschreibung
   // ========================================
 
-  const orteUrl = new URL(`${baseUrl}/items/Orte`);
-  orteUrl.searchParams.set(
-    "fields",
-    [
-      "id",
-      "Name",
-      "Adresse",
-      "Stadt",
-      "Land",
-      "Telefon",
-      "Vollbeschreibung",
-      "location",
-      "Hauptbild",
-      "Titelbild",
-      "Audio_Datei",
-      "Audio",
-      "Link_URL",
-      "Link_Text",
-      "Galerie_Bilder",
-      "Galerie.directus_files_id",
-      "Kategorie.Kategorie_id.id",
-      "Kategorie.Kategorie_id.Name",
-      "Kategorie.Kategorie_id.Farbe",
-      "Kategorie.Kategorie_id.Beschreibung",
-      "Zertifizierungen.Zertifizierungen_id.id",
-      "Zertifizierungen.Zertifizierungen_id.Name",
-      "Zertifizierungen.Zertifizierungen_id.Image",
-      "Zertifizierungen.Zertifizierungen_id.slug",
-    ].join(",")
-  );
-  orteUrl.searchParams.set("limit", "-1");
-  orteUrl.searchParams.set("sort", "Name");
-  orteUrl.searchParams.set("filter[_or][0][Bearbeitungsstatus][_eq]", "veroeffentlicht");
-  orteUrl.searchParams.set("filter[_or][1][Bearbeitungsstatus][_null]", "true");
+  // In ZWEI Abfragen geteilt, weil Next.js keine fetch-Antwort über 2 MB in den
+  // Data Cache schreibt ("items over 2MB can not be cached"). Zusammen waren es
+  // 3,06 MB, davon allein 1,72 MB (77 %) `Vollbeschreibung` — die Seite lief
+  // also bei jeder Revalidierung ohne Cache und holte alles neu aus Directus.
+  // Fällt der CMS dabei aus, gibt es nichts, woraus ausgeliefert werden könnte.
+  //
+  // Beide Teilabfragen liegen jetzt deutlich unter dem Limit (~470 KB bzw.
+  // ~1,8 MB) und werden einzeln gecacht. Die Seite erhält danach dieselben
+  // Daten wie vorher — es wird kein Feld weggelassen.
+  const orteBaseFields = [
+    "id",
+    "Name",
+    "Adresse",
+    "Stadt",
+    "Land",
+    "Telefon",
+    "location",
+    "Hauptbild",
+    "Titelbild",
+    "Audio_Datei",
+    "Audio",
+    "Link_URL",
+    "Link_Text",
+    "Galerie_Bilder",
+    "Galerie.directus_files_id",
+    "Kategorie.Kategorie_id.id",
+    "Kategorie.Kategorie_id.Name",
+    "Kategorie.Kategorie_id.Farbe",
+    "Kategorie.Kategorie_id.Beschreibung",
+    "Zertifizierungen.Zertifizierungen_id.id",
+    "Zertifizierungen.Zertifizierungen_id.Name",
+    "Zertifizierungen.Zertifizierungen_id.Image",
+    "Zertifizierungen.Zertifizierungen_id.slug",
+  ];
 
-  const orteData = await fetchFromDirectus<DirectusOrte>(
-    orteUrl.toString(),
+  function buildOrteUrl(
+    fields: string[],
+    paging?: { limit: string; offset: string }
+  ): string {
+    const url = new URL(`${baseUrl}/items/Orte`);
+    url.searchParams.set("fields", fields.join(","));
+    url.searchParams.set("limit", paging?.limit ?? "-1");
+    if (paging) url.searchParams.set("offset", paging.offset);
+    url.searchParams.set("sort", "Name");
+    url.searchParams.set("filter[_or][0][Bearbeitungsstatus][_eq]", "veroeffentlicht");
+    url.searchParams.set("filter[_or][1][Bearbeitungsstatus][_null]", "true");
+    return url.toString();
+  }
+
+  // Die Basisabfrage zuerst, weil ihre Länge sagt, wie viele Beschreibungs-
+  // Seiten nötig sind — so wächst das Paging mit dem Datenbestand mit, ohne
+  // eine fest verdrahtete Anzahl.
+  const orteBaseData = await fetchFromDirectus<DirectusOrte>(
+    buildOrteUrl(orteBaseFields),
     "Orte"
   );
+
+  // Die Beschreibungen allein sind ~2,4 MB und sprengen das 2-MB-Limit
+  // weiterhin, daher in Seiten à 200 Einträgen (~800 KB pro Seite). `sort=Name`
+  // ist in allen Abfragen gleich, also ist die Reihenfolge über `offset` stabil.
+  const BESCHREIBUNG_PAGE_SIZE = 200;
+  const beschreibungPages = Math.max(
+    1,
+    Math.ceil(orteBaseData.data.length / BESCHREIBUNG_PAGE_SIZE)
+  );
+
+  const orteTextPages = await Promise.all(
+    Array.from({ length: beschreibungPages }, (_, page) =>
+      fetchFromDirectus<Pick<DirectusOrte, "id" | "Vollbeschreibung">>(
+        buildOrteUrl(["id", "Vollbeschreibung"], {
+          limit: String(BESCHREIBUNG_PAGE_SIZE),
+          offset: String(page * BESCHREIBUNG_PAGE_SIZE),
+        }),
+        "Orte"
+      )
+    )
+  );
+
+  const beschreibungById = new Map(
+    orteTextPages.flatMap((p) =>
+      p.data.map((o) => [o.id, o.Vollbeschreibung] as const)
+    )
+  );
+
+  const orteData: DirectusCollectionResponse<DirectusOrte> = {
+    ...orteBaseData,
+    data: orteBaseData.data.map((o) => ({
+      ...o,
+      Vollbeschreibung: beschreibungById.get(o.id) ?? undefined,
+    })),
+  };
 
   // ========================================
   // FETCH KATEGORIEN - Updated with Beschreibung

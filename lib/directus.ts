@@ -587,6 +587,7 @@ export async function getRedaktionPageContent(): Promise<RedaktionPageContent | 
 // ========================================
 
 export async function getUeberUnsContent(): Promise<UeberUnsContent | null> {
+  const isDev = process.env.NODE_ENV === "development";
   try {
     // Pod-kolekcje (prozess_items, werte_items) rozwijane i filtrowane po
     // status=published + sortowane rosnąco (deep filter/sort).
@@ -599,8 +600,14 @@ export async function getUeberUnsContent(): Promise<UeberUnsContent | null> {
           "Content-Type": "application/json",
           ...(DIRECTUS_TOKEN && { Authorization: `Bearer ${DIRECTUS_TOKEN}` }),
         },
-        // Bez cache — zmiany w Directusie widoczne od razu (jak getHomePageContent).
-        cache: "no-store" as const,
+        // Wie bei getSightsLockModalContent: `no-store` hat die ganze Route
+        // /ueber-uns aus dem ISR geworfen ("Dynamic server usage"), sodass sie
+        // bei jedem Request neu gerendert wurde. Änderungen bleiben sofort
+        // live — der Directus Flow muss dafür den Tag "ueber-uns" an
+        // /api/revalidate schicken; revalidate ist nur das Sicherheitsnetz.
+        ...(isDev
+          ? { cache: "no-store" as const }
+          : { next: { revalidate: 3600, tags: ["ueber-uns"] } }),
       }
     );
 
