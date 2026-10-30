@@ -282,45 +282,9 @@
   box-shadow: none;
 }
 
-/* Abdunkelung über dem Inhalt, Kniff aus der Vorlage:
-     transition: opacity 0.5s, width 0.1s 0.5s, height 0.1s 0.5s;
-   Beim Öffnen hat die Fläche sofort volle Größe und nur die Deckkraft läuft.
-   Beim SCHLIESSEN schrumpft sie erst nach 0,5s auf null — also nachdem sie
-   unsichtbar geworden ist. So fängt sie keine Klicks mehr ab, verschwindet
-   aber auch nicht mitten im Ausblenden. Rein deklarativ, ohne Zeitgeber im
-   JavaScript. */
-.menuScrim {
-  /* `fixed` statt `absolute`: nur so reicht die Fläche über die Kopfzeile der
-     Website hinaus. `bottom` kommt als Inline-Stil aus der gemessenen Höhe von
-     Balken und Menü, damit beide unverdunkelt bleiben.
-     z-index über der Kopfzeile (die liegt auf 1000). */
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1010;
-  background: rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  /* Kniff aus der Vorlage: beim Schließen verschwindet die Fläche erst, wenn
-     sie unsichtbar ist — vorher fängt sie keine Klicks mehr ab, bleibt aber
-     während des Ausblendens vorhanden. */
-  visibility: hidden;
-  transition:
-    opacity 0.5s,
-    visibility 0s 0.5s;
-}
-
-.menuScrimOpen {
-  opacity: 1;
-  visibility: visible;
-  transition:
-    opacity 0.5s,
-    visibility 0s;
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .menu,
-  .menuScrim {
+  .menu {
     transition: none;
   }
 }
@@ -533,9 +497,6 @@
     transition: none;
   }
 }
-
-/* Abdunkelung hinter der offenen Vorschlagsliste — gleicher Kniff wie beim
-   Kategorie-Menü (siehe .menuScrim). */
 
 /* Die aktuell gewählte Stadt bleibt in der Liste erkennbar. */
 .suggestionItemSelected .suggestionName {
