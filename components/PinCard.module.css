@@ -33,19 +33,25 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Richtung wie bei „Glowing Ruby“ aus den Codrops-Hover-Effekten: das Bild
+     liegt im Ruhezustand leicht vergrößert und fährt beim Zeigen auf 1
+     zurück. Das wirkt ruhiger als ein Heranzoomen, weil das Motiv beim
+     Betrachten mehr statt weniger zeigt. 0,35s wie in der Vorlage. */
+  transform: scale(1.12);
+  transition: transform 0.35s ease;
 }
 
 @media (hover: hover) {
   .card:hover .image img,
   .card:focus-visible .image img {
-    transform: scale(1.07);
+    transform: scale(1);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .image img {
     transition: none;
+    transform: none;
   }
 
   .card:hover .image img {
@@ -64,7 +70,9 @@
   pointer-events: none;
 }
 
-/* Gradient unten: 200px, von transparent nach Markenorange mit 60 %. */
+/* Gradient unten: 200px, von transparent nach Markenorange mit 60 %.
+   Er bleibt immer sichtbar — ohne ihn wäre der weiße Name auf hellen Fotos
+   nicht lesbar. */
 .gradientBottom {
   position: absolute;
   bottom: 0;
@@ -73,18 +81,37 @@
   height: 200px;
   background: linear-gradient(to top, rgba(252, 108, 20, 0.6), transparent);
   pointer-events: none;
-  transition: background 0.3s ease;
+}
+
+/* Die Verstärkung liegt in einer ZWEITEN Schicht darüber, die über opacity
+   ein- und ausgeblendet wird — wie „Holy Sadie“ es mit seinem Gradienten
+   macht. Vorher wurde `background` selbst umgeschaltet; Browser können
+   Gradienten nicht weich interpolieren, daher der harte Sprung, der Bogusław
+   aufgefallen ist. opacity dagegen läuft weich und auf der GPU. */
+.gradientBottom::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    to top,
+    rgba(252, 108, 20, 0.85),
+    rgba(252, 108, 20, 0.15) 55%,
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.35s ease;
 }
 
 @media (hover: hover) {
-  .card:hover .gradientBottom,
-  .card:focus-visible .gradientBottom {
-    background: linear-gradient(
-      to top,
-      rgba(252, 108, 20, 0.82),
-      rgba(252, 108, 20, 0.12) 55%,
-      transparent
-    );
+  .card:hover .gradientBottom::after,
+  .card:focus-visible .gradientBottom::after {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gradientBottom::after {
+    transition: none;
   }
 }
 
@@ -94,6 +121,29 @@
   left: 0;
   right: 0;
   padding: 6px 20px;
+  /* Name, Ort und Kategorie-Symbole wachsen beim Zeigen gemeinsam ein wenig
+     und gehen genauso weich zurück — dieselben 0,35s wie Bild und Gradient,
+     damit die ganze Karte in einem Takt reagiert. Vergrößert wird von der
+     unteren Kante aus, damit der Text nicht aus der Karte wandert. */
+  transform-origin: center bottom;
+  transition: transform 0.35s ease;
+}
+
+@media (hover: hover) {
+  .card:hover .bottom,
+  .card:focus-visible .bottom {
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom {
+    transition: none;
+  }
+
+  .card:hover .bottom {
+    transform: none;
+  }
 }
 
 .chipWrap {
