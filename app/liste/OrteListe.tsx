@@ -40,6 +40,37 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Sortierung nach Entfernung — wie im Liste-Tab der App, aber per Knopf:
+  // der Browser fragt erst nach Erlaubnis, wenn der Nutzer sie anfordert.
+  const [gps, setGps] = useState<
+    | { state: "off" }
+    | { state: "locating" }
+    | { state: "on"; lat: number; lon: number }
+    | { state: "error"; message: string }
+  >({ state: "off" });
+
+  const requestLocation = useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      setGps({ state: "error", message: "Standort wird nicht unterstützt." });
+      return;
+    }
+    setGps({ state: "locating" });
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        setGps({
+          state: "on",
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        }),
+      () =>
+        setGps({
+          state: "error",
+          message: "Standort konnte nicht ermittelt werden.",
+        }),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+    );
+  }, []);
+
   const setParam = useCallback(
     (key: string, value: string) => {
       const next = new URLSearchParams(searchParams.toString());
@@ -72,6 +103,25 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
       }),
     [places, stadtParam, activeLand, activeCategory],
   );
+
+  // Nach Entfernung sortieren, wenn ein Standort vorliegt. Gerechnet wird
+  // hier im Browser statt über die Supabase-Funktion nearby_orte: die
+  // Koordinaten sind schon geladen, das spart einen Netzaufruf.
+  const ordered = useMemo(() => {
+    if (gps.state !== "on") return filtered;
+    const withDistance = filtered.map((place) => {
+      const [lon, lat] = place.location.coordinates;
+      // Äquirektangulare Näherung — für ein paar hundert Kilometer am
+      // Bodensee genau genug, um richtig zu sortieren.
+      const dLat = ((lat - gps.lat) * Math.PI) / 180;
+      const dLon =
+        (((lon - gps.lon) * Math.PI) / 180) *
+        Math.cos(((lat + gps.lat) / 2 * Math.PI) / 180);
+      return { place, d: dLat * dLat + dLon * dLon };
+    });
+    withDistance.sort((a, b) => a.d - b.d);
+    return withDistance.map((w) => w.place);
+  }, [filtered, gps]);
 
   // Städte für die Vorschlagsliste — nach Anzahl der Orte, damit die
   // ergiebigsten oben stehen. Zähler berücksichtigen die übrigen Filter.
@@ -154,12 +204,49 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   return (
     <div className={styles.screen}>
+      {/* ── Über den Karten: Standort-Sortierung (wie in der App) ─────── */}
+      <div className={styles.aboveCards}>
+        {gps.state === "on" ? (
+          <span className={styles.gpsLabel}>Nach Entfernung sortiert</span>
+        ) : (
+          <button
+            type="button"
+            className={styles.gpsBtn}
+            onClick={requestLocation}
+            disabled={gps.state === "locating"}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9" stroke="#fc6c14" strokeWidth="2" />
+              <circle cx="12" cy="12" r="3.5" fill="#fc6c14" />
+            </svg>
+            {gps.state === "locating"
+              ? "Standort wird ermittelt …"
+              : gps.state === "error"
+                ? "Erneut versuchen"
+                : "Nach Entfernung sortieren"}
+          </button>
+        )}
+        {gps.state === "error" && (
+          <span className={styles.gpsError}>{gps.message}</span>
+        )}
+      </div>
+
       {/* ── 1. Karten ─────────────────────────────────────────────────── */}
       <div className={styles.cardsArea}>
         {filtered.length === 0 ? (
           <p className={styles.emptyState}>Keine Ergebnisse gefunden.</p>
         ) : (
-          <PlaceRail places={filtered} label={railLabel || "Alle Orte"} />
+          <PlaceRail
+            places={ordered}
+            label={railLabel || "Alle Orte"}
+            resetKey={`${stadtParam}|${landParam}|${kategorieParam}|${gps.state}`}
+          />
         )}
       </div>
 
@@ -186,6 +273,57 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
       {/* ── 3. Suche + 4. Kategorie-Balken ────────────────────────────── */}
       <div className={styles.bottomSection}>
+        {/* Kategorie-Menü: bleibt im DOM und wird über eine Klasse animiert,
+            damit es sich auch beim SCHLIESSEN nach unten zurückschiebt. Wäre es
+            bedingt gerendert, verschwände es abrupt. Kein abdunkelnder
+            Hintergrund — der Balken sitzt unten, das Menü direkt darüber. */}
+        <div
+          className={`${styles.menu} ${menuOpen ? styles.menuOpen : ""}`}
+          role="menu"
+          aria-label="Kategorie wählen"
+          aria-hidden={!menuOpen}
+          // Im geschlossenen Zustand nicht per Tab erreichbar.
+          inert={!menuOpen}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className={`${styles.menuItem} ${!activeCategory ? styles.menuItemActive : ""}`}
+            onClick={() => chooseCategory(null)}
+          >
+            <span className={styles.menuIcon}>
+              <CategoryIcon categoryId={null} color="#fff" strokeColor="#000" />
+            </span>
+            <span className={styles.menuText}>Alle</span>
+            <span className={styles.menuCount}>{places.length}</span>
+          </button>
+
+          {categories.map((cat) => {
+            const active = activeCategory?.id === cat.id;
+            const count = categoryCounts.get(cat.id) ?? 0;
+            if (count === 0) return null;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                role="menuitem"
+                className={`${styles.menuItem} ${active ? styles.menuItemActive : ""}`}
+                onClick={() => chooseCategory(cat)}
+              >
+                <span className={styles.menuIcon}>
+                  <CategoryIcon
+                    categoryId={cat.id}
+                    color={cat.color || CATEGORY_COLORS[cat.id] || "#666"}
+                    size={36}
+                  />
+                </span>
+                <span className={styles.menuText}>{cat.name}</span>
+                <span className={styles.menuCount}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <StadtSuche
           cities={cityOptions}
           selected={stadtParam}
@@ -243,56 +381,6 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
         </div>
       </div>
 
-      {/* Kategorie-Menü: bleibt im DOM und wird über eine Klasse animiert,
-          damit es sich auch beim SCHLIESSEN nach unten zurückschiebt. Wäre es
-          bedingt gerendert, verschwände es abrupt. Kein abdunkelnder
-          Hintergrund — der Balken sitzt unten, das Menü direkt darüber. */}
-      <div
-        className={`${styles.menu} ${menuOpen ? styles.menuOpen : ""}`}
-        role="menu"
-        aria-label="Kategorie wählen"
-        aria-hidden={!menuOpen}
-        // Im geschlossenen Zustand nicht per Tab erreichbar.
-        inert={!menuOpen}
-      >
-        <button
-          type="button"
-          role="menuitem"
-          className={`${styles.menuItem} ${!activeCategory ? styles.menuItemActive : ""}`}
-          onClick={() => chooseCategory(null)}
-        >
-          <span className={styles.menuIcon}>
-            <CategoryIcon categoryId={null} color="#fff" strokeColor="#000" />
-          </span>
-          <span className={styles.menuText}>Alle</span>
-          <span className={styles.menuCount}>{places.length}</span>
-        </button>
-
-        {categories.map((cat) => {
-          const active = activeCategory?.id === cat.id;
-          const count = categoryCounts.get(cat.id) ?? 0;
-          if (count === 0) return null;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              role="menuitem"
-              className={`${styles.menuItem} ${active ? styles.menuItemActive : ""}`}
-              onClick={() => chooseCategory(cat)}
-            >
-              <span className={styles.menuIcon}>
-                <CategoryIcon
-                  categoryId={cat.id}
-                  color={cat.color || CATEGORY_COLORS[cat.id] || "#666"}
-                  size={36}
-                />
-              </span>
-              <span className={styles.menuText}>{cat.name}</span>
-              <span className={styles.menuCount}>{count}</span>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }

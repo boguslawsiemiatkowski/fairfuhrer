@@ -28,9 +28,6 @@ interface StadtSucheProps {
   onSelect: (segment: string) => void;
 }
 
-/** Wie viele Vorschläge höchstens erscheinen. */
-const MAX_SUGGESTIONS = 8;
-
 export default function StadtSuche({
   cities,
   selected,
@@ -46,14 +43,13 @@ export default function StadtSuche({
   // Steht eine Stadt fest, zeigt das Feld deren Namen; sonst das Getippte.
   const inputValue = open ? query : (selectedCity?.name ?? query);
 
+  // Vollständige Liste, nicht gekürzt: ohne Eingabe stehen ALLE Städte zur
+  // Auswahl (scrollbar), mit Eingabe die passenden. So kann man entweder
+  // tippen oder einfach aus der Liste wählen.
   const suggestions = useMemo(() => {
     const q = normalizeForSearch(query);
-    const pool = q
-      ? cities.filter((c) => normalizeForSearch(c.name).includes(q))
-      : // Ohne Eingabe die Städte mit den meisten Orten — so ist die Liste
-        // auch beim ersten Antippen nützlich.
-        cities;
-    return pool.slice(0, MAX_SUGGESTIONS);
+    if (!q) return cities;
+    return cities.filter((c) => normalizeForSearch(c.name).includes(q));
   }, [cities, query]);
 
   // Klick außerhalb schließt die Vorschläge.
@@ -98,35 +94,43 @@ export default function StadtSuche({
 
   return (
     <div className={styles.searchWrap} ref={wrapRef}>
-      {open && suggestions.length > 0 && (
-        <ul className={styles.suggestions} role="listbox" aria-label="Städte">
-          {suggestions.map((city, index) => (
-            <li key={city.segment}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={index === highlight}
-                className={`${styles.suggestionItem} ${
-                  index === highlight ? styles.suggestionItemActive : ""
-                }`}
-                onPointerDown={(e) => {
-                  // pointerdown statt click: der Klick-außerhalb-Handler
-                  // würde die Liste sonst schließen, bevor der Klick ankommt.
-                  e.preventDefault();
-                  choose(city.segment);
-                }}
-                onMouseEnter={() => setHighlight(index)}
-              >
-                <span className={styles.suggestionName}>{city.name}</span>
-                <span className={styles.suggestionMeta}>
-                  {city.land ? `${city.land} · ` : ""}
-                  {city.count} {city.count === 1 ? "Ort" : "Orte"}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Bleibt im DOM und wird über eine Klasse animiert, damit sie sich
+          sanft auf- und zuschiebt statt plötzlich zu erscheinen. */}
+      <ul
+        className={`${styles.suggestions} ${
+          open && suggestions.length > 0 ? styles.suggestionsOpen : ""
+        }`}
+        role="listbox"
+        aria-label="Städte"
+        aria-hidden={!open}
+        inert={!open}
+      >
+        {suggestions.map((city, index) => (
+          <li key={city.segment}>
+            <button
+              type="button"
+              role="option"
+              aria-selected={index === highlight}
+              className={`${styles.suggestionItem} ${
+                index === highlight ? styles.suggestionItemActive : ""
+              } ${city.segment === selected ? styles.suggestionItemSelected : ""}`}
+              onPointerDown={(e) => {
+                // pointerdown statt click: der Klick-außerhalb-Handler würde
+                // die Liste sonst schließen, bevor der Klick ankommt.
+                e.preventDefault();
+                choose(city.segment);
+              }}
+              onMouseEnter={() => setHighlight(index)}
+            >
+              <span className={styles.suggestionName}>{city.name}</span>
+              <span className={styles.suggestionMeta}>
+                {city.land ? `${city.land} · ` : ""}
+                {city.count} {city.count === 1 ? "Ort" : "Orte"}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
 
       <div className={styles.searchBar}>
         <svg

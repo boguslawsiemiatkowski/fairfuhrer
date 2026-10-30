@@ -19,6 +19,13 @@ interface PlaceRailProps {
   places: Place[];
   /** Vorlesbarer Name des Bandes, z. B. „Orte in Lindau“. */
   label: string;
+  /**
+   * Ändert sich dieser Wert, springt das Band an den Anfang zurück. Nötig,
+   * weil der Nutzer sonst nach einem Filterwechsel mitten in der neuen Liste
+   * stünde — er hatte zehn Karten weitergeblättert und sah dann die zehnte
+   * Karte der neuen Auswahl statt der ersten.
+   */
+  resetKey?: string;
 }
 
 /** Maße aus app/(tabs)/index.tsx der App. */
@@ -29,7 +36,7 @@ const MAX_CARD_WIDTH = 420;
 /** Ab welcher Mausbewegung ein Ziehen als Scrollen gilt (statt als Klick). */
 const DRAG_THRESHOLD = 6;
 
-export default function PlaceRail({ places, label }: PlaceRailProps) {
+export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
   const railRef = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -66,6 +73,15 @@ export default function PlaceRail({ places, label }: PlaceRailProps) {
   useEffect(() => {
     updateEdges();
   }, [updateEdges, places.length, size.width]);
+
+  // Nach einem Filterwechsel zurück zum Anfang. `behavior: "instant"`, damit
+  // es wie ein neues Ergebnis wirkt und nicht wie ein Zurückscrollen.
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    el.scrollTo({ left: 0, behavior: "instant" });
+    updateEdges();
+  }, [resetKey, updateEdges]);
 
   const scrollByCards = useCallback(
     (direction: 1 | -1) => {
