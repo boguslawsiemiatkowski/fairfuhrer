@@ -11,6 +11,7 @@ import type { Place } from "@/types";
 import {
   cityToSegment,
   htmlToPlainText,
+  mainImageUrl,
   truncateAtWord,
 } from "@/lib/orte-shared";
 import styles from "./PlaceCard.module.css";
@@ -22,15 +23,12 @@ interface PlaceCardProps {
 }
 
 export default function PlaceCard({ place, hideCity = false }: PlaceCardProps) {
-  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
   const segment = cityToSegment(place.Stadt);
   const href = segment && place.slug ? `/orte/${segment}/${place.slug}` : null;
 
   const teaser = truncateAtWord(htmlToPlainText(place.Vollbeschreibung), 160);
-  const imageUrl =
-    place.Titelbild && directusUrl
-      ? `${directusUrl}/assets/${place.Titelbild}`
-      : null;
+  // Beide Bildformen — sonst bliebe die Kachel bei zwei Dritteln der Orte leer.
+  const imageUrl = mainImageUrl(place);
 
   const meta = [
     hideCity ? null : place.Stadt,

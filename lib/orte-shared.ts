@@ -57,6 +57,60 @@ export function truncateAtWord(text: string, maxLength: number): string {
   return `${(lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
+// ─── Bilder ─────────────────────────────────────────────────────────────────
+//
+// Bilder liegen in zwei Formen vor, und fast alle Orte nutzen die ältere:
+//
+//   neu  — `Titelbild` / `Galerie`: UUIDs auf Dateien in Directus (197 bzw. 63)
+//   alt  — `Hauptbild` / `Galerie_Bilder`: Dateinamen in Supabase Storage
+//          (574 bzw. 132)
+//
+// Wer nur die neue Form abfragt, zeigt bei zwei Dritteln der Orte kein Bild.
+// Die Karte behandelte das schon immer, die neuen Seiten brauchen es ebenso.
+
+interface PlaceImages {
+  Titelbild?: string;
+  Hauptbild?: string;
+  Galerie?: string[];
+  Galerie_Bilder?: string[];
+}
+
+function directusAssetUrl(uuid: string): string | null {
+  const base = process.env.NEXT_PUBLIC_DIRECTUS_URL;
+  return base ? `${base}/assets/${uuid}` : null;
+}
+
+function supabasePlaceImageUrl(
+  filename: string,
+  type: "main" | "gallery",
+): string | null {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/media-files/places/images/${type}/${filename}`;
+}
+
+/** URL des Hauptbildes, egal in welcher Form es vorliegt. */
+export function mainImageUrl(place: PlaceImages): string | null {
+  if (place.Titelbild) return directusAssetUrl(place.Titelbild);
+  if (place.Hauptbild) return supabasePlaceImageUrl(place.Hauptbild, "main");
+  return null;
+}
+
+/** Alle Galeriebilder als URLs, beide Formen zusammengeführt. */
+export function galleryUrls(place: PlaceImages): string[] {
+  const fromDirectus = (place.Galerie ?? [])
+    .map(directusAssetUrl)
+    .filter((u): u is string => u !== null);
+
+  // Das erste Galerie_Bilder-Element ist bei vielen Orten dasselbe Foto wie
+  // Hauptbild; es bleibt drin, damit die Galerie der auf der Karte entspricht.
+  const fromSupabase = (place.Galerie_Bilder ?? [])
+    .map((name) => supabasePlaceImageUrl(name, "gallery"))
+    .filter((u): u is string => u !== null);
+
+  return [...fromDirectus, ...fromSupabase];
+}
+
 /** Vergleichsform für die Suche: Umlaute vereinfacht, Kleinschreibung. */
 export function normalizeForSearch(input: string): string {
   return input

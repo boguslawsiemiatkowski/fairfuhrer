@@ -19,8 +19,10 @@ import {
   cityToSegment,
   fetchAllPlaces,
   findPlaceBySlug,
+  galleryUrls,
   hasAudio,
   htmlToPlainText,
+  mainImageUrl,
   truncateAtWord,
 } from "@/lib/orte";
 import { getAudioUrl } from "@/lib/supabase";
@@ -66,11 +68,7 @@ export async function generateMetadata({
     ? truncateAtWord(plain, 155)
     : `${place.Name}${city} — entdecken Sie nachhaltige Orte am Bodensee und im Allgäu mit dem Fairführer.`;
 
-  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
-  const imageUrl =
-    place.Titelbild && directusUrl
-      ? `${directusUrl}/assets/${place.Titelbild}`
-      : undefined;
+  const imageUrl = mainImageUrl(place) ?? undefined;
 
   const canonical = `${SITE_URL}/orte/${stadt}/${slug}`;
 
@@ -98,6 +96,7 @@ export async function generateMetadata({
 function buildStructuredData(place: Place, canonical: string) {
   const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
   const plain = htmlToPlainText(place.Vollbeschreibung);
+  const heroUrl = mainImageUrl(place);
 
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -105,9 +104,7 @@ function buildStructuredData(place: Place, canonical: string) {
     name: place.Name,
     url: canonical,
     ...(plain ? { description: truncateAtWord(plain, 500) } : {}),
-    ...(place.Titelbild && directusUrl
-      ? { image: `${directusUrl}/assets/${place.Titelbild}` }
-      : {}),
+    ...(heroUrl ? { image: heroUrl } : {}),
     address: {
       "@type": "PostalAddress",
       ...(place.Adresse ? { streetAddress: place.Adresse } : {}),
@@ -143,9 +140,7 @@ function buildStructuredData(place: Place, canonical: string) {
       name: `Audioguide: ${place.Name}`,
       contentUrl: audioUrl,
       inLanguage: "de",
-      ...(place.Titelbild && directusUrl
-        ? { thumbnailUrl: `${directusUrl}/assets/${place.Titelbild}` }
-        : {}),
+      ...(heroUrl ? { thumbnailUrl: heroUrl } : {}),
     };
   }
 
@@ -160,12 +155,11 @@ export default async function OrtPage({ params }: RouteParams) {
 
   const canonical = `${SITE_URL}/orte/${stadt}/${slug}`;
   const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
-  const titelbildUrl =
-    place.Titelbild && directusUrl
-      ? `${directusUrl}/assets/${place.Titelbild}`
-      : null;
 
-  const galerieUuids = place.Galerie ?? [];
+  // Beide Bildformen berücksichtigen — nur 197 von 592 Orten haben ein
+  // Directus-`Titelbild`, 574 dagegen ein `Hauptbild` in Supabase Storage.
+  const heroUrl = mainImageUrl(place);
+  const galerie = galleryUrls(place);
 
   return (
     <>
@@ -215,10 +209,10 @@ export default async function OrtPage({ params }: RouteParams) {
           </p>
         </header>
 
-        {titelbildUrl && (
+        {heroUrl && (
           <div className={styles.heroImage}>
             <Image
-              src={titelbildUrl}
+              src={heroUrl}
               alt={place.Name}
               width={1200}
               height={675}
@@ -251,16 +245,16 @@ export default async function OrtPage({ params }: RouteParams) {
           </section>
         )}
 
-        {galerieUuids.length > 0 && directusUrl && (
+        {galerie.length > 0 && (
           <section className={styles.section} aria-labelledby="galerie-heading">
             <h2 id="galerie-heading" className={styles.sectionTitle}>
               Bildergalerie
             </h2>
             <div className={styles.gallery}>
-              {galerieUuids.map((uuid, index) => (
+              {galerie.map((url, index) => (
                 <Image
-                  key={uuid}
-                  src={`${directusUrl}/assets/${uuid}`}
+                  key={url}
+                  src={url}
                   alt={`${place.Name} — Bild ${index + 1}`}
                   width={400}
                   height={300}
