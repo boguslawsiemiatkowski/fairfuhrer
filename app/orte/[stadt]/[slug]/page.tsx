@@ -9,18 +9,13 @@
 // ausgeliefert werden, wenn Directus gerade nicht antwortet.
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
-import {
-  DirectusAudioPlayer,
-  AudioPlayer,
-} from "@/components/MediaComponents";
+import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
+import CategoryIcon, { CATEGORY_COLORS } from "@/components/CategoryIcon";
 import {
   cityToSegment,
   fetchAllPlaces,
   findPlaceBySlug,
-  galleryUrls,
-  hasAudio,
   htmlToPlainText,
   mainImageUrl,
   truncateAtWord,
@@ -147,6 +142,29 @@ function buildStructuredData(place: Place, canonical: string) {
   return data;
 }
 
+/** Quelle des Audioguides, beide Ablageformen berücksichtigt. */
+function audioSrc(place: Place): string | null {
+  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
+  if (place.Audio && directusUrl) return `${directusUrl}/assets/${place.Audio}`;
+  if (place.Audio_Datei) return getAudioUrl(place.id, place.Audio_Datei);
+  return null;
+}
+
+/**
+ * Hintergrund der linken Spalte: die Kategoriefarbe, um 50 % abgedunkelt.
+ *
+ * Nötig, weil die Farben aus Directus für weiße Schrift viel zu hell sind —
+ * gemessen: Gelb #E0D12E kommt auf 1,58:1, Grün #42D742 auf 1,90:1, verlangt
+ * sind 4,5:1. Um 50 % abgedunkelt liegen alle fünf Kategorien über 5,6:1 und
+ * bleiben trotzdem als ihre Farbe erkennbar.
+ */
+function columnColor(hex: string | undefined, fallback: string): string {
+  const source = /^#[0-9a-f]{6}$/i.test(hex ?? "") ? hex! : fallback;
+  const dim = (from: number) =>
+    Math.round(parseInt(source.slice(from, from + 2), 16) * 0.5);
+  return `rgb(${dim(1)}, ${dim(3)}, ${dim(5)})`;
+}
+
 export default async function OrtPage({ params }: RouteParams) {
   const { stadt, slug } = await params;
   const place = await getPlace(stadt, slug);
@@ -158,8 +176,12 @@ export default async function OrtPage({ params }: RouteParams) {
 
   // Beide Bildformen berücksichtigen — nur 197 von 592 Orten haben ein
   // Directus-`Titelbild`, 574 dagegen ein `Hauptbild` in Supabase Storage.
-  const heroUrl = mainImageUrl(place);
-  const galerie = galleryUrls(place);
+  const audio = audioSrc(place);
+  const firstCategory = place.Kategorie[0];
+  const sidebarColor = columnColor(
+    firstCategory?.color || CATEGORY_COLORS[firstCategory?.id ?? 0],
+    "#fc6c14",
+  );
 
   return (
     <>
@@ -176,182 +198,84 @@ export default async function OrtPage({ params }: RouteParams) {
         }}
       />
 
-      <article className={styles.page}>
-        <nav className={styles.breadcrumb} aria-label="Brotkrümelnavigation">
-          <Link href="/liste">Alle Orte</Link>
-          <span aria-hidden="true">›</span>
-          <Link href={`/orte/${stadt}`}>{place.Stadt ?? stadt}</Link>
-          <span aria-hidden="true">›</span>
-          <span aria-current="page">{place.Name}</span>
-        </nav>
-
-        <header className={styles.header}>
-          {place.Kategorie.length > 0 && (
-            <div className={styles.badges}>
-              {place.Kategorie.map((cat) => (
-                <span
-                  key={cat.id}
-                  className={styles.badge}
-                  style={{ backgroundColor: cat.color }}
-                >
-                  {cat.name}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <h1 className={styles.title}>{place.Name}</h1>
-
-          <p className={styles.address}>
-            {place.Adresse}
-            {place.Stadt ? ` ${place.Stadt}` : ""}
-            {place.Land ? ` (${place.Land})` : ""}
-          </p>
-        </header>
-
-        {heroUrl && (
-          <div className={styles.heroImage}>
-            <Image
-              src={heroUrl}
-              alt={place.Name}
-              width={1200}
-              height={675}
-              priority
-              sizes="(max-width: 900px) 100vw, 900px"
-              style={{ width: "100%", height: "auto" }}
-            />
-          </div>
-        )}
-
-        {hasAudio(place) && (
-          <section className={styles.section} aria-labelledby="audio-heading">
-            <h2 id="audio-heading" className={styles.sectionTitle}>
-              Audioguide
-            </h2>
-            {place.Audio ? (
-              <DirectusAudioPlayer uuid={place.Audio} />
-            ) : (
-              <AudioPlayer placeId={place.id} filename={place.Audio_Datei!} />
-            )}
-          </section>
-        )}
-
-        {place.Vollbeschreibung && (
-          <section className={styles.section}>
-            <div
-              className={styles.description}
-              dangerouslySetInnerHTML={{ __html: place.Vollbeschreibung }}
-            />
-          </section>
-        )}
-
-        {galerie.length > 0 && (
-          <section className={styles.section} aria-labelledby="galerie-heading">
-            <h2 id="galerie-heading" className={styles.sectionTitle}>
-              Bildergalerie
-            </h2>
-            <div className={styles.gallery}>
-              {galerie.map((url, index) => (
-                <Image
-                  key={url}
-                  src={url}
-                  alt={`${place.Name} — Bild ${index + 1}`}
-                  width={400}
-                  height={300}
-                  loading="lazy"
-                  sizes="(max-width: 600px) 50vw, 300px"
-                  className={styles.galleryImage}
-                  style={{ width: "100%", height: "auto" }}
+      <article className={styles.layout}>
+        {/* Linke Spalte: steht fest, scrollt nicht mit. Hintergrund ist die
+            Farbe der Kategorie (abgedunkelt, siehe columnColor), damit schon
+            am Farbton erkennbar ist, worum es geht. */}
+        <aside className={styles.sidebar} style={{ backgroundColor: sidebarColor }}>
+          <div className={styles.sidebarInner}>
+            {firstCategory && (
+              <p className={styles.category}>
+                <CategoryIcon
+                  categoryId={firstCategory.id}
+                  color="rgba(255,255,255,0.22)"
+                  strokeColor="#fff"
+                  size={34}
                 />
-              ))}
-            </div>
-          </section>
-        )}
+                {firstCategory.name}
+              </p>
+            )}
 
-        {place.Zertifizierungen && place.Zertifizierungen.length > 0 && (
-          <section className={styles.section} aria-labelledby="zert-heading">
-            <h2 id="zert-heading" className={styles.sectionTitle}>
-              Zertifizierungen &amp; Labels
-            </h2>
-            <div className={styles.zertGrid}>
-              {place.Zertifizierungen.map((zert) =>
-                zert.imageUuid && directusUrl ? (
-                  <Image
-                    key={zert.id}
-                    src={`${directusUrl}/assets/${zert.imageUuid}`}
-                    alt={zert.name}
-                    title={zert.name}
-                    width={100}
-                    height={80}
-                    loading="lazy"
-                    className={styles.zertLogo}
-                    style={{
-                      objectFit: "contain",
-                      width: "auto",
-                      height: "auto",
-                      maxHeight: "80px",
-                    }}
-                  />
-                ) : (
-                  <span key={zert.id} className={styles.zertName}>
-                    {zert.name}
-                  </span>
-                ),
-              )}
-            </div>
-          </section>
-        )}
+            <h1 className={styles.title}>{place.Name}</h1>
 
-        <section className={styles.section} aria-labelledby="kontakt-heading">
-          <h2 id="kontakt-heading" className={styles.sectionTitle}>
-            Kontakt &amp; Anfahrt
-          </h2>
-          <dl className={styles.contactList}>
-            <dt>Adresse</dt>
-            <dd>
+            <p className={styles.address}>
               {place.Adresse}
-              {place.Stadt ? `, ${place.Stadt}` : ""}
-            </dd>
+              {place.Stadt && (
+                <>
+                  <br />
+                  {place.Stadt}
+                  {place.Land ? `, ${place.Land}` : ""}
+                </>
+              )}
+            </p>
 
             {place.Telefon && (
-              <>
-                <dt>Telefon</dt>
-                <dd>
-                  <a href={`tel:${place.Telefon.replace(/\s+/g, "")}`}>
-                    {place.Telefon}
-                  </a>
-                </dd>
-              </>
+              <p className={styles.contactLine}>
+                <a href={`tel:${place.Telefon.replace(/\s+/g, "")}`}>
+                  {place.Telefon}
+                </a>
+              </p>
             )}
 
             {place.Link_URL && (
-              <>
-                <dt>Website</dt>
-                <dd>
-                  <a
-                    href={place.Link_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {place.Link_Text || "Website besuchen"}
-                  </a>
-                </dd>
-              </>
+              <p className={styles.contactLine}>
+                <a
+                  href={place.Link_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {place.Link_Text || "Website besuchen"}
+                </a>
+              </p>
             )}
-          </dl>
 
-          {/* Bewusst kein Link auf eine fremde Karte: die Navigation soll auf
-              unserer eigenen Mapbox-Karte stattfinden. Eine Routenfunktion dort
-              kann später folgen. */}
-          <div className={styles.actions}>
-            <Link href="/karte" className={styles.actionPrimary}>
-              Auf der Karte ansehen
-            </Link>
-            <Link href={`/orte/${stadt}`} className={styles.actionSecondary}>
-              Weitere Orte in {place.Stadt ?? stadt}
-            </Link>
+            {audio && (
+              <div className={styles.playerWrap}>
+                <ColumnAudioPlayer src={audio} title={place.Name} />
+              </div>
+            )}
           </div>
-        </section>
+        </aside>
+
+        {/* Rechte Spalte: der Text, hier wird gescrollt. */}
+        <div className={styles.main}>
+          <div className={styles.mainInner}>
+            {place.Vollbeschreibung ? (
+              <div
+                className={styles.description}
+                dangerouslySetInnerHTML={{ __html: place.Vollbeschreibung }}
+              />
+            ) : (
+              <p className={styles.noText}>
+                Für diesen Ort liegt noch keine Beschreibung vor.
+              </p>
+            )}
+
+            <p className={styles.backLink}>
+              <Link href="/liste">Alle Orte durchsuchen</Link>
+            </p>
+          </div>
+        </div>
       </article>
     </>
   );

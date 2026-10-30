@@ -1,0 +1,172 @@
+/* components/ColumnAudioPlayer.module.css
+   Audioguide für die linke Spalte der Audiopin-Seite. Bewusst ohne eigenen
+   Kasten, ohne Glas- oder Kartenoptik: er soll zur Hintergrundfarbe der
+   Kategorie gehören, nicht darauf liegen. Es gibt daher nur Knöpfe, eine
+   Fortschrittsleiste und Zeiten — alles in Weiß mit halbtransparenten Flächen,
+   die sich jeder Kategoriefarbe anpassen.
+*/
+
+.player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 320px;
+  color: #fff;
+}
+
+/* ─── Knopfreihe ─────────────────────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.skip,
+.play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.skip {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  opacity: 0.85;
+}
+
+.skip:hover,
+.skip:focus-visible {
+  background-color: rgba(255, 255, 255, 0.18);
+  opacity: 1;
+}
+
+/* Der Abspielknopf ist der einzige Punkt mit Fläche — er muss sofort
+   auffindbar sein, bleibt aber in derselben Farbfamilie. */
+.play {
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+}
+
+.play:hover,
+.play:focus-visible {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip,
+  .play {
+    transition: none;
+  }
+
+  .play:hover {
+    transform: none;
+  }
+}
+
+/* ─── Fortschritt ────────────────────────────────────────────────────────── */
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.time {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}
+
+.slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 18px;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    #fff 0%,
+    #fff var(--progress, 0%),
+    rgba(255, 255, 255, 0.35) var(--progress, 0%),
+    rgba(255, 255, 255, 0.35) 100%
+  );
+}
+
+.slider::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.slider::-moz-range-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: #fff;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4.5px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.slider:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+/* ─── Geschwindigkeit ────────────────────────────────────────────────────── */
+
+.speed {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--font-fira);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}
+
+.speed:hover,
+.speed:focus-visible {
+  background-color: rgba(255, 255, 255, 0.18);
+  opacity: 1;
+}
