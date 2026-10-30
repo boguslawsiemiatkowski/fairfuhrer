@@ -17,11 +17,6 @@
     "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
-    "types": ["node", "react", "react-dom", "dompurify", "mapbox-gl"],
-    "typeRoots": [
-      "./node_modules/@types",
-      "./types"
-    ],
     "plugins": [
       {
         "name": "next"

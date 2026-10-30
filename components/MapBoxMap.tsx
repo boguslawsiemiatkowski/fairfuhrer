@@ -11,6 +11,11 @@ import {
   Activity,
 } from "react";
 import mapboxgl from "mapbox-gl";
+// Explizit importiert, statt sich auf den globalen `GeoJSON`-Namespace zu
+// verlassen: den zog bisher `@types/mapbox-gl` per
+// `/// <reference types="geojson" />` herein. Das Paket ist überflüssig,
+// seit mapbox-gl eigene Typen mitbringt.
+import type { FeatureCollection, Point } from "geojson";
 import DOMPurify from "dompurify";
 import "mapbox-gl/dist/mapbox-gl.css";
 import styles from "./MapBoxMap.module.css";
@@ -742,7 +747,7 @@ export default function MapBoxMap({
     source.setData(
       placesToGeoJSON(
         currentPlaces,
-      ) as GeoJSON.FeatureCollection<GeoJSON.Point>,
+      ) as FeatureCollection<Point>,
     );
 
     // fitBounds tylko gdy zmienił się zestaw miejsc.
@@ -806,7 +811,7 @@ export default function MapBoxMap({
           hoverPopupRef.current = null;
         }
 
-        const geometry = feature.geometry as GeoJSON.Point;
+        const geometry = feature.geometry as Point;
         const coords = geometry.coordinates as [number, number];
 
         const isLocked = lockedIdsRef.current.has(placeId);
@@ -898,7 +903,7 @@ export default function MapBoxMap({
         if (!e.features?.length) return;
         const clusterId = e.features[0].properties?.cluster_id as number;
         const source = map.getSource("places-source") as mapboxgl.GeoJSONSource;
-        const geometry = e.features[0].geometry as GeoJSON.Point;
+        const geometry = e.features[0].geometry as Point;
         const coords = geometry.coordinates as [number, number];
 
         source.getClusterExpansionZoom(clusterId, (err, zoom) => {
