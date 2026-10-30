@@ -41,27 +41,14 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [size, setSize] = useState({ width: 320, height: 400 });
 
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: 0 });
 
-  // Kartenmaße wie in der App berechnen.
-  useEffect(() => {
-    const measure = () => {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      // 20px Luft links und rechts (siehe CSS), daher hier mitgerechnet.
-      const natural = vw - 40 - CARD_PEEK;
-      const width = Math.min(natural, MAX_CARD_WIDTH);
-      // Etwas höher als in der App (dort 1,1 × Breite bzw. 38 % der Höhe):
-      // im Browser ist mehr Platz, weil Tableiste und Tastatur fehlen.
-      const height = Math.min(width * 1.25, vh * 0.52);
-      setSize({ width, height });
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
+  // Die Kartenmaße stehen im CSS (clamp + aspect-ratio), nicht hier. Vorher
+  // starteten sie mit festen 320×400 und wurden erst nach dem Mounten aus
+  // window.innerWidth neu berechnet — deshalb erschienen die Kacheln zuerst
+  // schmal und sprangen dann auf ihre endgültige Breite. Im CSS stimmt die
+  // Größe schon im ersten Bild.
 
   const updateEdges = useCallback(() => {
     const el = railRef.current;
@@ -72,7 +59,7 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
 
   useEffect(() => {
     updateEdges();
-  }, [updateEdges, places.length, size.width]);
+  }, [updateEdges, places.length]);
 
   // Nach einem Filterwechsel zurück zum Anfang. `behavior: "instant"`, damit
   // es wie ein neues Ergebnis wirkt und nicht wie ein Zurückscrollen.
@@ -83,17 +70,16 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
     updateEdges();
   }, [resetKey, updateEdges]);
 
-  const scrollByCards = useCallback(
-    (direction: 1 | -1) => {
-      const el = railRef.current;
-      if (!el) return;
-      // Um ganze Karten weiterspringen, damit das Einrasten erhalten bleibt.
-      const step = size.width + CARD_GAP;
-      const cards = Math.max(1, Math.floor(el.clientWidth / step));
-      el.scrollBy({ left: direction * step * cards, behavior: "smooth" });
-    },
-    [size.width],
-  );
+  const scrollByCards = useCallback((direction: 1 | -1) => {
+    const el = railRef.current;
+    if (!el) return;
+    // Kartenbreite aus dem DOM lesen, statt sie zu berechnen — so bleibt das
+    // Blättern richtig, egal was das CSS gerade ergibt.
+    const first = el.firstElementChild as HTMLElement | null;
+    const step = (first?.offsetWidth ?? 300) + CARD_GAP;
+    const cards = Math.max(1, Math.floor(el.clientWidth / step));
+    el.scrollBy({ left: direction * step * cards, behavior: "smooth" });
+  }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     // Nur Maus: Touch und Stift scrollen von sich aus.
@@ -161,12 +147,6 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
       <div
         ref={railRef}
         className={`${styles.rail} ${dragging ? styles.dragging : ""}`}
-        style={
-          {
-            "--card-width": `${size.width}px`,
-            "--card-height": `${size.height}px`,
-          } as React.CSSProperties
-        }
         onScroll={updateEdges}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

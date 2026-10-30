@@ -47,8 +47,17 @@
 
 .item {
   flex: 0 0 auto;
-  width: var(--card-width);
-  height: var(--card-height);
+  /* Maße im CSS statt im JavaScript: so stimmen sie schon im ersten Bild.
+     Vorher wurden sie nach dem Mounten aus window.innerWidth gerechnet,
+     weshalb die Kacheln zuerst schmal erschienen und dann aufsprangen.
+
+     Die Rechnung entspricht der App: Fensterbreite minus 28px Seitenstreifen
+     minus 44px, damit von der nächsten Karte ein Stück sichtbar bleibt —
+     gedeckelt bei 420px wie dort. */
+  width: min(calc(100vw - 28px - 44px), 420px);
+  aspect-ratio: 1 / 1.25;
+  /* Auf niedrigen Fenstern begrenzt die Höhe, nicht die Breite. */
+  max-height: 52vh;
   scroll-snap-align: start;
 }
 

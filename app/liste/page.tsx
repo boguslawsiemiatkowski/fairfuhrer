@@ -8,9 +8,8 @@
 // Browser, damit es ohne Nachladen reagiert.
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { fetchAllPlaces, fetchCategories, groupByCity } from "@/lib/orte";
+import { cityToSegment, fetchAllPlaces, fetchCategories } from "@/lib/orte";
 import OrteListe from "./OrteListe";
-import ListeFallback from "./ListeFallback";
 import styles from "./page.module.css";
 
 export const revalidate = 86400;
@@ -39,7 +38,10 @@ export default async function ListePage() {
     fetchCategories(),
   ]);
 
-  const cities = groupByCity(places);
+  // Nur für die unsichtbare Überschrift: wie viele Städte vertreten sind.
+  const cityCount = new Set(
+    places.map((p) => cityToSegment(p.Stadt)).filter(Boolean),
+  ).size;
 
   return (
     <main className={styles.page}>
@@ -48,20 +50,18 @@ export default async function ListePage() {
           Überschrift unsichtbar im Markup; <title> und <meta> liefert
           generateMetadata. */}
       <h1 className={styles.srOnly}>
-        Alle Orte — {places.length} nachhaltige Orte in {cities.length} Städten
-        am Bodensee und im Allgäu
+        Alle Orte — {places.length} nachhaltige Orte in {cityCount} Städten am
+        Bodensee und im Allgäu
       </h1>
 
       {/* Die Filter lesen ihren Zustand über useSearchParams aus der URL; beim
           Vorrendern steht die Query noch nicht fest, daher die Suspense-Grenze.
-          Im Fallback steht die vollständige, serverseitig gerenderte Liste —
-          so sehen Google und Browser ohne JavaScript alle Orte und Links,
-          statt nur „wird geladen“. */}
-      <Suspense
-        fallback={
-          <ListeFallback cities={cities} totalPlaces={places.length} />
-        }
-      >
+          Der Fallback bleibt bewusst LEER: vorher stand hier eine zweite,
+          serverseitig gerenderte Liste für Google — die blitzte beim Laden
+          kurz in einem anderen Layout auf. Auf dieser Seite zählt das Erlebnis
+          der Leser; die Suchmaschinen-Arbeit leisten die einzelnen
+          Audiopin-Seiten und später der Blog. */}
+      <Suspense fallback={null}>
         <OrteListe places={places} categories={categories} />
       </Suspense>
     </main>
