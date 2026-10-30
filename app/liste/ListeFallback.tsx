@@ -37,12 +37,14 @@ export default function ListeFallback({
 
   return (
     <>
-      <div className={styles.resultBar}>
-        <p className={styles.resultCount}>{totalPlaces} Orte</p>
+      <div className={styles.fallbackSection}>
+        <div className={styles.resultBar}>
+          <p className={styles.resultCount}>{totalPlaces} Orte</p>
+        </div>
       </div>
 
       {withCards.map((city) => (
-        <section key={city.segment} className={styles.cityGroup}>
+        <section key={city.segment} className={styles.fallbackSection}>
           <h2 className={styles.cityHeading}>
             <Link href={`/orte/${city.segment}`} className={styles.cityLink}>
               {city.name}
@@ -58,7 +60,7 @@ export default function ListeFallback({
       ))}
 
       {linkOnly.length > 0 && (
-        <section className={styles.cityGroup}>
+        <section className={styles.fallbackSection}>
           <h2 className={styles.cityHeading}>
             <span className={styles.cityLink}>Weitere Städte</span>
           </h2>

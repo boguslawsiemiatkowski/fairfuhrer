@@ -1,0 +1,232 @@
+/* components/PlaceRail.module.css
+   Waagerecht scrollbares Band mit Ortskarten, nach dem Vorbild der App.
+   Weißer Hintergrund, keine border-radius — Projektvorgabe.
+*/
+
+.wrapper {
+  position: relative;
+  /* Volle Fensterbreite, auch wenn ein Elternelement schmaler ist — wie die
+     Karte auf /karte. */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  background-color: #fff;
+}
+
+/* ─── Band ───────────────────────────────────────────────────────────────── */
+
+.rail {
+  display: flex;
+  gap: 1rem;
+  padding: 0 clamp(1rem, 4vw, 3rem);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #d8d4cd transparent;
+}
+
+.rail::-webkit-scrollbar {
+  height: 8px;
+}
+
+.rail::-webkit-scrollbar-track {
+  background: #f2efea;
+}
+
+.rail::-webkit-scrollbar-thumb {
+  background: #d8d4cd;
+}
+
+.rail::-webkit-scrollbar-thumb:hover {
+  background: #fc6c14;
+}
+
+/* Beim Ziehen mit der Maus soll kein Text markiert werden. */
+.dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  scroll-behavior: auto;
+  user-select: none;
+}
+
+.dragging a {
+  pointer-events: none;
+}
+
+/* ─── Karte: breiter als hoch ────────────────────────────────────────────── */
+
+.card {
+  flex: 0 0 auto;
+  width: clamp(300px, 46vw, 560px);
+  scroll-snap-align: start;
+  background-color: #fff;
+  border: 1px solid #e5e1da;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.card:hover {
+  border-color: #fc6c14;
+  box-shadow: 0 2px 14px rgba(24, 34, 47, 0.12);
+}
+
+.link {
+  display: grid;
+  grid-template-columns: 42% 1fr;
+  height: 100%;
+  min-height: 190px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.image {
+  position: relative;
+  overflow: hidden;
+  background-color: #f2efea;
+  line-height: 0;
+}
+
+.imageFallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #f2efea 0%, #e5e1da 100%);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.1rem;
+  min-width: 0;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.1rem;
+}
+
+.badge {
+  padding: 0.12rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-anton);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: #18222f;
+}
+
+.card:hover .title {
+  color: #fc6c14;
+}
+
+.city {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #5a6472;
+}
+
+.teaser {
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #3f4855;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.audio {
+  margin: auto 0 0;
+  padding-top: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #3e6b4f;
+}
+
+/* ─── Pfeile ─────────────────────────────────────────────────────────────── */
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 10px rgba(24, 34, 47, 0.2);
+  color: #18222f;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.arrow:hover,
+.arrow:focus-visible {
+  background-color: #fc6c14;
+  color: #fff;
+}
+
+.arrowLeft {
+  left: 0.5rem;
+}
+
+.arrowRight {
+  right: 0.5rem;
+}
+
+.arrowHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Auf Touch-Geräten wird gewischt; Pfeile wären dort nur im Weg. */
+@media (hover: none) {
+  .arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .card {
+    width: min(86vw, 420px);
+  }
+
+  .link {
+    grid-template-columns: 40% 1fr;
+    min-height: 160px;
+  }
+
+  .body {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .title {
+    font-size: 1.1rem;
+  }
+
+  .teaser {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+}

@@ -1,28 +1,43 @@
 /* app/liste/page.module.css
-   Durchsuchbarer Katalog aller Audiopins. Schriften und Farben wie im übrigen
-   Projekt (Anton, Fira Sans Condensed, #fc6c14, #3E6B4F). Kein border-radius —
-   Projektvorgabe.
+   Durchsuchbarer Katalog aller Audiopins, nach dem Vorbild des Liste-Tabs der
+   App: Suche, eine Kategorie, Land, Karten in einem waagerechten Band.
+
+   Die Steuerelemente stehen in einer lesbaren Spalte, das Kartenband nutzt die
+   volle Fensterbreite (wie die Karte auf /karte). Weißer Hintergrund wie in
+   der App, kein border-radius — Projektvorgabe.
 */
 
 .page {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  padding: 1.5rem 0 3rem;
   font-family: var(--font-fira);
   color: #18222f;
+  background-color: #fff;
+}
+
+/* Alles außer dem Kartenband in einer Spalte. */
+.intro,
+.controls,
+.emptyState,
+.hint,
+.loading {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(1rem, 4vw, 3rem);
+  padding-right: clamp(1rem, 4vw, 3rem);
 }
 
 /* ─── Kopf ───────────────────────────────────────────────────────────────── */
 
 .intro {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .title {
   font-family: var(--font-anton);
   font-size: clamp(2rem, 6vw, 3rem);
   line-height: 1.1;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.4rem;
 }
 
 .subtitle {
@@ -33,12 +48,17 @@
   color: #5a6472;
 }
 
-/* ─── Suche ──────────────────────────────────────────────────────────────── */
+/* ─── Steuerelemente ─────────────────────────────────────────────────────── */
+
+.controls {
+  margin-bottom: 1.5rem;
+}
 
 .searchRow {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1rem;
+  max-width: 560px;
 }
 
 .searchInput {
@@ -74,36 +94,22 @@
   background-color: #e05f0f;
 }
 
-/* ─── Filter-Chips ───────────────────────────────────────────────────────── */
-
-.filterBlock {
-  margin-bottom: 1.25rem;
-}
-
-.filterLabel {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #5a6472;
-}
-
 .chipRow {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+  margin-bottom: 0.6rem;
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.4rem 0.75rem;
+  padding: 0.4rem 0.8rem;
   border: 2px solid #d8d4cd;
   background-color: #fff;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: #18222f;
   cursor: pointer;
   transition:
@@ -121,8 +127,8 @@
   background-color: #3e6b4f;
   color: #fff;
   font-weight: 600;
-  /* Kategorie-Chips bekommen ihre Directus-Farbe per Inline-Style; auf
-     hellen Farben braucht die Schrift einen Schatten. */
+  /* Kategorie-Chips erhalten ihre Directus-Farbe per Inline-Style; auf hellen
+     Farben braucht die Schrift einen Schatten. */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
@@ -145,7 +151,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  margin: 1.75rem 0 1rem;
+  margin-top: 1rem;
   padding-bottom: 0.5rem;
   border-bottom: 3px solid #fc6c14;
 }
@@ -170,80 +176,30 @@
   color: #5a6472;
 }
 
-/* ─── Stadt-Gruppen ──────────────────────────────────────────────────────── */
-
-.cityGroup {
-  margin-bottom: 1.5rem;
-}
-
-.cityHeading {
-  margin: 0 0 0.75rem;
-}
-
-.cityToggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.6rem 0;
-  border: none;
-  background: none;
-  font-family: var(--font-anton);
-  font-size: 1.35rem;
-  color: #18222f;
-  text-align: left;
-  cursor: pointer;
-}
-
-.cityToggle:hover,
-.cityToggle:focus-visible {
-  color: #fc6c14;
-}
-
-.cityChevron {
-  display: inline-block;
-  width: 1rem;
-  font-size: 0.9rem;
-  color: #fc6c14;
-}
-
-.cityCount {
-  padding: 0.1rem 0.5rem;
-  background-color: #f2efea;
-  font-family: var(--font-fira);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #5a6472;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ─── Kartengitter ───────────────────────────────────────────────────────── */
-/* Die Kachel selbst liegt in components/PlaceCard.module.css — hier nur das Gitter. */
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  gap: 0.75rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* ─── Schmale Bildschirme ────────────────────────────────────────────────── */
-
-@media (max-width: 700px) {
-  .cards {
-    grid-template-columns: 1fr;
-  }
-}
-
 .loading {
   padding: 2.5rem 0;
   font-size: 1.05rem;
   color: #5a6472;
 }
 
-/* Stadt-Überschrift im serverseitigen Fallback (Link statt Klapp-Button). */
+.hint {
+  margin-top: 1.25rem;
+  font-size: 0.88rem;
+  color: #5a6472;
+}
+
+/* ─── Serverseitiger Fallback (ohne JavaScript / für Google) ─────────────── */
+
+.fallbackSection {
+  max-width: 1100px;
+  margin: 0 auto 2rem;
+  padding: 0 clamp(1rem, 4vw, 3rem);
+}
+
+.cityHeading {
+  margin: 0 0 0.75rem;
+}
+
 .cityLink {
   display: inline-flex;
   align-items: center;
@@ -257,6 +213,25 @@
 .cityLink:hover,
 .cityLink:focus-visible {
   color: #fc6c14;
+}
+
+.cityCount {
+  padding: 0.1rem 0.5rem;
+  background-color: #f2efea;
+  font-family: var(--font-fira);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #5a6472;
+  font-variant-numeric: tabular-nums;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .cityIndex {
@@ -283,4 +258,10 @@
 .cityIndex a:focus-visible {
   background-color: #fc6c14;
   color: #fff;
+}
+
+@media (max-width: 700px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
 }
