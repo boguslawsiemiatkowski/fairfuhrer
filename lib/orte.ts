@@ -53,53 +53,17 @@ export function sanitizeWordHtml(html: string): string {
     .trim();
 }
 
-/**
- * Erzeugt aus einem Stadtnamen das URL-Segment. MUSS mit der Normalisierung
- * übereinstimmen, mit der die slugs in Directus gefüllt wurden — sonst
- * findet die Route die Stadt nicht wieder.
- */
-export function cityToSegment(stadt: string | null | undefined): string {
-  return String(stadt ?? "")
-    .replace(/[­​-‍﻿]/g, "")
-    .replace(/ /g, " ")
-    .toLowerCase()
-    .replace(/ä/g, "ae")
-    .replace(/ö/g, "oe")
-    .replace(/ü/g, "ue")
-    .replace(/ß/g, "ss")
-    .replace(/[‘’‚‛“”„‟'"`´]/g, "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/&/g, "-und-")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+// Reine Hilfsfunktionen liegen in lib/orte-shared.ts (ohne `server-only`),
+// damit die Filter auf /liste sie im Browser nutzen können. Hier
+// re-exportiert, damit Server-Code nur eine Importstelle braucht.
+export {
+  cityToSegment,
+  htmlToPlainText,
+  normalizeForSearch,
+  truncateAtWord,
+} from "./orte-shared";
 
-/** Reiner Text aus bereinigtem HTML — für <meta description> und Teaser. */
-export function htmlToPlainText(html: string | undefined): string {
-  if (!html) return "";
-  return html
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<\/(p|li|ul|ol)>/gi, " ")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Kürzt Text an einer Wortgrenze, ohne mitten im Wort abzubrechen. */
-export function truncateAtWord(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  const cut = text.slice(0, maxLength);
-  const lastSpace = cut.lastIndexOf(" ");
-  return `${(lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
-}
+import { cityToSegment } from "./orte-shared";
 
 export function hasAudio(place: Place): boolean {
   return Boolean(place.Audio || place.Audio_Datei);

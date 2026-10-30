@@ -160,8 +160,6 @@ export default async function OrtPage({ params }: RouteParams) {
 
   const canonical = `${SITE_URL}/orte/${stadt}/${slug}`;
   const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
-  const [lng, lat] = place.location.coordinates;
-
   const titelbildUrl =
     place.Titelbild && directusUrl
       ? `${directusUrl}/assets/${place.Titelbild}`
@@ -348,18 +346,16 @@ export default async function OrtPage({ params }: RouteParams) {
             )}
           </dl>
 
+          {/* Bewusst kein Link auf eine fremde Karte: die Navigation soll auf
+              unserer eigenen Mapbox-Karte stattfinden. Eine Routenfunktion dort
+              kann später folgen. */}
           <div className={styles.actions}>
             <Link href="/karte" className={styles.actionPrimary}>
               Auf der Karte ansehen
             </Link>
-            <a
-              className={styles.actionSecondary}
-              href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Route planen
-            </a>
+            <Link href={`/orte/${stadt}`} className={styles.actionSecondary}>
+              Weitere Orte in {place.Stadt ?? stadt}
+            </Link>
           </div>
         </section>
       </article>

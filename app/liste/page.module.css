@@ -1,0 +1,286 @@
+/* app/liste/page.module.css
+   Durchsuchbarer Katalog aller Audiopins. Schriften und Farben wie im übrigen
+   Projekt (Anton, Fira Sans Condensed, #fc6c14, #3E6B4F). Kein border-radius —
+   Projektvorgabe.
+*/
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  font-family: var(--font-fira);
+  color: #18222f;
+}
+
+/* ─── Kopf ───────────────────────────────────────────────────────────────── */
+
+.intro {
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-family: var(--font-anton);
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.1;
+  margin: 0 0 0.5rem;
+}
+
+.subtitle {
+  margin: 0;
+  max-width: 55ch;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #5a6472;
+}
+
+/* ─── Suche ──────────────────────────────────────────────────────────────── */
+
+.searchRow {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.searchInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid #d8d4cd;
+  background-color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  color: #18222f;
+}
+
+.searchInput:focus-visible {
+  outline: none;
+  border-color: #fc6c14;
+}
+
+.searchButton {
+  flex: 0 0 auto;
+  padding: 0.7rem 1.3rem;
+  border: none;
+  background-color: #fc6c14;
+  color: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.searchButton:hover,
+.searchButton:focus-visible {
+  background-color: #e05f0f;
+}
+
+/* ─── Filter-Chips ───────────────────────────────────────────────────────── */
+
+.filterBlock {
+  margin-bottom: 1.25rem;
+}
+
+.filterLabel {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5a6472;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border: 2px solid #d8d4cd;
+  background-color: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #18222f;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  border-color: #fc6c14;
+}
+
+.chipActive {
+  border-color: #3e6b4f;
+  background-color: #3e6b4f;
+  color: #fff;
+  font-weight: 600;
+  /* Kategorie-Chips bekommen ihre Directus-Farbe per Inline-Style; auf
+     hellen Farben braucht die Schrift einen Schatten. */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.chipCount {
+  padding: 0.05rem 0.4rem;
+  background-color: rgba(0, 0, 0, 0.08);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chipActive .chipCount {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── Ergebniszeile ──────────────────────────────────────────────────────── */
+
+.resultBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1.75rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 3px solid #fc6c14;
+}
+
+.resultCount {
+  margin: 0;
+  font-family: var(--font-anton);
+  font-size: 1.2rem;
+  color: #3e6b4f;
+}
+
+.resetLink {
+  font-size: 0.9rem;
+  color: #fc6c14;
+}
+
+.emptyState {
+  padding: 2.5rem 0;
+  max-width: 45ch;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #5a6472;
+}
+
+/* ─── Stadt-Gruppen ──────────────────────────────────────────────────────── */
+
+.cityGroup {
+  margin-bottom: 1.5rem;
+}
+
+.cityHeading {
+  margin: 0 0 0.75rem;
+}
+
+.cityToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0;
+  border: none;
+  background: none;
+  font-family: var(--font-anton);
+  font-size: 1.35rem;
+  color: #18222f;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cityToggle:hover,
+.cityToggle:focus-visible {
+  color: #fc6c14;
+}
+
+.cityChevron {
+  display: inline-block;
+  width: 1rem;
+  font-size: 0.9rem;
+  color: #fc6c14;
+}
+
+.cityCount {
+  padding: 0.1rem 0.5rem;
+  background-color: #f2efea;
+  font-family: var(--font-fira);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #5a6472;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Kartengitter ───────────────────────────────────────────────────────── */
+/* Die Kachel selbst liegt in components/PlaceCard.module.css — hier nur das Gitter. */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ─── Schmale Bildschirme ────────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.loading {
+  padding: 2.5rem 0;
+  font-size: 1.05rem;
+  color: #5a6472;
+}
+
+/* Stadt-Überschrift im serverseitigen Fallback (Link statt Klapp-Button). */
+.cityLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-anton);
+  font-size: 1.35rem;
+  color: #18222f;
+  text-decoration: none;
+}
+
+.cityLink:hover,
+.cityLink:focus-visible {
+  color: #fc6c14;
+}
+
+.cityIndex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cityIndex a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  background-color: #f2efea;
+  font-size: 0.9rem;
+  color: #3f4855;
+  text-decoration: none;
+}
+
+.cityIndex a:hover,
+.cityIndex a:focus-visible {
+  background-color: #fc6c14;
+  color: #fff;
+}

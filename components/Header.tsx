@@ -51,6 +51,9 @@ export default function Header() {
         <Link href="/karte" className={styles.navLink}>
           Karte
         </Link>
+        <Link href="/liste" className={styles.navLink}>
+          Liste
+        </Link>
         <Link href="/partner-werden" className={styles.navLink}>
           Mitmachen
         </Link>
@@ -138,6 +141,13 @@ export default function Header() {
             onClick={closeMenu}
           >
             Karte
+          </Link>
+          <Link
+            href="/liste"
+            className={styles.mobileNavLink}
+            onClick={closeMenu}
+          >
+            Liste
           </Link>
           <Link
             href="/partner-werden"

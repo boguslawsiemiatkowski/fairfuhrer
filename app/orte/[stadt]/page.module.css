@@ -1,0 +1,107 @@
+/* app/orte/[stadt]/page.module.css
+   Stadt-Übersicht. Kein border-radius — Projektvorgabe.
+*/
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  font-family: var(--font-fira);
+  color: #18222f;
+}
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: #5a6472;
+}
+
+.breadcrumb a {
+  color: #5a6472;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover,
+.breadcrumb a:focus-visible {
+  color: #fc6c14;
+  text-decoration: underline;
+}
+
+.breadcrumb [aria-current="page"] {
+  color: #18222f;
+  font-weight: 600;
+}
+
+.intro {
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-family: var(--font-anton);
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.1;
+  margin: 0 0 0.5rem;
+}
+
+.subtitle {
+  margin: 0 0 1rem;
+  max-width: 55ch;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #5a6472;
+}
+
+.categoryList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.categoryItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  background-color: #f2efea;
+  font-size: 0.88rem;
+  color: #3f4855;
+}
+
+.categoryCount {
+  font-weight: 700;
+  color: #3e6b4f;
+  font-variant-numeric: tabular-nums;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+.footerLinks {
+  margin: 0;
+  padding-top: 1.25rem;
+  border-top: 3px solid #fc6c14;
+  font-size: 0.95rem;
+}
+
+.footerLinks a {
+  color: #fc6c14;
+}
+
+@media (max-width: 700px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}
