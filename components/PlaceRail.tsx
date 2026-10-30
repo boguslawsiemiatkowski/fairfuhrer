@@ -34,7 +34,7 @@ export default function PlaceRail({ places, label }: PlaceRailProps) {
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [size, setSize] = useState({ width: 320, height: 352 });
+  const [size, setSize] = useState({ width: 320, height: 400 });
 
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: 0 });
 
@@ -43,9 +43,12 @@ export default function PlaceRail({ places, label }: PlaceRailProps) {
     const measure = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const natural = vw - CARD_GAP * 2 - CARD_PEEK;
+      // 20px Luft links und rechts (siehe CSS), daher hier mitgerechnet.
+      const natural = vw - 40 - CARD_PEEK;
       const width = Math.min(natural, MAX_CARD_WIDTH);
-      const height = Math.min(width * 1.1, vh * 0.38);
+      // Etwas höher als in der App (dort 1,1 × Breite bzw. 38 % der Höhe):
+      // im Browser ist mehr Platz, weil Tableiste und Tastatur fehlen.
+      const height = Math.min(width * 1.25, vh * 0.52);
       setSize({ width, height });
     };
     measure();

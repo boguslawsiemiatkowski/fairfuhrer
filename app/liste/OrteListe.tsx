@@ -18,7 +18,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Category, Place } from "@/types";
 import PlaceRail from "@/components/PlaceRail";
 import CategoryIcon, { CATEGORY_COLORS } from "@/components/CategoryIcon";
-import { cityToSegment, normalizeForSearch } from "@/lib/orte-shared";
+import StadtSuche, { type CityOption } from "./StadtSuche";
+import { cityToSegment } from "@/lib/orte-shared";
 import styles from "./page.module.css";
 
 interface OrteListeProps {
@@ -35,9 +36,8 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   const landParam = searchParams.get("land") ?? "";
   const kategorieParam = searchParams.get("kategorie") ?? "";
-  const queryParam = searchParams.get("q") ?? "";
+  const stadtParam = searchParams.get("stadt") ?? "";
 
-  const [queryDraft, setQueryDraft] = useState(queryParam);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const setParam = useCallback(
@@ -57,25 +57,50 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   const activeLand = LAENDER.find((l) => cityToSegment(l) === landParam);
 
-  const filtered = useMemo(() => {
-    const q = normalizeForSearch(queryParam);
-    return places.filter((place) => {
-      if (activeLand && place.Land !== activeLand) return false;
+  const filtered = useMemo(
+    () =>
+      places.filter((place) => {
+        if (stadtParam && cityToSegment(place.Stadt) !== stadtParam) return false;
+        if (activeLand && place.Land !== activeLand) return false;
+        if (
+          activeCategory &&
+          !place.Kategorie.some((c) => c.id === activeCategory.id)
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [places, stadtParam, activeLand, activeCategory],
+  );
+
+  // Städte für die Vorschlagsliste — nach Anzahl der Orte, damit die
+  // ergiebigsten oben stehen. Zähler berücksichtigen die übrigen Filter.
+  const cityOptions = useMemo<CityOption[]>(() => {
+    const map = new Map<string, CityOption>();
+    for (const place of places) {
+      if (activeLand && place.Land !== activeLand) continue;
       if (
         activeCategory &&
         !place.Kategorie.some((c) => c.id === activeCategory.id)
       ) {
-        return false;
+        continue;
       }
-      if (q) {
-        const haystack = normalizeForSearch(
-          `${place.Name} ${place.Stadt ?? ""} ${place.Adresse}`,
-        );
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [places, activeLand, activeCategory, queryParam]);
+      const segment = cityToSegment(place.Stadt);
+      if (!segment) continue;
+      const entry = map.get(segment);
+      if (entry) entry.count++;
+      else
+        map.set(segment, {
+          segment,
+          name: place.Stadt!.trim(),
+          land: place.Land,
+          count: 1,
+        });
+    }
+    return [...map.values()].sort(
+      (a, b) => b.count - a.count || a.name.localeCompare(b.name, "de"),
+    );
+  }, [places, activeLand, activeCategory]);
 
   // Zähler zeigen, was bei den ÜBRIGEN Filtern noch möglich ist — so führt
   // kein Chip in ein leeres Ergebnis.
@@ -113,11 +138,9 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
     ? activeCategory.color || CATEGORY_COLORS[activeCategory.id] || "#fc6c14"
     : undefined;
 
-  const railLabel = [
-    activeCategory?.name,
-    activeLand,
-    queryParam ? `Suche „${queryParam}“` : null,
-  ]
+  const selectedCityName = cityOptions.find((c) => c.segment === stadtParam)?.name;
+
+  const railLabel = [selectedCityName, activeCategory?.name, activeLand]
     .filter(Boolean)
     .join(" · ");
 
@@ -163,43 +186,18 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
       {/* ── 3. Suche + 4. Kategorie-Balken ────────────────────────────── */}
       <div className={styles.bottomSection}>
-        <form
-          className={styles.searchBar}
-          onSubmit={(e) => {
-            e.preventDefault();
-            setParam("q", queryDraft.trim());
-          }}
-          role="search"
-        >
-          <input
-            type="search"
-            value={queryDraft}
-            onChange={(e) => setQueryDraft(e.target.value)}
-            placeholder="Suchen"
-            aria-label="Orte durchsuchen"
-            className={styles.searchInput}
-          />
-          {(queryDraft || queryParam) && (
-            <button
-              type="button"
-              className={styles.clearBtn}
-              onClick={() => {
-                setQueryDraft("");
-                setParam("q", "");
-              }}
-              aria-label="Suche löschen"
-            >
-              ✕
-            </button>
-          )}
-        </form>
+        <StadtSuche
+          cities={cityOptions}
+          selected={stadtParam}
+          onSelect={(segment) => setParam("stadt", segment)}
+        />
 
         <div className={styles.kategorieBarWrap}>
           <button
             type="button"
             className={styles.kategorieBar}
             style={barColor ? { backgroundColor: barColor } : undefined}
-            onClick={() => setMenuOpen(true)}
+            onClick={() => setMenuOpen((v) => !v)}
             aria-haspopup="true"
             aria-expanded={menuOpen}
           >
@@ -245,55 +243,56 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
         </div>
       </div>
 
-      {/* Kategorie-Menü, fährt wie in der App von unten herein. */}
-      {menuOpen && (
-        <>
-          <div
-            className={styles.backdrop}
-            onClick={() => setMenuOpen(false)}
-            aria-hidden="true"
-          />
-          <div className={styles.menu} role="menu" aria-label="Kategorie wählen">
+      {/* Kategorie-Menü: bleibt im DOM und wird über eine Klasse animiert,
+          damit es sich auch beim SCHLIESSEN nach unten zurückschiebt. Wäre es
+          bedingt gerendert, verschwände es abrupt. Kein abdunkelnder
+          Hintergrund — der Balken sitzt unten, das Menü direkt darüber. */}
+      <div
+        className={`${styles.menu} ${menuOpen ? styles.menuOpen : ""}`}
+        role="menu"
+        aria-label="Kategorie wählen"
+        aria-hidden={!menuOpen}
+        // Im geschlossenen Zustand nicht per Tab erreichbar.
+        inert={!menuOpen}
+      >
+        <button
+          type="button"
+          role="menuitem"
+          className={`${styles.menuItem} ${!activeCategory ? styles.menuItemActive : ""}`}
+          onClick={() => chooseCategory(null)}
+        >
+          <span className={styles.menuIcon}>
+            <CategoryIcon categoryId={null} color="#fff" strokeColor="#000" />
+          </span>
+          <span className={styles.menuText}>Alle</span>
+          <span className={styles.menuCount}>{places.length}</span>
+        </button>
+
+        {categories.map((cat) => {
+          const active = activeCategory?.id === cat.id;
+          const count = categoryCounts.get(cat.id) ?? 0;
+          if (count === 0) return null;
+          return (
             <button
+              key={cat.id}
               type="button"
               role="menuitem"
-              className={`${styles.menuItem} ${!activeCategory ? styles.menuItemActive : ""}`}
-              onClick={() => chooseCategory(null)}
+              className={`${styles.menuItem} ${active ? styles.menuItemActive : ""}`}
+              onClick={() => chooseCategory(cat)}
             >
               <span className={styles.menuIcon}>
-                <CategoryIcon categoryId={null} color="#fff" strokeColor="#000" />
+                <CategoryIcon
+                  categoryId={cat.id}
+                  color={cat.color || CATEGORY_COLORS[cat.id] || "#666"}
+                  size={36}
+                />
               </span>
-              <span className={styles.menuText}>Alle</span>
-              <span className={styles.menuCount}>{places.length}</span>
+              <span className={styles.menuText}>{cat.name}</span>
+              <span className={styles.menuCount}>{count}</span>
             </button>
-
-            {categories.map((cat) => {
-              const active = activeCategory?.id === cat.id;
-              const count = categoryCounts.get(cat.id) ?? 0;
-              if (count === 0) return null;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  role="menuitem"
-                  className={`${styles.menuItem} ${active ? styles.menuItemActive : ""}`}
-                  onClick={() => chooseCategory(cat)}
-                >
-                  <span className={styles.menuIcon}>
-                    <CategoryIcon
-                      categoryId={cat.id}
-                      color={cat.color || CATEGORY_COLORS[cat.id] || "#666"}
-                      size={36}
-                    />
-                  </span>
-                  <span className={styles.menuText}>{cat.name}</span>
-                  <span className={styles.menuCount}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -16,8 +16,11 @@
   display: flex;
   gap: 12px;
   /* Links so viel Abstand, dass Karte + Peek auf breiten Schirmen mittig
-     stehen — in der App macht das LIST_HORIZONTAL_PADDING. */
-  padding: 0 max(12px, calc((100vw - var(--card-width) - 44px) / 2));
+     stehen — in der App macht das LIST_HORIZONTAL_PADDING. Mindestens 20px,
+     damit die Karten nicht am Fensterrand kleben. */
+  padding: 0 max(20px, calc((100vw - var(--card-width) - 44px) / 2));
+  /* Scroll-Snap soll am Padding ausrichten, nicht an der Fensterkante. */
+  scroll-padding-left: max(20px, calc((100vw - var(--card-width) - 44px) / 2));
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;

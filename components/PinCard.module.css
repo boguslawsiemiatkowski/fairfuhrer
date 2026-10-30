@@ -18,6 +18,21 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
   text-decoration: none;
   color: inherit;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+}
+
+/* Beim Zeigen hebt sich die Karte leicht und wirft einen tieferen Schatten;
+   das Bild zoomt dazu (siehe .image img). Nur für Zeigegeräte — auf
+   Touchscreens gibt es kein Hover, dort würde der Effekt beim Tippen
+   hängenbleiben. */
+@media (hover: hover) {
+  .card:hover,
+  .card:focus-visible {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  }
 }
 
 .image {
@@ -29,6 +44,29 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .card:hover .image img,
+  .card:focus-visible .image img {
+    transform: scale(1.07);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .image img {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+
+  .card:hover .image img {
+    transform: none;
+  }
 }
 
 /* Gradient oben: 80px, von rgba(0,0,0,0.5) nach transparent. */
@@ -51,6 +89,19 @@
   height: 200px;
   background: linear-gradient(to top, rgba(252, 108, 20, 0.6), transparent);
   pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+@media (hover: hover) {
+  .card:hover .gradientBottom,
+  .card:focus-visible .gradientBottom {
+    background: linear-gradient(
+      to top,
+      rgba(252, 108, 20, 0.82),
+      rgba(252, 108, 20, 0.12) 55%,
+      transparent
+    );
+  }
 }
 
 .bottom {
