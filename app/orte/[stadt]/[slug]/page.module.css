@@ -1,0 +1,247 @@
+/* app/orte/[stadt]/[slug]/page.module.css
+   Detailseite eines Audiopins. Schriften und Farben wie im übrigen Projekt
+   (Anton für Überschriften, Fira Sans Condensed für Text, Orange #fc6c14 als
+   Akzent, Grün #3E6B4F für Abschnittstitel). Kein border-radius — Projektvorgabe.
+*/
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  font-family: var(--font-fira);
+  color: #18222f;
+}
+
+/* ─── Brotkrümel ─────────────────────────────────────────────────────────── */
+
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: #5a6472;
+}
+
+.breadcrumb a {
+  color: #5a6472;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover,
+.breadcrumb a:focus-visible {
+  color: #fc6c14;
+  text-decoration: underline;
+}
+
+.breadcrumb [aria-current="page"] {
+  color: #18222f;
+  font-weight: 600;
+}
+
+/* ─── Kopf ───────────────────────────────────────────────────────────────── */
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.badge {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  /* Directus liefert die Kategoriefarbe; auf hellen Farben braucht die
+     Schrift einen Schatten, damit sie lesbar bleibt. */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.title {
+  font-family: var(--font-anton);
+  font-size: clamp(1.9rem, 5vw, 2.8rem);
+  line-height: 1.1;
+  margin: 0 0 0.5rem;
+  color: #18222f;
+}
+
+.address {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #5a6472;
+}
+
+/* ─── Hero-Bild ──────────────────────────────────────────────────────────── */
+
+.heroImage {
+  margin-bottom: 2rem;
+  line-height: 0;
+  background-color: #f2efea;
+}
+
+/* ─── Abschnitte ─────────────────────────────────────────────────────────── */
+
+.section {
+  margin-bottom: 2.5rem;
+}
+
+.sectionTitle {
+  font-family: var(--font-anton);
+  font-size: 1.4rem;
+  margin: 0 0 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 3px solid #fc6c14;
+  color: #3e6b4f;
+}
+
+/* Beschreibung: HTML aus Directus, bereits über sanitizeWordHtml gefiltert. */
+.description {
+  font-size: 1.1rem;
+  line-height: 1.75;
+}
+
+.description p {
+  margin: 0 0 1rem;
+}
+
+.description p:last-child {
+  margin-bottom: 0;
+}
+
+.description a {
+  color: #fc6c14;
+}
+
+.description ul,
+.description ol {
+  margin: 0 0 1rem;
+  padding-left: 1.5rem;
+}
+
+.description li {
+  margin-bottom: 0.4rem;
+}
+
+/* ─── Galerie ────────────────────────────────────────────────────────────── */
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.galleryImage {
+  display: block;
+  object-fit: cover;
+  aspect-ratio: 4 / 3;
+  background-color: #f2efea;
+}
+
+/* ─── Zertifizierungen ───────────────────────────────────────────────────── */
+
+.zertGrid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.zertLogo {
+  display: block;
+}
+
+.zertName {
+  padding: 0.35rem 0.75rem;
+  background-color: #f2efea;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ─── Kontakt ────────────────────────────────────────────────────────────── */
+
+.contactList {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+  margin: 0 0 1.75rem;
+  font-size: 1rem;
+}
+
+.contactList dt {
+  font-weight: 700;
+  color: #5a6472;
+}
+
+.contactList dd {
+  margin: 0;
+}
+
+.contactList a {
+  color: #fc6c14;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.actionPrimary,
+.actionSecondary {
+  display: inline-block;
+  padding: 0.7rem 1.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.actionPrimary {
+  background-color: #fc6c14;
+  color: #fff;
+}
+
+.actionPrimary:hover,
+.actionPrimary:focus-visible {
+  background-color: #e05f0f;
+}
+
+.actionSecondary {
+  background-color: transparent;
+  border: 2px solid #3e6b4f;
+  color: #3e6b4f;
+}
+
+.actionSecondary:hover,
+.actionSecondary:focus-visible {
+  background-color: #3e6b4f;
+  color: #fff;
+}
+
+/* ─── Schmale Bildschirme ────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .contactList {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .contactList dd {
+    margin-bottom: 0.75rem;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actionPrimary,
+  .actionSecondary {
+    text-align: center;
+  }
+}

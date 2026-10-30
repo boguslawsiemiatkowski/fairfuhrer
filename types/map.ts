@@ -22,6 +22,13 @@ export interface GeoJSONPoint {
 export interface Place {
   id: number;
   Name: string;
+  /**
+   * Teil der URL unter /orte/[stadt]/[slug]. In Directus gepflegt und
+   * absichtlich unabhängig von `Name`: eine Namenskorrektur darf die von
+   * Google indexierte Adresse nicht ändern. Leer = Pin erscheint auf der
+   * Karte, bekommt aber keine eigene Seite.
+   */
+  slug?: string;
   Adresse: string;
   Stadt?: string;
   Land?: string;

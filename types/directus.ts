@@ -44,6 +44,8 @@ export interface DirectusZertifizierungItem {
 export interface DirectusOrte {
   id: number;
   Name: string;
+  /** URL-Segment für /orte/[stadt]/[slug]; in Directus gepflegt. */
+  slug?: string;
   Adresse: string;
   Stadt?: string;
   Land?: string;
