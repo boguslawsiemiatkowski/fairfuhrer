@@ -42,6 +42,30 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Die Search Console meldete „Sitemap could not be read", obwohl die
+        // Datei im Browser einwandfrei lädt. Messung: HTTP 200, korrektes
+        // application/xml, 756 Einträge — aber 10 bis 35 Sekunden
+        // Antwortzeit. Google bricht vorher ab.
+        //
+        // Ursache: Next.js hielt die Antwort zwar im eigenen Cache
+        // (x-nextjs-cache: HIT), schickte aber
+        // `Cache-Control: public, max-age=0, must-revalidate`. Damit fragt
+        // jeder Abruf erneut den Server, und ein schlafender Render-Dienst
+        // braucht für 145 KB entsprechend lange.
+        //
+        // Eine Stunde Cache mit einem Tag stale-while-revalidate: die
+        // Sitemap wird sofort ausgeliefert und im Hintergrund erneuert. Zum
+        // `revalidate = 86400` der Route passt das — häufiger als täglich
+        // ändert sie sich ohnehin nicht.
+        source: "/:file(sitemap.xml|robots.txt)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
     ];
   },
 };

@@ -4,7 +4,7 @@
 // Stadt-Übersichten fehlten vollständig, obwohl sie den Großteil des Inhalts
 // ausmachen. Jetzt kommen sie aus Directus dazu.
 import type { MetadataRoute } from "next";
-import { fetchAllPlaces, groupByCity, placeHref } from "@/lib/orte";
+import { cityToSegment, fetchPlacesForSitemap } from "@/lib/orte";
 
 const BASE_URL = "https://www.fairfuehrer.guide";
 
@@ -83,7 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // wirft und Google gar nichts bekommt.
   let places;
   try {
-    places = await fetchAllPlaces();
+    places = await fetchPlacesForSitemap();
   } catch (error) {
     console.error("Sitemap: Orte konnten nicht geladen werden:", error);
     return staticEntries;
@@ -91,31 +91,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Stadt-Übersichten. Priorität nach Anzahl der Orte: Lindau mit 71 Pins ist
   // als Landeseite mehr wert als ein Ort mit einem einzigen Pin.
-  const cities = groupByCity(places);
-  const maxCityPins = Math.max(1, ...cities.map((c) => c.places.length));
+  const cityCounts = new Map<string, number>();
+  for (const place of places) {
+    const segment = cityToSegment(place.Stadt);
+    if (!segment) continue;
+    cityCounts.set(segment, (cityCounts.get(segment) ?? 0) + 1);
+  }
+  const maxCityPins = Math.max(1, ...cityCounts.values());
 
-  const cityEntries: MetadataRoute.Sitemap = cities.map((city) => ({
-    url: `${BASE_URL}/orte/${city.segment}`,
-    lastModified,
-    changeFrequency: "weekly" as const,
-    // 0.5 bis 0.8, abhängig vom Umfang der Stadt.
-    priority:
-      Math.round((0.5 + 0.3 * (city.places.length / maxCityPins)) * 100) / 100,
-  }));
+  const cityEntries: MetadataRoute.Sitemap = [...cityCounts.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], "de"))
+    .map(([segment, count]) => ({
+      url: `${BASE_URL}/orte/${segment}`,
+      lastModified,
+      changeFrequency: "weekly" as const,
+      // 0.5 bis 0.8, abhängig vom Umfang der Stadt.
+      priority: Math.round((0.5 + 0.3 * (count / maxCityPins)) * 100) / 100,
+    }));
 
-  // Detailseiten. `placeHref` liefert null, wenn slug oder Stadt fehlen — dann
-  // existiert auch keine Seite (siehe generateStaticParams der Route).
+  // Detailseiten. Ohne slug oder Stadt gibt es keine Seite (siehe
+  // generateStaticParams der Route), also auch keinen Sitemap-Eintrag.
   const placeEntries: MetadataRoute.Sitemap = places
     .map((place) => {
-      const href = placeHref(place);
-      if (!href) return null;
+      const segment = cityToSegment(place.Stadt);
+      if (!segment || !place.slug) return null;
       return {
-        url: `${BASE_URL}${href}`,
+        url: `${BASE_URL}/orte/${segment}/${place.slug}`,
         lastModified,
         changeFrequency: "monthly" as const,
         // Pins mit Audioguide sind die eigentliche Besonderheit des
         // Fairführers; sie bekommen etwas mehr Gewicht.
-        priority: place.Audio || place.Audio_Datei ? 0.7 : 0.6,
+        priority: place.hasAudio ? 0.7 : 0.6,
       };
     })
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null);

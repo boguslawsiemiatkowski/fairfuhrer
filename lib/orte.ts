@@ -279,6 +279,43 @@ export async function fetchAllPlaces(): Promise<Place[]> {
     .filter((p): p is Place => p !== null);
 }
 
+/** Nur die Felder, die die Sitemap braucht. */
+export interface SitemapPlace {
+  slug?: string;
+  Stadt?: string;
+  hasAudio: boolean;
+}
+
+/**
+ * Schlanke Abfrage für die Sitemap: nur slug, Stadt und ob es einen
+ * Audioguide gibt — rund 30 KB statt 3 MB.
+ *
+ * Eigener Cache-Tag "sitemap" statt "orte". Das ist der eigentliche Grund,
+ * warum die Search Console „could not be read" meldete: die Sitemap hing am
+ * Tag "orte", und der Directus-Flow invalidiert diesen bei JEDER Änderung an
+ * einem Pin. Danach musste der nächste Abruf die Sitemap neu bauen und dafür
+ * alle Orte samt Beschreibungen laden — auf einem schlafenden Render-Dienst
+ * dauerte das 10 bis 35 Sekunden, und Google bricht vorher ab.
+ *
+ * Mit eigenem Tag bleibt die Sitemap im Cache, bis sie selbst erneuert wird
+ * (revalidate = 86400). Dass ein neuer Pin erst nach einem Tag darin steht,
+ * ist unerheblich — Google liest Sitemaps ohnehin nicht häufiger.
+ */
+export async function fetchPlacesForSitemap(): Promise<SitemapPlace[]> {
+  const data = await fetchFromDirectus<
+    Pick<DirectusOrte, "slug" | "Stadt" | "Audio" | "Audio_Datei">
+  >(
+    buildOrteUrl(["slug", "Stadt", "Audio", "Audio_Datei"]),
+    "sitemap",
+  );
+
+  return data.data.map((o) => ({
+    slug: o.slug?.trim() || undefined,
+    Stadt: o.Stadt?.trim() || undefined,
+    hasAudio: Boolean(o.Audio || o.Audio_Datei),
+  }));
+}
+
 export async function fetchCategories(): Promise<Category[]> {
   const url = new URL(`${requireBaseUrl()}/items/Kategorie`);
   url.searchParams.set("fields", "id,Name,Farbe,Beschreibung,Reihenfolge");
