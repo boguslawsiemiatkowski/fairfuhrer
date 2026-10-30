@@ -13,7 +13,7 @@
 //
 // Der Filterzustand steht in der URL (?land=&kategorie=&q=), damit ein
 // gefilterter Blick teilbar ist und der Zurück-Button funktioniert.
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Category, Place } from "@/types";
 import PlaceRail from "@/components/PlaceRail";
@@ -39,6 +39,34 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
   const stadtParam = searchParams.get("stadt") ?? "";
 
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Höhe von Suchfeld + Kategorie-Balken, gemessen statt gerechnet: so bleibt
+  // die Abdunkelung auch dann korrekt, wenn sich Schriftgröße oder Zeilenumbruch
+  // ändern. Der Wert sagt dem Scrim, wo er unten enden muss.
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const [bottomHeight, setBottomHeight] = useState(0);
+
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuHeight, setMenuHeight] = useState(0);
+
+  useEffect(() => {
+    const bottom = bottomRef.current;
+    const menu = menuRef.current;
+    if (!bottom) return;
+    const measure = () => {
+      setBottomHeight(bottom.offsetHeight);
+      if (menu) setMenuHeight(menu.offsetHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(bottom);
+    if (menu) observer.observe(menu);
+    return () => observer.disconnect();
+  }, []);
+
+  // Unterkante der Abdunkelung: geschlossen endet sie über dem Balken, offen
+  // zusätzlich über dem ausgefahrenen Menü.
+  const menuBottomOffset = bottomHeight + menuHeight;
 
   // Sortierung nach Entfernung — wie im Liste-Tab der App, aber per Knopf:
   // der Browser fragt erst nach Erlaubnis, wenn der Nutzer sie anfordert.
@@ -204,11 +232,13 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   return (
     <div className={styles.screen}>
-      {/* Abdunkelung, während das Kategorie-Menü offen ist. Liegt über den
-          Karten, nicht über dem Balken — der bleibt bedienbar. Klick darauf
-          schließt das Menü. */}
+      {/* Abdunkelung, während das Kategorie-Menü offen ist.
+          `position: fixed`, damit sie bis über die Kopfzeile der Website
+          reicht; unten endet sie an der Oberkante des ausgefahrenen Menüs,
+          sodass Menü und Balken unverdunkelt bleiben. Klick darauf schließt. */}
       <div
         className={`${styles.menuScrim} ${menuOpen ? styles.menuScrimOpen : ""}`}
+        style={{ bottom: menuOpen ? menuBottomOffset : bottomHeight }}
         onClick={() => setMenuOpen(false)}
         aria-hidden="true"
       />
@@ -293,7 +323,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
       </div>
 
       {/* ── 3. Suche + 4. Kategorie-Balken ────────────────────────────── */}
-      <div className={styles.bottomSection}>
+      <div className={styles.bottomSection} ref={bottomRef}>
         {/* Rahmen, der das geschlossene Menü abschneidet: es liegt per
             translate3d unterhalb seiner eigenen Unterkante, und ohne dieses
             overflow:hidden würde es über Suchfeld und Balken hinausragen. */}
@@ -305,7 +335,8 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
             bedingt gerendert, verschwände es abrupt. Kein abdunkelnder
             Hintergrund — der Balken sitzt unten, das Menü direkt darüber. */}
         <div
-          className={`${styles.menu} ${menuOpen ? styles.menuOpen : ""}`}
+          ref={menuRef}
+        className={`${styles.menu} ${menuOpen ? styles.menuOpen : ""}`}
           role="menu"
           aria-label="Kategorie wählen"
           aria-hidden={!menuOpen}

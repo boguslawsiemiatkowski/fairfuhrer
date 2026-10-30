@@ -290,25 +290,32 @@
    aber auch nicht mitten im Ausblenden. Rein deklarativ, ohne Zeitgeber im
    JavaScript. */
 .menuScrim {
-  position: absolute;
-  bottom: 0;
+  /* `fixed` statt `absolute`: nur so reicht die Fläche über die Kopfzeile der
+     Website hinaus. `bottom` kommt als Inline-Stil aus der gemessenen Höhe von
+     Balken und Menü, damit beide unverdunkelt bleiben.
+     z-index über der Kopfzeile (die liegt auf 1000). */
+  position: fixed;
+  top: 0;
   left: 0;
-  z-index: 50;
-  width: 0;
-  height: 0;
+  right: 0;
+  z-index: 1010;
   background: rgba(0, 0, 0, 0.2);
   opacity: 0;
+  /* Kniff aus der Vorlage: beim Schließen verschwindet die Fläche erst, wenn
+     sie unsichtbar ist — vorher fängt sie keine Klicks mehr ab, bleibt aber
+     während des Ausblendens vorhanden. */
+  visibility: hidden;
   transition:
     opacity 0.5s,
-    width 0.1s 0.5s,
-    height 0.1s 0.5s;
+    visibility 0s 0.5s;
 }
 
 .menuScrimOpen {
-  width: 100%;
-  height: 100%;
   opacity: 1;
-  transition: opacity 0.5s;
+  visibility: visible;
+  transition:
+    opacity 0.5s,
+    visibility 0s;
 }
 
 @media (prefers-reduced-motion: reduce) {
