@@ -43,13 +43,14 @@ export default async function ListePage() {
 
   return (
     <main className={styles.page}>
-      <header className={styles.intro}>
-        <h1 className={styles.title}>Alle Orte</h1>
-        <p className={styles.subtitle}>
-          {places.length} Orte in {cities.length} Städten am Bodensee und im
-          Allgäu — nachhaltig geführt, fast alle mit Audioguide.
-        </p>
-      </header>
+      {/* Kein sichtbarer Titel — wie im Liste-Tab der App, wo sofort die
+          Karten kommen. Für Suchmaschinen und Screenreader steht die
+          Überschrift unsichtbar im Markup; <title> und <meta> liefert
+          generateMetadata. */}
+      <h1 className={styles.srOnly}>
+        Alle Orte — {places.length} nachhaltige Orte in {cities.length} Städten
+        am Bodensee und im Allgäu
+      </h1>
 
       {/* Die Filter lesen ihren Zustand über useSearchParams aus der URL; beim
           Vorrendern steht die Query noch nicht fest, daher die Suspense-Grenze.

@@ -1,0 +1,109 @@
+/* components/PinCard.module.css
+   Genaue Entsprechung von components/PinCard.tsx der App:
+   Bild als Hintergrund über die ganze Karte, Gradient oben und unten, darunter
+   die Kategorie-Symbole und mittig Name und Ort in Weiß.
+
+   Maße aus der App übernommen: borderRadius 12, Schatten
+   0 4px 12px rgba(0,0,0,0.18), Name 30px Fira Bold, Ort 20px Fira Regular.
+*/
+
+.card {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background-color: #ddd;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  text-decoration: none;
+  color: inherit;
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+}
+
+.image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Gradient oben: 80px, von rgba(0,0,0,0.5) nach transparent. */
+.gradientTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+  pointer-events: none;
+}
+
+/* Gradient unten: 200px, von transparent nach Markenorange mit 60 %. */
+.gradientBottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: linear-gradient(to top, rgba(252, 108, 20, 0.6), transparent);
+  pointer-events: none;
+}
+
+.bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 20px;
+}
+
+.chipWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-fira);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+  text-align: center;
+  /* Wie in der App: höchstens drei Zeilen. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.location {
+  margin: 2px 0 4px;
+  font-family: var(--font-fira);
+  font-size: 20px;
+  font-weight: 400;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Auf kleinen Bildschirmen etwas kleiner, damit lange Namen passen. */
+@media (max-width: 480px) {
+  .name {
+    font-size: 24px;
+  }
+
+  .location {
+    font-size: 17px;
+  }
+}
