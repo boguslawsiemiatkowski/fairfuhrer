@@ -15,7 +15,9 @@
   overflow: hidden;
   border-radius: 12px;
   background-color: #ddd;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  /* Kein Schatten: er lief 12px über die Kartenkante hinaus und verschmolz
+     zwischen benachbarten Karten zu einem grauen Streifen auf der
+     Kartenzeile. Auf weißem Grund stehen die Karten ohnehin klar genug. */
   text-decoration: none;
   color: inherit;
 }
