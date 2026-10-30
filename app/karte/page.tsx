@@ -4,8 +4,6 @@ import MapWithFilters from "../../components/MapWithFilters";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { ConditionalMapbox } from "../../components/ConditionalMapbox";
 import MapRealtimeRefresh from "../../components/MapRealtimeRefresh";
-import { getSightsLockModalContent } from "../../lib/directus";
-import { FREE_SIGHTS_VISIBLE_RATIO } from "../../lib/sightsGating";
 import type {
   Place,
   Category,
@@ -330,10 +328,10 @@ export default async function KartePage() {
     }))
     .filter((cat) => cat.name.length > 0 && cat.color.length > 0);
 
-  // Directus-Content für die Info-Blase über gesperrten Sehenswertes-Pins.
-  // Sichtbarer Prozentsatz aus sightsGating.ts ableiten (Single Source of Truth).
-  const sightsLockContent = await getSightsLockModalContent();
-  const sightsFreePercent = Math.round(FREE_SIGHTS_VISIBLE_RATIO * 100);
+  // Die Info-Blase über gesperrten Sehenswertes-Pins entfällt — es gibt kein
+  // Gating für Einzelnutzer mehr (siehe MapBoxMap.tsx). Damit fällt auch der
+  // Directus-Abruf von sights_lock_modal_content weg; die Kollektion bleibt
+  // dort bestehen, falls das Modell je zurückkehrt.
 
   // ========================================
   // DATA VALIDATION
@@ -446,12 +444,7 @@ export default async function KartePage() {
             </div>
           }
         >
-          <MapWithFilters
-            places={places}
-            categories={categories}
-            sightsLockContent={sightsLockContent}
-            sightsFreePercent={sightsFreePercent}
-          />
+          <MapWithFilters places={places} categories={categories} />
         </ErrorBoundary>
       </ConditionalMapbox>
     </div>

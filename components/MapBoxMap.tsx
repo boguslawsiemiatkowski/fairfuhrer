@@ -21,8 +21,6 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import styles from "./MapBoxMap.module.css";
 import MapSearch from "./MapSearch";
 import type { Place, SightsLockModalContent } from "../types";
-import { useAuth } from "@/context/AuthContext";
-import { filterVisiblePlaces, isSightsCategory } from "@/lib/sightsGating";
 import { placesToGeoJSON, loadCategoryMarkerSDFs } from "../utils/mapHelpers";
 import { generatePopupHTML } from "../utils/popupGenerator";
 import { useGallery } from "../hooks/useGallery";
@@ -118,22 +116,17 @@ export default function MapBoxMap({
   const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const lastFittedPlacesRef = useRef<string>("");
 
-  const { isPro } = useAuth();
-
-  // Compute locked IDs — Sehenswertes places outside the free 50 %.
-  const lockedIds = useMemo<Set<number>>(() => {
-    if (isPro) return new Set();
-    const visibleIds = new Set(
-      filterVisiblePlaces(places, false).map((p) => p.id),
-    );
-    return new Set(
-      places
-        .filter(
-          (p) => p.Kategorie.some(isSightsCategory) && !visibleIds.has(p.id),
-        )
-        .map((p) => p.id),
-    );
-  }, [places, isPro]);
+  // Kein Gating mehr im Web: Einzelnutzer sehen alle Audiopins. Die App wird
+  // für sie kostenlos, mit freiwilligen Beiträgen statt FAIRFÜHRER+ (Absprache
+  // mit Frank, Okt. 2026). Jeder Pin hat jetzt zudem eine eigene, von Google
+  // indexierbare Seite unter /orte/[stadt]/[slug] — Inhalte zurückzuhalten
+  // würde dem direkt widersprechen.
+  //
+  // Die Sperr-Popup-Maschinerie unten bleibt bewusst erhalten, nur ohne Daten:
+  // Sollte das Modell wieder wechseln, genügt es, hier wieder IDs zu liefern.
+  // Partner-Abos (PayPal) sind davon NICHT betroffen — die laufen über
+  // profiles.premium_until und /konto/partner/premium.
+  const lockedIds = useMemo<Set<number>>(() => new Set<number>(), []);
 
   // GL Layers refs (zastępują markersRef)
   const layersInitializedRef = useRef(false);

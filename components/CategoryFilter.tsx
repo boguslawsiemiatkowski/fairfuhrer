@@ -45,16 +45,12 @@ interface CategoryFilterProps {
   categories: Category[];
   selectedIds: number[];
   onToggle: (id: number) => void;
-  isPro?: boolean;
-  isSightsCategory?: (cat: { id: number; name: string }) => boolean;
 }
 
 const CategoryFilter = ({
   categories,
   selectedIds,
   onToggle,
-  isPro = true,
-  isSightsCategory,
 }: CategoryFilterProps) => {
   const [modalCategory, setModalCategory] = useState<Category | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -109,9 +105,10 @@ const CategoryFilter = ({
           const isModalOpenForThis =
             openCategoryId === category.id && isModalOpen;
 
-          const isSights =
-            !isPro && isSightsCategory != null && isSightsCategory(category);
-          const showInfoButton = hasDescription || isSights;
+          // Früher erschien der Info-Button auch bei „Sehenswertes" ohne
+          // Beschreibung, um auf das Gating hinzuweisen. Das Gating ist weg,
+          // also zeigt er jetzt nur noch echte Kategorie-Beschreibungen.
+          const showInfoButton = hasDescription;
 
           return (
             <div key={category.id} className={styles.filterWrapper}>

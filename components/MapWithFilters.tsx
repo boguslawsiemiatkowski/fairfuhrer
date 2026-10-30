@@ -6,8 +6,6 @@ import MapBoxMap from "./MapBoxMap";
 import CategoryFilter from "./CategoryFilter";
 import styles from "./MapWithFilters.module.css";
 import type { Place, Category, SightsLockModalContent } from "../types";
-import { useAuth } from "@/context/AuthContext";
-import { isSightsCategory } from "@/lib/sightsGating";
 
 interface MapWithFiltersProps {
   places: Place[];
@@ -16,7 +14,7 @@ interface MapWithFiltersProps {
   embedded?: boolean;
   /** Directus-Text für die Info-Blase über gesperrten Sehenswertes-Pins. */
   sightsLockContent?: SightsLockModalContent | null;
-  /** Prozentsatz sichtbarer Sehenswertes-Pins für Free-Nutzer (aus sightsGating). */
+  /** Ungenutzt, seit das Gating entfallen ist — siehe MapBoxMap.tsx. */
   sightsFreePercent?: number;
 }
 
@@ -28,8 +26,6 @@ export default function MapWithFilters({
   sightsLockContent,
   sightsFreePercent,
 }: MapWithFiltersProps) {
-  const { isPro } = useAuth();
-
   // Inicjalizacja z wszystkimi kategoriami
   const allCategoryIds = useMemo(
     () => categories.map((c) => c.id),
@@ -47,9 +43,8 @@ export default function MapWithFilters({
     );
   }, []);
 
-  // Filtering by category only — gating (locked/unlocked) is handled inside
-  // MapBoxMap itself, so we pass ALL places matching the category filter.
-  // MapBoxMap computes lockedIds via its own useAuth + filterVisiblePlaces call.
+  // Nur nach Kategorie filtern. Ein Gating für Einzelnutzer gibt es nicht mehr
+  // (siehe Kommentar in MapBoxMap.tsx).
   const filteredPlaces = useMemo(() => {
     if (selectedCategoryIds.length === 0) {
       return [];
@@ -99,8 +94,6 @@ export default function MapWithFilters({
             categories={categories}
             selectedIds={selectedCategoryIds}
             onToggle={handleToggleCategory}
-            isPro={isPro}
-            isSightsCategory={isSightsCategory}
           />
         </div>
       )}
