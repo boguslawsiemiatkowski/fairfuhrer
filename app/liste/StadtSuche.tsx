@@ -39,6 +39,7 @@ export default function StadtSuche({
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   // Steht eine Stadt fest, zeigt das Feld deren Namen; sonst das Getippte.
   const inputValue = open ? query : (selectedCity?.name ?? query);
@@ -52,11 +53,14 @@ export default function StadtSuche({
     return cities.filter((c) => normalizeForSearch(c.name).includes(q));
   }, [cities, query]);
 
-  // Klick außerhalb schließt die Vorschläge.
+  // Ein Klick überall AUSSER in der Liste schließt sie — auch der Klick ins
+  // Suchfeld selbst. Das ist das erwartete Verhalten: womit man die Liste
+  // aufgeklappt hat, klappt man sie auch wieder zu. (Das Feld hat dafür einen
+  // eigenen Handler, damit Tippen die Liste nicht sofort schließt.)
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!listRef.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
@@ -97,6 +101,7 @@ export default function StadtSuche({
       {/* Bleibt im DOM und wird über eine Klasse animiert, damit sie sich
           sanft auf- und zuschiebt statt plötzlich zu erscheinen. */}
       <ul
+        ref={listRef}
         className={`${styles.suggestions} ${
           open && suggestions.length > 0 ? styles.suggestionsOpen : ""
         }`}
@@ -156,7 +161,12 @@ export default function StadtSuche({
             setOpen(true);
             setHighlight(0);
           }}
-          onFocus={() => setOpen(true)}
+          onPointerDown={() => {
+            // Der globale Handler schließt die Liste bei jedem Klick außerhalb
+            // ihrer selbst — also auch hier. Deshalb genügt es, sie zu öffnen,
+            // wenn sie geschlossen war; so wirkt der Klick als Umschalter.
+            if (!open) setOpen(true);
+          }}
           onKeyDown={onKeyDown}
           placeholder="Stadt suchen"
           aria-label="Stadt suchen"

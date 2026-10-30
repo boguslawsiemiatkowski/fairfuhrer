@@ -227,20 +227,15 @@
   overflow: hidden;
   background-color: #fff;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
-  opacity: 0;
-  transform: translateY(12px);
-  transition:
-    max-height 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
-    opacity 0.22s ease,
-    transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Nur die Höhe wird bewegt — kein Ein- und Ausblenden: das Verblassen beim
+     Zuschieben wirkte unruhig. Ruhiger und etwas langsamer als vorher. */
+  transition: max-height 0.5s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .menuOpen {
   /* Reicht für alle Kategorien und bleibt bei kleinen Fenstern scrollbar. */
   max-height: min(70vh, 480px);
   overflow-y: auto;
-  opacity: 1;
-  transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -439,24 +434,17 @@
   list-style: none;
   background-color: #fff;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
-  /* Wie das Kategorie-Menü: bleibt im DOM, fährt über max-height auf und zu,
-     damit sie nicht plötzlich erscheint. */
+  /* Wie das Kategorie-Menü: bleibt im DOM und fährt nur über die Höhe auf
+     und zu — kein Ein- und Ausblenden. */
   max-height: 0;
   overflow: hidden;
-  opacity: 0;
-  transform: translateY(12px);
-  transition:
-    max-height 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
-    opacity 0.22s ease,
-    transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: max-height 0.5s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .suggestionsOpen {
   /* Alle Städte stehen zur Auswahl; die Liste wird dafür scrollbar. */
   max-height: min(60vh, 420px);
   overflow-y: auto;
-  opacity: 1;
-  transform: translateY(0);
   border: 1px solid #000;
   border-bottom: none;
 }
@@ -509,7 +497,8 @@
   align-items: center;
   gap: 10px;
   min-height: 36px;
-  padding: 0 max(20px, calc((100vw - 420px - 44px) / 2));
+  /* Gleicher Streifen wie beim Kartenband. */
+  padding: 0 14px;
 }
 
 .gpsBtn {

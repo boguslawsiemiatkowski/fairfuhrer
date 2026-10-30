@@ -15,12 +15,12 @@
 .rail {
   display: flex;
   gap: 12px;
-  /* Links so viel Abstand, dass Karte + Peek auf breiten Schirmen mittig
-     stehen — in der App macht das LIST_HORIZONTAL_PADDING. Mindestens 20px,
-     damit die Karten nicht am Fensterrand kleben. */
-  padding: 0 max(20px, calc((100vw - var(--card-width) - 44px) / 2));
+  /* Schmaler Streifen an den Seiten — gerade so viel, dass die Karten nicht
+     am Fensterrand kleben. Bewusst KEIN Zentrieren auf breiten Schirmen:
+     links soll die erste Karte dicht am Rand beginnen. */
+  padding: 0 14px;
   /* Scroll-Snap soll am Padding ausrichten, nicht an der Fensterkante. */
-  scroll-padding-left: max(20px, calc((100vw - var(--card-width) - 44px) / 2));
+  scroll-padding-left: 14px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;

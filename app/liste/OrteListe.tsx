@@ -253,6 +253,18 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
       {/* ── 2. Länder-Chips ───────────────────────────────────────────── */}
       <div className={styles.belowCards}>
         <div className={styles.chipRow}>
+          {/* „Alle" als eigener Chip: vorher musste man den aktiven Chip
+              erneut antippen, um die Auswahl zu lösen — das musste man erst
+              erraten. Jetzt schaltet jeder Chip nur EIN, zurückgesetzt wird
+              über „Alle". */}
+          <button
+            type="button"
+            className={`${styles.chip} ${!landParam ? styles.chipActive : ""}`}
+            onClick={() => setParam("land", "")}
+            aria-pressed={!landParam}
+          >
+            Alle ({places.length})
+          </button>
           {landChips.map((l) => {
             const active = l.segment === landParam;
             return (
@@ -260,7 +272,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
                 key={l.land}
                 type="button"
                 className={`${styles.chip} ${active ? styles.chipActive : ""}`}
-                onClick={() => setParam("land", active ? "" : l.segment)}
+                onClick={() => setParam("land", l.segment)}
                 aria-pressed={active}
               >
                 {l.land}
