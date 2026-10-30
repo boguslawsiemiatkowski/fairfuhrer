@@ -98,8 +98,13 @@ export default function StadtSuche({
 
   return (
     <div className={styles.searchWrap} ref={wrapRef}>
-      {/* Bleibt im DOM und wird über eine Klasse animiert, damit sie sich
-          sanft auf- und zuschiebt statt plötzlich zu erscheinen. */}
+      {/* Rahmen schneidet die geschlossene Liste ab; sie selbst ist per
+          translate3d unter die eigene Unterkante geschoben. */}
+      <div
+        className={`${styles.suggestionsClip} ${
+          open && suggestions.length > 0 ? styles.suggestionsClipOpen : ""
+        }`}
+      >
       <ul
         ref={listRef}
         className={`${styles.suggestions} ${
@@ -136,6 +141,7 @@ export default function StadtSuche({
           </li>
         ))}
       </ul>
+      </div>
 
       <div className={styles.searchBar}>
         <svg

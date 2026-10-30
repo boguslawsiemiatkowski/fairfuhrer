@@ -204,6 +204,15 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   return (
     <div className={styles.screen}>
+      {/* Abdunkelung, während das Kategorie-Menü offen ist. Liegt über den
+          Karten, nicht über dem Balken — der bleibt bedienbar. Klick darauf
+          schließt das Menü. */}
+      <div
+        className={`${styles.menuScrim} ${menuOpen ? styles.menuScrimOpen : ""}`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+
       {/* ── Über den Karten: Standort-Sortierung (wie in der App) ─────── */}
       <div className={styles.aboveCards}>
         {gps.state === "on" ? (
@@ -285,6 +294,12 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
       {/* ── 3. Suche + 4. Kategorie-Balken ────────────────────────────── */}
       <div className={styles.bottomSection}>
+        {/* Rahmen, der das geschlossene Menü abschneidet: es liegt per
+            translate3d unterhalb seiner eigenen Unterkante, und ohne dieses
+            overflow:hidden würde es über Suchfeld und Balken hinausragen. */}
+        <div
+          className={`${styles.menuClip} ${menuOpen ? styles.menuClipOpen : ""}`}
+        >
         {/* Kategorie-Menü: bleibt im DOM und wird über eine Klasse animiert,
             damit es sich auch beim SCHLIESSEN nach unten zurückschiebt. Wäre es
             bedingt gerendert, verschwände es abrupt. Kein abdunkelnder
@@ -334,6 +349,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
               </button>
             );
           })}
+        </div>
         </div>
 
         <StadtSuche

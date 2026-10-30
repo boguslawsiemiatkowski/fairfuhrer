@@ -116,6 +116,23 @@
   position: relative;
 }
 
+/* Schneidet die geschlossene Vorschlagsliste ab — wie .menuClip beim
+   Kategorie-Menü. */
+.suggestionsClip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  z-index: 70;
+  overflow: hidden;
+  max-height: min(60vh, 420px);
+  pointer-events: none;
+}
+
+.suggestionsClipOpen {
+  pointer-events: auto;
+}
+
 .searchBar {
   display: flex;
   align-items: center;
@@ -211,35 +228,92 @@
 
 /* ─── Kategorie-Menü ─────────────────────────────────────────────────────── */
 
-/* Menü fährt beim Öffnen herunter und beim Schließen wieder hoch. Es bleibt
-   dafür im DOM; gesteuert wird über max-height und transform, nicht über
-   bedingtes Rendern — sonst gäbe es keine Schließ-Animation.
-   Kein abdunkelnder Hintergrund (Wunsch): der Balken sitzt unten, das Menü
-   schiebt sich direkt darüber. */
-.menu {
+/* Schneidet das geschlossene Menü ab (siehe Kommentar im Markup). Die Höhe
+   richtet sich nach dem Menü selbst, solange es offen ist; geschlossen bleibt
+   nichts übrig. */
+.menuClip {
   position: absolute;
+  bottom: 100%;
   left: 0;
   right: 0;
-  /* Über dem Balken: das Menü wächst nach oben aus der unteren Kante. */
-  bottom: 100%;
   z-index: 60;
-  max-height: 0;
   overflow: hidden;
+  /* Hoch genug für das offene Menü; da nichts darin sichtbar ist, wenn es
+     geschlossen ist, stört die Fläche nicht — pointer-events regelt das. */
+  max-height: min(70vh, 480px);
+  pointer-events: none;
+}
+
+.menuClipOpen {
+  pointer-events: auto;
+}
+
+/* Kategorie-Menü — Mechanik von „Slide in on top“ aus codrops/
+   SidebarTransitions, nur um 90° gedreht: dort fährt die Leiste von links
+   herein, hier von UNTEN nach oben.
+
+   Entscheidend ist, WAS animiert wird: das Menü steht immer fertig da und
+   liegt per translate3d außerhalb des Bildes; beim Öffnen fährt es auf 0.
+   Vorher habe ich max-height animiert — das zwingt den Browser, in jedem
+   Einzelbild das Layout neu zu rechnen. `transform` läuft dagegen auf der
+   GPU, deshalb wirkt dieselbe Dauer hier deutlich geschmeidiger.
+
+   0,5s wie in der Vorlage. */
+.menu {
+  position: relative;
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  pointer-events: auto;
   background-color: #fff;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
-  /* Nur die Höhe wird bewegt — kein Ein- und Ausblenden: das Verblassen beim
-     Zuschieben wirkte unruhig. Ruhiger und etwas langsamer als vorher. */
-  transition: max-height 0.5s cubic-bezier(0.33, 1, 0.68, 1);
+  /* Außerhalb des Bildes: nach unten weggeschoben, hinter den Balken. */
+  transform: translate3d(0, 100%, 0);
+  transition: transform 0.5s;
 }
 
 .menuOpen {
-  /* Reicht für alle Kategorien und bleibt bei kleinen Fenstern scrollbar. */
-  max-height: min(70vh, 480px);
-  overflow-y: auto;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Der Schatten des geschlossenen Menüs würde über dem Balken liegen; ein
+   Wrapper mit overflow wäre nötig, um ihn zu kappen. Einfacher: im
+   geschlossenen Zustand keinen Schatten zeichnen. */
+.menu:not(.menuOpen) {
+  box-shadow: none;
+}
+
+/* Abdunkelung über dem Inhalt, Kniff aus der Vorlage:
+     transition: opacity 0.5s, width 0.1s 0.5s, height 0.1s 0.5s;
+   Beim Öffnen hat die Fläche sofort volle Größe und nur die Deckkraft läuft.
+   Beim SCHLIESSEN schrumpft sie erst nach 0,5s auf null — also nachdem sie
+   unsichtbar geworden ist. So fängt sie keine Klicks mehr ab, verschwindet
+   aber auch nicht mitten im Ausblenden. Rein deklarativ, ohne Zeitgeber im
+   JavaScript. */
+.menuScrim {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  width: 0;
+  height: 0;
+  background: rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition:
+    opacity 0.5s,
+    width 0.1s 0.5s,
+    height 0.1s 0.5s;
+}
+
+.menuScrimOpen {
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  transition: opacity 0.5s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .menu {
+  .menu,
+  .menuScrim {
     transition: none;
   }
 }
@@ -424,29 +498,27 @@
 }
 
 .suggestions {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  z-index: 70;
+  position: relative;
   margin: 0;
   padding: 0;
   list-style: none;
   background-color: #fff;
+  border: 1px solid #000;
+  border-bottom: none;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
-  /* Wie das Kategorie-Menü: bleibt im DOM und fährt nur über die Höhe auf
-     und zu — kein Ein- und Ausblenden. */
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.5s cubic-bezier(0.33, 1, 0.68, 1);
+  /* Dieselbe Mechanik wie beim Kategorie-Menü: per translate3d unterhalb der
+     eigenen Unterkante geparkt, beim Öffnen auf 0 — animiert wird nur
+     `transform`, nicht die Höhe. Der Rahmen .suggestionsClip schneidet ab. */
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  transform: translate3d(0, 100%, 0);
+  transition: transform 0.5s;
+  pointer-events: auto;
 }
 
 .suggestionsOpen {
   /* Alle Städte stehen zur Auswahl; die Liste wird dafür scrollbar. */
-  max-height: min(60vh, 420px);
-  overflow-y: auto;
-  border: 1px solid #000;
-  border-bottom: none;
+  transform: translate3d(0, 0, 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -454,6 +526,9 @@
     transition: none;
   }
 }
+
+/* Abdunkelung hinter der offenen Vorschlagsliste — gleicher Kniff wie beim
+   Kategorie-Menü (siehe .menuScrim). */
 
 /* Die aktuell gewählte Stadt bleibt in der Liste erkennbar. */
 .suggestionItemSelected .suggestionName {
