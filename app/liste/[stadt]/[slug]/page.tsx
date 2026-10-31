@@ -11,6 +11,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { MoveLeft } from "lucide-react";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import PlaceGallery from "@/components/PlaceGallery";
@@ -191,6 +192,15 @@ export default async function OrtPage({ params }: RouteParams) {
             Farbe der Kategorie (abgedunkelt, siehe categoryColor), damit schon
             am Farbton erkennbar ist, worum es geht. */}
         <aside className={styles.sidebar} style={{ backgroundColor: sidebarColor }}>
+          {/* Zurück zur Liste. Absolut positioniert, damit der Inhalt der
+              Spalte mittig bleibt; verankert an `.layout`, weil `.sidebar`
+              mit `overflow-y: auto` absolut positionierte Kinder abschneidet
+              — daran scheiterte zuvor schon das Zertifikat. */}
+          <Link href="/liste" className={styles.backTop}>
+            <MoveLeft size={26} aria-hidden="true" />
+            <span className={styles.backTopLabel}>Zurück zur Liste</span>
+          </Link>
+
           <div className={styles.sidebarInner}>
             {firstCategory && (
               <p className={styles.category}>
@@ -250,34 +260,6 @@ export default async function OrtPage({ params }: RouteParams) {
         {/* Rechte Spalte: der Text, hier wird gescrollt. */}
         <div className={styles.main}>
           <div className={styles.mainInner}>
-            {/* Zertifikate oben links in der rechten Spalte — auf der Höhe des
-                Titelbildes, zwischen dessen linker Kante und dem Rand der
-                Spalte. Sie scrollen mit dem Text mit; der frühere Versuch,
-                sie fest auf die Spaltengrenze zu setzen, scheiterte daran,
-                dass die linke Spalte `overflow-y: auto` hat und absolut
-                positionierte Kinder dort abschneidet. */}
-            {zertifizierungen.length > 0 && directusUrl && (
-              <div className={styles.zertRow} aria-label="Zertifizierungen">
-                {zertifizierungen.map((zert) =>
-                  zert.imageUuid ? (
-                    <Image
-                      key={zert.id}
-                      src={`${directusUrl}/assets/${zert.imageUuid}`}
-                      alt={zert.name}
-                      title={zert.name}
-                      width={96}
-                      height={96}
-                      className={styles.zertBadge}
-                    />
-                  ) : (
-                    <span key={zert.id} className={styles.zertText}>
-                      {zert.name}
-                    </span>
-                  ),
-                )}
-              </div>
-            )}
-
             {heroUrl && (
               <figure className={styles.heroFigure}>
                 <Image
@@ -301,6 +283,38 @@ export default async function OrtPage({ params }: RouteParams) {
               <p className={styles.noText}>
                 Für diesen Ort liegt noch keine Beschreibung vor.
               </p>
+            )}
+
+            {/* Zertifikate am Ende des Textes, mittig und ohne Überschrift.
+                Der Name erscheint beim Überfahren — zuvor stand die Reihe
+                absolut oben links, wo sie bei mehreren Zeichen in das
+                Titelbild hineinreichte. */}
+            {zertifizierungen.length > 0 && directusUrl && (
+              <div className={styles.zertRow} aria-label="Zertifizierungen">
+                {zertifizierungen.map((zert) =>
+                  zert.imageUuid ? (
+                    <span key={zert.id} className={styles.zertItem}>
+                      <Image
+                        src={`${directusUrl}/assets/${zert.imageUuid}`}
+                        alt={zert.name}
+                        // Die wahren Maße kennt nur die Datei. Diese Werte
+                        // dienen nur dem Platzhalter-Verhältnis; `width:auto`
+                        // und `max-height` im CSS entscheiden, wie groß das
+                        // Zeichen am Ende erscheint.
+                        width={300}
+                        height={150}
+                        sizes="160px"
+                        className={styles.zertBadge}
+                      />
+                      <span className={styles.zertTooltip}>{zert.name}</span>
+                    </span>
+                  ) : (
+                    <span key={zert.id} className={styles.zertText}>
+                      {zert.name}
+                    </span>
+                  ),
+                )}
+              </div>
             )}
 
             {galerie.length > 0 && (

@@ -9,7 +9,11 @@ import styles from "./Footer.module.css";
 export default function Footer() {
   const pathname = usePathname();
 
-  if (pathname === "/karte") {
+  // Ohne Fußzeile: die Karte, die Liste und die Detailseiten der Audiopins.
+  // Alle drei füllen den Bildschirm und scrollen in sich — eine Fußzeile
+  // darunter wäre entweder nicht erreichbar oder würde die Höhe stören.
+  // `/liste/<stadt>/<slug>` trifft die Detailseiten, `/liste` die Liste.
+  if (pathname === "/karte" || pathname === "/liste" || pathname.startsWith("/liste/")) {
     return null;
   }
 
