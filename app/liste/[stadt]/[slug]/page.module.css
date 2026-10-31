@@ -12,7 +12,6 @@
 */
 
 .layout {
-  position: relative;
   display: grid;
   /* Die feste Spalte wächst mit dem Fenster, bleibt aber in lesbaren Grenzen. */
   grid-template-columns: clamp(300px, 34vw, 460px) 1fr;
@@ -27,8 +26,6 @@
 /* ─── Linke Spalte ───────────────────────────────────────────────────────── */
 
 .sidebar {
-  /* Kontext für das Zertifikats-Zeichen, das auf der rechten Kante sitzt. */
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,6 +107,8 @@
 }
 
 .mainInner {
+  /* Kontext für die Zertifikate, die oben links darüber liegen. */
+  position: relative;
   padding: 3rem clamp(1.5rem, 4vw, 3.5rem);
 }
 
@@ -178,24 +177,27 @@
 
 /* ─── Zertifikate auf der Spaltengrenze ─────────────────────────────────── */
 
-/* Sitzt mittig auf der Kante zwischen den Spalten: verankert an der rechten
-   Kante der linken Spalte, mit translateX(50%) genau auf die Linie gerückt.
-   Steht fest, weil die linke Spalte selbst nicht mitrollt.
-   Weiter oben als auf halber Höhe (28 %), damit es den Namen darunter nicht
-   überdeckt.
-   Fast alle Orte haben genau ein Zertifikat (105 von 108), höchstens drei —
-   die stapeln sich dann untereinander. */
-.zertAnchor {
+/* Oben links in der rechten Spalte, auf Höhe des Titelbildes. Rollt mit dem
+   Text mit.
+
+   Der erste Versuch setzte die Zeichen fest auf die Spaltengrenze. Das ging
+   nicht: die linke Spalte hat `overflow-y: auto`, und ein absolut
+   positioniertes Kind wird dort abgeschnitten — statt überzustehen erzeugte
+   es nur waagerechtes Scrollen in der Spalte. */
+.zertRow {
+  /* Aus dem Fluss genommen, damit das Titelbild dort bleibt, wo es ohne
+     Zertifikate stünde — sonst schiebt die Zeichenreihe es nach unten. */
   position: absolute;
-  top: 28%;
-  right: 0;
-  transform: translateX(50%);
-  z-index: 5;
+  top: 1.25rem;
+  left: clamp(1.5rem, 4vw, 3.5rem);
+  z-index: 3;
   display: flex;
+  /* Untereinander statt nebeneinander: waagerecht würden mehrere Zeichen bei
+     absoluter Lage ins Titelbild hineinragen. Betrifft 3 von 108 Orten — die
+     übrigen haben genau ein Zertifikat. */
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  pointer-events: none;
+  gap: 0.6rem;
 }
 
 .zertBadge {
@@ -262,36 +264,10 @@
 
   .sidebar {
     overflow: visible;
-    /* Unten Platz, damit das Zertifikats-Zeichen auf der Kante nicht den
-       Audioguide überdeckt. */
-    padding: 2.5rem 1.5rem 3.5rem;
+    padding: 2.5rem 1.5rem;
   }
 
-  /* Untereinander gibt es keine senkrechte Grenze mehr: das Zeichen rutscht
-     auf die Mitte der waagerechten Kante zwischen farbigem Block und Text. */
-  .zertAnchor {
-    top: auto;
-    right: auto;
-    bottom: 0;
-    left: 50%;
-    transform: translate(-50%, 50%);
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
 
-  /* Untereinander gibt es keine senkrechte Grenze mehr: das Zeichen rutscht
-     auf die Mitte der waagerechten Kante zwischen farbigem Block und Text. */
-  .zertAnchor {
-    top: auto;
-    right: auto;
-    bottom: 0;
-    left: 50%;
-    transform: translate(-50%, 50%);
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
 
   .main {
     overflow: visible;

@@ -243,39 +243,40 @@ export default async function OrtPage({ params }: RouteParams) {
             )}
           </div>
 
-          {/* Zertifikate sitzen auf der Grenze zwischen den Spalten, mittig auf
-              der Kante und weiter oben als auf halber Höhe. Sie gehören zu
-              keiner der beiden Spalten, sondern liegen darüber — deshalb
-              absolut positioniert und wie die linke Spalte unbeweglich.
-              Fast alle Orte haben genau ein Zertifikat (105 von 108), höchstens
-              drei; sie stapeln sich daher untereinander. */}
-          {zertifizierungen.length > 0 && directusUrl && (
-            <div className={styles.zertAnchor} aria-label="Zertifizierungen">
-              {zertifizierungen.map((zert) =>
-                zert.imageUuid ? (
-                  <Image
-                    key={zert.id}
-                    src={`${directusUrl}/assets/${zert.imageUuid}`}
-                    alt={zert.name}
-                    title={zert.name}
-                    width={96}
-                    height={96}
-                    className={styles.zertBadge}
-                  />
-                ) : (
-                  <span key={zert.id} className={styles.zertText}>
-                    {zert.name}
-                  </span>
-                ),
-              )}
-            </div>
-          )}
         </aside>
 
 
         {/* Rechte Spalte: der Text, hier wird gescrollt. */}
         <div className={styles.main}>
           <div className={styles.mainInner}>
+            {/* Zertifikate oben links in der rechten Spalte — auf der Höhe des
+                Titelbildes, zwischen dessen linker Kante und dem Rand der
+                Spalte. Sie scrollen mit dem Text mit; der frühere Versuch,
+                sie fest auf die Spaltengrenze zu setzen, scheiterte daran,
+                dass die linke Spalte `overflow-y: auto` hat und absolut
+                positionierte Kinder dort abschneidet. */}
+            {zertifizierungen.length > 0 && directusUrl && (
+              <div className={styles.zertRow} aria-label="Zertifizierungen">
+                {zertifizierungen.map((zert) =>
+                  zert.imageUuid ? (
+                    <Image
+                      key={zert.id}
+                      src={`${directusUrl}/assets/${zert.imageUuid}`}
+                      alt={zert.name}
+                      title={zert.name}
+                      width={96}
+                      height={96}
+                      className={styles.zertBadge}
+                    />
+                  ) : (
+                    <span key={zert.id} className={styles.zertText}>
+                      {zert.name}
+                    </span>
+                  ),
+                )}
+              </div>
+            )}
+
             {heroUrl && (
               <figure className={styles.heroFigure}>
                 <Image
