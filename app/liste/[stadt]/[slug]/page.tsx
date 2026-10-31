@@ -13,6 +13,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
+import PlaceGallery from "@/components/PlaceGallery";
 import {
   cityToSegment,
   fetchAllPlaces,
@@ -307,20 +308,7 @@ export default async function OrtPage({ params }: RouteParams) {
                 <h2 id="galerie" className={styles.galleryTitle}>
                   Bildergalerie
                 </h2>
-                <div className={styles.gallery}>
-                  {galerie.map((url, index) => (
-                    <Image
-                      key={url}
-                      src={url}
-                      alt={`${place.Name} — Bild ${index + 1}`}
-                      width={400}
-                      height={300}
-                      loading="lazy"
-                      sizes="(max-width: 900px) 45vw, 260px"
-                      className={styles.galleryImage}
-                    />
-                  ))}
-                </div>
+                <PlaceGallery images={galerie} name={place.Name} />
               </section>
             )}
 

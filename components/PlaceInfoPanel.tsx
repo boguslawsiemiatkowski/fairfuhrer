@@ -2,17 +2,18 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import Image from "next/image";
-import { AudioPlayer, DirectusAudioPlayer, DirectusImage, DirectusImageGallery, ImageGallery, PlaceImage } from "./MediaComponents";
+import { AudioPlayer, DirectusAudioPlayer, DirectusImage, PlaceImage } from "./MediaComponents";
 import type { Place } from "../types";
 import styles from "./PlaceInfoPanel.module.css";
 import { categoryColorFor } from "./CategoryIcon";
+import PlaceGallery from "./PlaceGallery";
+import { galleryUrls } from "../lib/orte-shared";
 
 interface PlaceInfoPanelProps {
   place: Place | null;
   isOpen: boolean;
   isVisible: boolean;
   onCloseAction: () => void;
-  onImageClickAction?: (imagePath: string, index: number) => void;
 }
 
 export default function PlaceInfoPanel({
@@ -20,7 +21,6 @@ export default function PlaceInfoPanel({
   isOpen,
   isVisible,
   onCloseAction,
-  onImageClickAction,
 }: PlaceInfoPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -119,11 +119,7 @@ export default function PlaceInfoPanel({
 
         <div className={styles.panelContent}>
           {place ? (
-            <PlaceContent
-              key={place.id}
-              place={place}
-              onImageClickAction={onImageClickAction}
-            />
+            <PlaceContent key={place.id} place={place} />
           ) : (
             <EmptyState />
           )}
@@ -133,13 +129,9 @@ export default function PlaceInfoPanel({
   );
 }
 
-function PlaceContent({
-  place,
-  onImageClickAction,
-}: {
-  place: Place;
-  onImageClickAction?: (imagePath: string, index: number) => void;
-}) {
+function PlaceContent({ place }: { place: Place }) {
+  const galerie = galleryUrls(place);
+
   return (
     <>
       <div className={styles.imageAudioContainer}>
@@ -226,26 +218,15 @@ function PlaceContent({
         </div>
       )}
 
-      {(place.Galerie_Bilder?.length || place.Galerie?.length) ? (
+      {galerie.length > 0 && (
         <div className={styles.infoSection}>
           <h4>Bildergalerie</h4>
-          {place.Galerie_Bilder?.length ? (
-            <ImageGallery
-              placeId={place.id}
-              images={place.Galerie_Bilder}
-              onImageClickAction={(imagePath) => {
-                const index = place.Galerie_Bilder?.findIndex((img) => imagePath.includes(img)) ?? 0;
-                onImageClickAction?.(imagePath, index);
-              }}
-            />
-          ) : (
-            <DirectusImageGallery
-              uuids={place.Galerie!}
-              onImageClickAction={onImageClickAction}
-            />
-          )}
+          {/* Dieselbe Galerie wie auf der Detailseite. galleryUrls() führt
+            * Directus- und Supabase-Bilder zusammen, statt sich wie vorher
+            * für eine der beiden Quellen zu entscheiden. */}
+          <PlaceGallery images={galerie} name={place.Name} variant="panel" />
         </div>
-      ) : null}
+      )}
 
       {place.Zertifizierungen && place.Zertifizierungen.length > 0 && (
         <div className={styles.infoSection}>

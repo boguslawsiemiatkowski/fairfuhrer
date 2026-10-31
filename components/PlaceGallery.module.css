@@ -1,0 +1,88 @@
+/* components/PlaceGallery.module.css
+ *
+ * Raster und Bildmaße wie bisher auf der Detailseite — die Kacheln sollen
+ * gleich aussehen, nur anklickbar sein.
+ */
+
+.grid {
+  display: grid;
+}
+
+/* Detailseite: breite Spalte, 4:3-Kacheln wie bisher. */
+.page {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.6rem;
+}
+
+.page .tile {
+  aspect-ratio: 4 / 3;
+}
+
+/* Kartenpanel: schmal. Mit minmax(200px, …) bliebe nur eine Spalte über,
+ * deshalb kleinere, quadratische Kacheln — die Maße der vorherigen
+ * Panel-Galerie. */
+.panel {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.panel .tile {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+  transition:
+    transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.panel .tile:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+}
+
+/* Ein <button>, damit Tastatur und Screenreader die Kachel finden. Die
+ * eigenen Button-Stile des Browsers müssen dafür weg. */
+.tile {
+  display: block;
+  position: relative;
+  padding: 0;
+  border: none;
+  background-color: #f2efea;
+  overflow: hidden;
+  cursor: zoom-in;
+  /* Der Rahmen gehört zur Kachel, nicht zum Bild: so bleibt er stehen,
+   * während das Bild darunter wächst. */
+  outline-offset: 2px;
+}
+
+.tile:focus-visible {
+  outline: 2px solid #fc6c14;
+}
+
+/* Das Seitenverhältnis sitzt an der Kachel, damit es je Variante
+ * unterschiedlich sein kann; das Bild füllt sie aus. */
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Wie bei den Karten: `transform` animiert der Browser auf der GPU. */
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tile:hover .image,
+.tile:focus-visible .image {
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image {
+    transition-duration: 1ms;
+  }
+
+  .tile:hover .image,
+  .tile:focus-visible .image {
+    transform: none;
+  }
+}

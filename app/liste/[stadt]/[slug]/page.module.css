@@ -129,6 +129,16 @@
   max-height: 42vh;
   object-fit: cover;
   background-color: #f2efea;
+  border-style: solid;
+  border-width: 2px;
+  border-bottom-left-radius: 15px 255px;
+  border-bottom-right-radius: 225px 15px;
+  border-top-left-radius: 255px 15px;
+  border-top-right-radius: 15px 225px;
+  box-shadow:
+    rgba(0, 0, 0, 0.4) 0px 2px 4px,
+    rgba(0, 0, 0, 0.3) 0px 7px 13px -3px,
+    rgba(0, 0, 0, 0.2) 0px -3px 0px inset;
 }
 
 .description {
@@ -236,21 +246,8 @@
   color: #3e6b4f;
 }
 
-.gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0.6rem;
-}
-
-.galleryImage {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  background-color: #f2efea;
-}
-
+/* Raster und Kacheln der Galerie stehen in components/PlaceGallery.module.css,
+ * zusammen mit der Vollbild-Ansicht. */
 
 /* ─── Schmale Bildschirme ────────────────────────────────────────────────── */
 
@@ -266,8 +263,6 @@
     overflow: visible;
     padding: 2.5rem 1.5rem;
   }
-
-
 
   .main {
     overflow: visible;

@@ -174,55 +174,10 @@ export function AudioPlayer({
   return <BaseAudioPlayer src={src} className={className} />;
 }
 
-interface ImageGalleryProps {
-  placeId: number;
-  images: string[];
-  className?: string;
-  onImageClickAction: (imagePath: string) => void; // ✅ ZMIENIONE: imagePath zamiast imageUrl
-}
-
-export function ImageGallery({
-  placeId,
-  images,
-  className = "",
-  onImageClickAction,
-}: ImageGalleryProps) {
-  if (!images || images.length === 0) return null;
-
-  return (
-    <div className={`${styles.gallery} ${className}`}>
-      {images.map((imageName, index) => (
-        <div key={index} className={styles.galleryItem}>
-          <button
-            type="button"
-            className={styles.galleryButton}
-            onClick={() => {
-              // ✅ POPRAWKA: Przekaż path zamiast pełnego URL
-              onImageClickAction(
-                getOptimizedImagePath(placeId, imageName, "gallery")
-              );
-            }}
-            aria-label={`Zdjęcie ${index + 1} powiększ`}
-          >
-            <Image
-              src={getOptimizedImagePath(placeId, imageName, "gallery")} // ✅ ZOPTYMALIZOWANE
-              alt={`Zdjęcie ${index + 1}`}
-              className={styles.galleryImage}
-              width={300}
-              height={200}
-              style={{ objectFit: "cover", width: "100%", height: "100%" }}
-              sizes="(max-width: 768px) 50vw, 300px"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = "none";
-              }}
-            />
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
+// ImageGallery und DirectusImageGallery sind entfallen: das Panel verwendet
+// jetzt PlaceGallery, dieselbe Galerie wie die Detailseite. Sie unterschieden
+// sich nur in der Bildquelle — galleryUrls() in lib/orte-shared.ts führt beide
+// zusammen, statt sich für eine zu entscheiden.
 
 interface PlaceImageProps {
   placeId: number;
@@ -339,44 +294,6 @@ export function GalleryMixed({ placeId, items, onImageClickAction }: GalleryMixe
 
         return (
           <div key={index} className={styles.galleryItem}>
-            <button
-              type="button"
-              className={styles.galleryButton}
-              onClick={() => onImageClickAction?.(src, index)}
-              aria-label={`Bild ${index + 1} powiększ`}
-            >
-              <Image
-                src={src}
-                alt={`Bild ${index + 1}`}
-                className={styles.galleryImage}
-                width={300}
-                height={200}
-                style={{ objectFit: "cover", width: "100%", height: "100%" }}
-                sizes="(max-width: 768px) 50vw, 300px"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-interface DirectusImageGalleryProps {
-  uuids: string[];
-  onImageClickAction?: (src: string, index: number) => void;
-}
-
-export function DirectusImageGallery({ uuids, onImageClickAction }: DirectusImageGalleryProps) {
-  if (!uuids || uuids.length === 0) return null;
-  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
-  return (
-    <div className={styles.gallery}>
-      {uuids.map((uuid, index) => {
-        const src = `${directusUrl}/assets/${uuid}`;
-        return (
-          <div key={uuid} className={styles.galleryItem}>
             <button
               type="button"
               className={styles.galleryButton}

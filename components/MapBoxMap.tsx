@@ -24,12 +24,10 @@ import MapSearch from "./MapSearch";
 import type { Place, SightsLockModalContent } from "../types";
 import { placesToGeoJSON, loadCategoryMarkerSDFs } from "../utils/mapHelpers";
 import { generatePopupHTML } from "../utils/popupGenerator";
-import { useGallery } from "../hooks/useGallery";
 import { useGeolocation } from "../hooks/useGeolocation";
 
 // LAZY LOADING komponentów
 const PlaceInfoPanel = lazy(() => import("./PlaceInfoPanel"));
-const FullscreenGallery = lazy(() => import("./FullscreenGallery"));
 
 // Fallback-Texte, falls die Directus-Kollektion (noch) leer ist. Werden nur
 // verwendet, wenn getSightsLockModalContent() null zurückgibt.
@@ -155,17 +153,8 @@ export default function MapBoxMap({
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isPanelVisible, setIsPanelVisible] = useState(false);
 
-  // Gallery state
-  const {
-    selectedGalleryImage,
-    currentImageIndex,
-    setSelectedGalleryImage,
-    setCurrentImageIndex,
-    handleImageClick,
-    handleNextImage,
-    handlePrevImage,
-    closeGalleryOnly,
-  } = useGallery(selectedPlace);
+  // Die Galerie braucht hier keinen Zustand mehr: PlaceGallery im Panel
+  // öffnet und schließt die Vollbild-Ansicht selbst.
 
   // Map state
   const [mapLoadingState, setMapLoadingState] = useState<
@@ -411,8 +400,8 @@ export default function MapBoxMap({
     isPanelOpenRef.current = false;
     selectedPlaceIdRef.current = null;
     setIsPanelVisible(false);
-    setSelectedGalleryImage(null);
-    setCurrentImageIndex(0);
+    // Die Galerie führt ihren Zustand selbst; `key={place.id}` am
+    // Panel-Inhalt setzt sie beim Wechsel des Pins zurück.
 
     // Reset podświetlonego pinu — płynne zmniejszenie, potem ukrycie
     if (mapRef.current?.getLayer("places-selected")) {
@@ -441,7 +430,7 @@ export default function MapBoxMap({
       closePanelTimeoutRef.current = null;
       setIsPanelOpen(false);
     }, 600);
-  }, [animatePinSize, setSelectedGalleryImage, setCurrentImageIndex]);
+  }, [animatePinSize]);
 
   const handleLocationSelect = useCallback(
     (
@@ -1082,33 +1071,9 @@ export default function MapBoxMap({
             isOpen={isPanelOpen}
             isVisible={isPanelVisible}
             onCloseAction={closePanel}
-            onImageClickAction={handleImageClick}
           />
         </Suspense>
       </Activity>
-
-      {selectedGalleryImage &&
-        (selectedPlace?.Galerie?.length ||
-          selectedPlace?.Galerie_Bilder?.length) && (
-          <Suspense
-            fallback={
-              <div className={styles.loadingOverlayGallery}>
-                <div className={styles.loadingSpinner}>
-                  Galerie wird geladen...
-                </div>
-              </div>
-            }
-          >
-            <FullscreenGallery
-              place={selectedPlace}
-              currentIndex={currentImageIndex}
-              isOpen={!!selectedGalleryImage}
-              onCloseAction={closeGalleryOnly}
-              onNextAction={handleNextImage}
-              onPrevAction={handlePrevImage}
-            />
-          </Suspense>
-        )}
     </div>
   );
 }
