@@ -1,7 +1,7 @@
 // lib/orte.ts
 // Gemeinsame Datenschicht für alle Orte-Ansichten: Karte (/karte), Liste
-// (/liste), Stadt-Hubs (/orte/[stadt]) und Detailseiten
-// (/orte/[stadt]/[slug]).
+// (/liste), Stadt-Hubs (/liste/[stadt]) und Detailseiten
+// (/liste/[stadt]/[slug]).
 //
 // Die Transformation und die HTML-Bereinigung lagen vorher in
 // app/karte/page.tsx. Sie liegen jetzt hier, damit alle Ansichten dieselben
@@ -391,5 +391,5 @@ export function findPlaceBySlug(
 export function placeHref(place: Place): string | null {
   const segment = cityToSegment(place.Stadt);
   if (!segment || !place.slug) return null;
-  return `/orte/${segment}/${place.slug}`;
+  return `/liste/${segment}/${place.slug}`;
 }

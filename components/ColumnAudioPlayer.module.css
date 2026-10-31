@@ -151,6 +151,11 @@
 
 /* ─── Geschwindigkeit ────────────────────────────────────────────────────── */
 
+.speedRow {
+  display: flex;
+  gap: 0.35rem;
+}
+
 .speed {
   padding: 0.25rem 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -169,4 +174,19 @@
 .speed:focus-visible {
   background-color: rgba(255, 255, 255, 0.18);
   opacity: 1;
+}
+
+/* Die gewählte Geschwindigkeit ist gefüllt — so ist auf einen Blick klar,
+   welche gerade läuft und dass es Alternativen gibt. */
+.speedActive {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: transparent;
+  color: #18222f;
+  opacity: 1;
+}
+
+.speedActive:hover,
+.speedActive:focus-visible {
+  background-color: #fff;
+  color: #18222f;
 }

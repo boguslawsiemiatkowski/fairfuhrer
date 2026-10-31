@@ -36,7 +36,7 @@ export default function ColumnAudioPlayer({
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [speedIndex, setSpeedIndex] = useState(0);
+  const [speed, setSpeed] = useState<number>(1);
 
   const toggle = useCallback(() => {
     const el = audioRef.current;
@@ -56,11 +56,10 @@ export default function ColumnAudioPlayer({
     [seekTo],
   );
 
-  const cycleSpeed = useCallback(() => {
-    const next = (speedIndex + 1) % SPEEDS.length;
-    setSpeedIndex(next);
-    if (audioRef.current) audioRef.current.playbackRate = SPEEDS[next];
-  }, [speedIndex]);
+  const chooseSpeed = useCallback((value: number) => {
+    setSpeed(value);
+    if (audioRef.current) audioRef.current.playbackRate = value;
+  }, []);
 
   // Leertaste und Pfeiltasten steuern den Guide — aber nur, wenn der Fokus
   // nicht in einem Eingabefeld steht.
@@ -181,14 +180,26 @@ export default function ColumnAudioPlayer({
         <span className={styles.time}>{formatTime(duration)}</span>
       </div>
 
-      <button
-        type="button"
-        className={styles.speed}
-        onClick={cycleSpeed}
-        aria-label={`Abspielgeschwindigkeit: ${SPEEDS[speedIndex]}-fach`}
+      {/* Alle Geschwindigkeiten nebeneinander statt eines Umschalters: vorher
+          war nur die gerade aktive zu sehen, sodass niemand ahnte, dass es
+          weitere gibt. */}
+      <div
+        className={styles.speedRow}
+        role="group"
+        aria-label="Abspielgeschwindigkeit"
       >
-        {SPEEDS[speedIndex]}×
-      </button>
+        {SPEEDS.map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={`${styles.speed} ${value === speed ? styles.speedActive : ""}`}
+            onClick={() => chooseSpeed(value)}
+            aria-pressed={value === speed}
+          >
+            {value}×
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

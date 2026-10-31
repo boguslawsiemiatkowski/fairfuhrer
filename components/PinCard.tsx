@@ -16,7 +16,7 @@ import styles from "./PinCard.module.css";
 
 export default function PinCard({ place }: { place: Place }) {
   const segment = cityToSegment(place.Stadt);
-  const href = segment && place.slug ? `/orte/${segment}/${place.slug}` : null;
+  const href = segment && place.slug ? `/liste/${segment}/${place.slug}` : null;
   const imageUrl = mainImageUrl(place);
 
   const location = [place.Stadt, place.Land].filter(Boolean).join(", ");

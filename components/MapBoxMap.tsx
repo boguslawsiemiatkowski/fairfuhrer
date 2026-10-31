@@ -120,7 +120,7 @@ export default function MapBoxMap({
   // Kein Gating mehr im Web: Einzelnutzer sehen alle Audiopins. Die App wird
   // für sie kostenlos, mit freiwilligen Beiträgen statt FAIRFÜHRER+ (Absprache
   // mit Frank, Okt. 2026). Jeder Pin hat jetzt zudem eine eigene, von Google
-  // indexierbare Seite unter /orte/[stadt]/[slug] — Inhalte zurückzuhalten
+  // indexierbare Seite unter /liste/[stadt]/[slug] — Inhalte zurückzuhalten
   // würde dem direkt widersprechen.
   //
   // Die Sperr-Popup-Maschinerie unten bleibt bewusst erhalten, nur ohne Daten:

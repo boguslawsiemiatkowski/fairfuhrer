@@ -1,7 +1,7 @@
 // components/PlaceCard.tsx
 //
 // Kachel eines Ortes: Bild links, Text rechts. Genutzt von /liste und von den
-// Stadt-Übersichten /orte/[stadt] — bewusst ein Bauteil, damit beide Ansichten
+// Stadt-Übersichten /liste/[stadt] — bewusst ein Bauteil, damit beide Ansichten
 // nicht auseinanderlaufen.
 //
 // Kein Client Component: die Kachel hat keine Interaktion außer dem Link.
@@ -24,7 +24,7 @@ interface PlaceCardProps {
 
 export default function PlaceCard({ place, hideCity = false }: PlaceCardProps) {
   const segment = cityToSegment(place.Stadt);
-  const href = segment && place.slug ? `/orte/${segment}/${place.slug}` : null;
+  const href = segment && place.slug ? `/liste/${segment}/${place.slug}` : null;
 
   const teaser = truncateAtWord(htmlToPlainText(place.Vollbeschreibung), 160);
   // Beide Bildformen — sonst bliebe die Kachel bei zwei Dritteln der Orte leer.

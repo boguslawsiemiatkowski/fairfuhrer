@@ -102,7 +102,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cityEntries: MetadataRoute.Sitemap = [...cityCounts.entries()]
     .sort((a, b) => a[0].localeCompare(b[0], "de"))
     .map(([segment, count]) => ({
-      url: `${BASE_URL}/orte/${segment}`,
+      url: `${BASE_URL}/liste/${segment}`,
       lastModified,
       changeFrequency: "weekly" as const,
       // 0.5 bis 0.8, abhängig vom Umfang der Stadt.
@@ -116,7 +116,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const segment = cityToSegment(place.Stadt);
       if (!segment || !place.slug) return null;
       return {
-        url: `${BASE_URL}/orte/${segment}/${place.slug}`,
+        url: `${BASE_URL}/liste/${segment}/${place.slug}`,
         lastModified,
         changeFrequency: "monthly" as const,
         // Pins mit Audioguide sind die eigentliche Besonderheit des

@@ -188,8 +188,12 @@
   justify-content: space-between;
   width: 100%;
   padding: 12px 14px;
+  /* Keine eigene Linie: vorher stand hier border-top in BAR_BG, dem hellen
+     Cremeton. Ohne Auswahl fiel das nicht auf, weil die Leiste dieselbe Farbe
+     hat — sobald aber eine Kategorie gewählt ist, wechselt der Hintergrund auf
+     die dunkle Kategoriefarbe und die helle Linie blieb als weißer Rand
+     stehen. */
   border: none;
-  border-top: 1px solid rgba(255, 242, 232, 0.9);
   background-color: rgba(255, 242, 232, 0.9);
   font-family: var(--font-fira);
   cursor: pointer;

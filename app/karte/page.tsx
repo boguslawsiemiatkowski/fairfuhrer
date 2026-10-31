@@ -46,7 +46,7 @@ export default async function KartePage() {
   return (
     <div>
       {/* SSR TREŚĆ - UKRYTA DLA GOOGLE
-          TODO: entfällt, sobald /liste und /orte/[stadt]/[slug] indexiert sind
+          TODO: entfällt, sobald /liste und /liste/[stadt]/[slug] indexiert sind
           (dann ist dieser Block nur noch ein Duplikat dieser Seiten). */}
       <div
         style={{

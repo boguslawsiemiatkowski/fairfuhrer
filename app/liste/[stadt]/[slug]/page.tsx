@@ -1,4 +1,4 @@
-// app/orte/[stadt]/[slug]/page.tsx
+// app/liste/[stadt]/[slug]/page.tsx
 //
 // Eigene, von Google indexierbare Seite je Audiopin. Vorher war die ganze
 // Karte für Suchmaschinen eine einzige Seite — 592 Orte mit 575 ausführlichen
@@ -66,7 +66,7 @@ export async function generateMetadata({
 
   const imageUrl = mainImageUrl(place) ?? undefined;
 
-  const canonical = `${SITE_URL}/orte/${stadt}/${slug}`;
+  const canonical = `${SITE_URL}/liste/${stadt}/${slug}`;
 
   return {
     title: `${place.Name}${city}`,
@@ -157,7 +157,7 @@ export default async function OrtPage({ params }: RouteParams) {
 
   if (!place) notFound();
 
-  const canonical = `${SITE_URL}/orte/${stadt}/${slug}`;
+  const canonical = `${SITE_URL}/liste/${stadt}/${slug}`;
   const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
 
   // Beide Bildformen berücksichtigen — nur 197 von 592 Orten haben ein
