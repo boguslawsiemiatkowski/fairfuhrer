@@ -58,10 +58,13 @@ export function sanitizeWordHtml(html: string): string {
 // re-exportiert, damit Server-Code nur eine Importstelle braucht.
 export {
   cityToSegment,
+  distanceInMeters,
+  formatDistance,
   galleryUrls,
   htmlToPlainText,
   mainImageUrl,
   normalizeForSearch,
+  pickDiscovery,
   truncateAtWord,
 } from "./orte-shared";
 

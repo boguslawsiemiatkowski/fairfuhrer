@@ -11,14 +11,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { MoveLeft } from "lucide-react";
+import { MoveLeft, MoveRight } from "lucide-react";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import PlaceGallery from "@/components/PlaceGallery";
+import PlaceLocationMap from "@/components/PlaceLocationMap";
 import {
   cityToSegment,
   fetchAllPlaces,
   findPlaceBySlug,
+  formatDistance,
+  pickDiscovery,
   htmlToPlainText,
   galleryUrls,
   mainImageUrl,
@@ -172,6 +175,15 @@ export default async function OrtPage({ params }: RouteParams) {
   const firstCategory = place.Kategorie[0];
   const sidebarColor = categoryColorFor(firstCategory);
 
+  // „Entdeckung in der Nähe": ein anderer Pin im Ring 400 m .. 12 km, über
+  // den eigenen slug ausgewählt. fetchAllPlaces() liegt im Cache, der zweite
+  // Aufruf kostet keine weitere Anfrage.
+  const discovery = pickDiscovery(place, await fetchAllPlaces());
+  const discoveryHref =
+    discovery && cityToSegment(discovery.place.Stadt)
+      ? `/liste/${cityToSegment(discovery.place.Stadt)}/${discovery.place.slug}`
+      : null;
+
   return (
     <>
       <script
@@ -260,6 +272,23 @@ export default async function OrtPage({ params }: RouteParams) {
         {/* Rechte Spalte: der Text, hier wird gescrollt. */}
         <div className={styles.main}>
           <div className={styles.mainInner}>
+            {/* Absichtlich ohne Namen des Ziels: was dort wartet, soll eine
+                Überraschung bleiben. Die Entfernung steht dabei, damit
+                erkennbar ist, dass es in der Nähe liegt. Gewählt wird nicht
+                der nächstgelegene Pin, sondern einer im Ring 400 m .. 12 km
+                — siehe pickDiscovery(). */}
+            {discoveryHref && discovery && (
+              <Link href={discoveryHref} className={styles.discovery}>
+                <span className={styles.discoveryLabel}>
+                  Entdeckung in der Nähe
+                </span>
+                <span className={styles.discoveryMeta}>
+                  {formatDistance(discovery.meters)}
+                  <MoveRight size={18} aria-hidden="true" />
+                </span>
+              </Link>
+            )}
+
             {heroUrl && (
               <figure className={styles.heroFigure}>
                 <Image
@@ -325,6 +354,19 @@ export default async function OrtPage({ params }: RouteParams) {
                 <PlaceGallery images={galerie} name={place.Name} />
               </section>
             )}
+
+            {/* Nur die Lage, keine Suche — dafür ist /karte da. Die Karte
+                baut sich erst beim Heranscrollen auf. */}
+            <section className={styles.mapSection} aria-labelledby="lage">
+              <h2 id="lage" className={styles.galleryTitle}>
+                Lage
+              </h2>
+              <PlaceLocationMap
+                coordinates={place.location.coordinates}
+                name={place.Name}
+                color={sidebarColor}
+              />
+            </section>
 
             <p className={styles.backLink}>
               <Link href="/liste">Alle Orte durchsuchen</Link>

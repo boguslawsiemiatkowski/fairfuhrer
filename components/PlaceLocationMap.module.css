@@ -1,0 +1,12 @@
+/* components/PlaceLocationMap.module.css */
+
+/* Feste Höhe ab dem ersten Frame: Mapbox braucht einen Container mit Maßen,
+ * und der Platz ist schon vor dem Laden reserviert — so springt der Text
+ * darüber nicht, wenn die Karte erscheint. */
+.map {
+  width: 100%;
+  height: clamp(240px, 38vh, 420px);
+  border-radius: 10px;
+  background-color: #f2efea;
+  overflow: hidden;
+}

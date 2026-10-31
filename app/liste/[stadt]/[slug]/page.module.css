@@ -115,6 +115,81 @@
   padding: 3rem clamp(1.5rem, 4vw, 3.5rem);
 }
 
+/* ─── Entdeckung in der Nähe ────────────────────────────────────────────── */
+
+/* Oben rechts in der rechten Spalte. Anker ist `.mainInner` — die hat
+   `position: relative` und kein `overflow`, hier wird also nichts
+   abgeschnitten (anders als in `.sidebar`).
+
+   Rahmen und Schatten wie beim Titelbild: die ungleichen Radien lassen die
+   Kante wie mit der Hand gezogen aussehen. */
+.discovery {
+  position: absolute;
+  top: 1.25rem;
+  right: clamp(1.5rem, 4vw, 3.5rem);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  padding: 0.6rem 0.95rem;
+  border: 2px solid #18222f;
+  border-bottom-left-radius: 15px 255px;
+  border-bottom-right-radius: 225px 15px;
+  border-top-left-radius: 255px 15px;
+  border-top-right-radius: 15px 225px;
+  background-color: #fff;
+  color: #18222f;
+  text-decoration: none;
+  box-shadow:
+    rgba(0, 0, 0, 0.4) 0px 2px 4px,
+    rgba(0, 0, 0, 0.3) 0px 7px 13px -3px;
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 260ms ease;
+}
+
+.discovery:hover,
+.discovery:focus-visible {
+  transform: translateY(-2px);
+  box-shadow:
+    rgba(0, 0, 0, 0.4) 0px 4px 8px,
+    rgba(0, 0, 0, 0.3) 0px 10px 18px -3px;
+}
+
+.discovery:focus-visible {
+  outline: 2px solid #fc6c14;
+  outline-offset: 3px;
+}
+
+.discoveryLabel {
+  font-family: var(--font-fira-condensed), sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.discoveryMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: #3e6b4f;
+}
+
+/* Auf schmalen Schirmen steht die Marke im Fluss über dem Bild: absolut
+   würde sie dort mit dem Titelbild zusammenstoßen. */
+@media (max-width: 900px) {
+  .discovery {
+    position: static;
+    /* `.mainInner` ist ein Block, kein Flex-Container — rechts ausrichten
+       geht hier über die Breite plus automatischen linken Rand. */
+    width: fit-content;
+    margin: 0 0 1.25rem auto;
+  }
+}
+
 /* ─── Hauptbild ──────────────────────────────────────────────────────────── */
 
 /* Mittig über dem Text, in der Höhe begrenzt: groß genug, um den Ort zu
@@ -348,6 +423,10 @@
 /* ─── Galerie am Seitenende ─────────────────────────────────────────────── */
 
 .gallerySection {
+  margin-top: 3rem;
+}
+
+.mapSection {
   margin-top: 3rem;
 }
 

@@ -32,6 +32,154 @@ export function cityToSegment(value: string | null | undefined): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Entfernung zweier Punkte in Metern (äquirektangulare Näherung).
+ *
+ * Für den Bodensee und das Allgäu genau genug: auf 50 km weicht sie um
+ * weniger als 0,1 % von der Großkreisentfernung ab. Dieselbe Formel sortiert
+ * auf /liste nach Entfernung, dort allerdings ohne Wurzel, weil zum
+ * Sortieren das Quadrat genügt.
+ */
+export function distanceInMeters(
+  [lonA, latA]: [number, number],
+  [lonB, latB]: [number, number],
+): number {
+  const R = 6371000;
+  const rad = Math.PI / 180;
+  const dLat = (latB - latA) * rad;
+  const dLon = (lonB - lonA) * rad * Math.cos(((latA + latB) / 2) * rad);
+  return Math.round(R * Math.hypot(dLat, dLon));
+}
+
+/** „1,2 km" bzw. „450 m" — deutsche Schreibweise mit Komma. */
+export function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters / 10) * 10} m`;
+  const km = meters / 1000;
+  return `${km.toFixed(1).replace(".", ",")} km`;
+}
+
+/** Innerer Radius: darunter liegt der Pin praktisch am selben Ort. */
+const DISCOVERY_MIN_M = 400;
+/** Äußerer Radius: darüber ist es kein Abstecher mehr. */
+const DISCOVERY_MAX_M = 12000;
+
+type DiscoveryCandidate = {
+  slug?: string;
+  Stadt?: string;
+  location: { coordinates: [number, number] };
+};
+
+/**
+ * Wählt zu einem Ort eine „Entdeckung in der Nähe" — einen anderen Pin im
+ * Ring von 400 m bis 12 km.
+ *
+ * NICHT den nächstgelegenen: der ist fast immer gegenseitig. Von 591 Pins
+ * bilden 346 ein Paar (A→B→A), und 239 haben ihren nächsten Nachbarn näher
+ * als 100 m, einer sogar bei 0 m. Wer klickt, würde zwischen zwei Häusern
+ * derselben Gasse hin- und herspringen.
+ *
+ * Stattdessen entscheidet der eigene Name des Ortes, welcher Kandidat es
+ * wird. Das ist kein Zufall im Wortsinn: dieselbe Seite zeigt immer dasselbe
+ * Ziel, deshalb lässt sie sich vorrendern und Google sieht denselben Link
+ * wie ein Mensch. Bei durchschnittlich 55 Kandidaten je Pin ist ein
+ * gegenseitiges Paar praktisch ausgeschlossen — der Weg führt weiter, statt
+ * zu pendeln.
+ *
+ * Kandidaten in einer anderen Gemeinde gehen vor: eine Entdeckung im
+ * Nachbardorf ist interessanter als das nächste Haus in Lindau. Für 581 der
+ * 591 Pins gibt es so einen Kandidaten.
+ */
+export function pickDiscovery<T extends DiscoveryCandidate>(
+  current: { slug?: string; Stadt?: string; location: { coordinates: [number, number] } },
+  all: T[],
+): { place: T; meters: number } | null {
+  const origin = current.location.coordinates;
+
+  const inRing: { place: T; meters: number }[] = [];
+  for (const place of all) {
+    if (!place.slug || place.slug === current.slug) continue;
+    const meters = distanceInMeters(origin, place.location.coordinates);
+    if (meters < DISCOVERY_MIN_M || meters > DISCOVERY_MAX_M) continue;
+    inRing.push({ place, meters });
+  }
+  if (inRing.length === 0) return null;
+
+  // Stabile Reihenfolge, damit die Wahl nicht von der Sortierung der
+  // Directus-Antwort abhängt — sonst könnte derselbe Ort nach einer
+  // Datenänderung auf ein anderes Ziel zeigen. Orte in einer anderen
+  // Gemeinde stehen vorn.
+  //
+  // Wichtig: sie werden NUR vorgezogen, nicht ausgewählt. Ein erster
+  // Versuch hatte die Auswahl auf sie beschränkt — bei den 10 Pins mit
+  // genau einem solchen Kandidaten blieb dann ein einziger übrig, und
+  // Seeg und Füssen zeigten gegenseitig aufeinander.
+  const pool = [...inRing].sort((a, b) => {
+    const aOther = a.place.Stadt !== current.Stadt ? 0 : 1;
+    const bOther = b.place.Stadt !== current.Stadt ? 0 : 1;
+    if (aOther !== bOther) return aOther - bOther;
+    return (a.place.slug ?? "").localeCompare(b.place.slug ?? "");
+  });
+
+  // Quersumme der Zeichen des eigenen slug als Index.
+  const seed = [...(current.slug ?? "")].reduce(
+    (sum, char) => sum + char.charCodeAt(0),
+    0,
+  );
+  const start = seed % pool.length;
+
+  // Ein Ziel, das von sich aus zurückzeigen würde, wird übersprungen —
+  // sonst pendelt der Weg zwischen zwei Seiten. Geprüft wird, indem für den
+  // Kandidaten dieselbe Rechnung durchgespielt wird.
+  //
+  // Höchstens ein paar Versuche: jeder kostet einen Durchlauf über alle
+  // Orte, und beim Build geschieht das für 590 Seiten. Zeigen die ersten
+  // Kandidaten alle zurück, ist der Pin so abgelegen, dass ein Pendel
+  // ohnehin kaum zu vermeiden ist.
+  const tries = Math.min(pool.length, 4);
+  for (let step = 0; step < tries; step++) {
+    const candidate = pool[(start + step) % pool.length];
+    if (!pointsBackTo(candidate.place, current, all)) return candidate;
+  }
+
+  // Keiner der geprüften Kandidaten war frei von Rückverweis: dann ist ein
+  // Pendel hinzunehmen, ein Link bleibt besser als keiner.
+  return pool[start];
+}
+
+/**
+ * Würde `candidate` seinerseits auf `origin` zeigen? Spielt dieselbe
+ * Auswahl für den Kandidaten durch — ohne die Rückwärtsprüfung, sonst
+ * liefen die beiden Aufrufe im Kreis.
+ */
+function pointsBackTo(
+  candidate: DiscoveryCandidate,
+  origin: { slug?: string },
+  all: DiscoveryCandidate[],
+): boolean {
+  const from = candidate.location.coordinates;
+  const ring: DiscoveryCandidate[] = [];
+  for (const place of all) {
+    if (!place.slug || place.slug === candidate.slug) continue;
+    const meters = distanceInMeters(from, place.location.coordinates);
+    if (meters < DISCOVERY_MIN_M || meters > DISCOVERY_MAX_M) continue;
+    ring.push(place);
+  }
+  if (ring.length === 0) return false;
+
+  ring.sort((a, b) => {
+    const aOther = a.Stadt !== candidate.Stadt ? 0 : 1;
+    const bOther = b.Stadt !== candidate.Stadt ? 0 : 1;
+    if (aOther !== bOther) return aOther - bOther;
+    return (a.slug ?? "").localeCompare(b.slug ?? "");
+  });
+
+  const seed = [...(candidate.slug ?? "")].reduce(
+    (sum, char) => sum + char.charCodeAt(0),
+    0,
+  );
+  return ring[seed % ring.length].slug === origin.slug;
+}
+
 /** Reiner Text aus bereinigtem HTML — für <meta description> und Teaser. */
 export function htmlToPlainText(html: string | undefined): string {
   if (!html) return "";
