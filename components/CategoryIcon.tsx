@@ -14,6 +14,39 @@ export const CATEGORY_COLORS: Record<number, string> = {
   8: "#9B59B6", // Unternehmen & Handwerk
 };
 
+/**
+ * Dunklere Fassung einer Kategoriefarbe.
+ *
+ * Die Farben aus Directus sind für weiße Schrift und für helle Flächen zu
+ * hell. Gemessener Kontrast zu Weiß (WCAG verlangt 4,5:1):
+ *
+ *   #E45858 Sehenswertes 3,60   #42D742 Engagement  1,90
+ *   #6477E3 Essen        3,97   #E0D12E Unternehmen 1,58
+ *   #F0873D Einkaufen    2,55
+ *
+ * Keine einzige erfüllt die Vorgabe, Gelb und Grün sind praktisch unlesbar.
+ * Um 50 % abgedunkelt liegen alle fünf über 5,6:1 und bleiben als derselbe
+ * Farbton erkennbar. Wird überall dort verwendet, wo die Kategoriefarbe
+ * erscheint, damit sie auf der ganzen Website gleich aussieht.
+ */
+export function categoryColor(
+  hex: string | null | undefined,
+  fallback = "#fc6c14",
+): string {
+  const source = /^#[0-9a-f]{6}$/i.test(hex ?? "") ? hex! : fallback;
+  const dim = (from: number) =>
+    Math.round(parseInt(source.slice(from, from + 2), 16) * 0.5);
+  return `rgb(${dim(1)}, ${dim(3)}, ${dim(5)})`;
+}
+
+/** Kategoriefarbe inklusive Rückfall auf die eingebaute Palette. */
+export function categoryColorFor(
+  cat: { id: number; color?: string } | null | undefined,
+): string {
+  if (!cat) return categoryColor(null);
+  return categoryColor(cat.color || CATEGORY_COLORS[cat.id]);
+}
+
 /** Symbol für „Alle Kategorien“ — Globus, wie in der App. */
 const ALL_ICON_PATHS =
   '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20"/>' +

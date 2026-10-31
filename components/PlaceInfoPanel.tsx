@@ -5,6 +5,7 @@ import Image from "next/image";
 import { AudioPlayer, DirectusAudioPlayer, DirectusImage, DirectusImageGallery, ImageGallery, PlaceImage } from "./MediaComponents";
 import type { Place } from "../types";
 import styles from "./PlaceInfoPanel.module.css";
+import { categoryColorFor } from "./CategoryIcon";
 
 interface PlaceInfoPanelProps {
   place: Place | null;
@@ -179,7 +180,7 @@ function PlaceContent({
             <span
               key={cat.id}
               className={styles.categoryBadge}
-              style={{ "--badge-color": cat.color } as React.CSSProperties}
+              style={{ "--badge-color": categoryColorFor(cat) } as React.CSSProperties}
             >
               {cat.name}
             </span>

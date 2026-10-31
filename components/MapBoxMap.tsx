@@ -17,6 +17,7 @@ import mapboxgl from "mapbox-gl";
 // seit mapbox-gl eigene Typen mitbringt.
 import type { FeatureCollection, Point } from "geojson";
 import DOMPurify from "dompurify";
+import { categoryColorFor } from "./CategoryIcon";
 import "mapbox-gl/dist/mapbox-gl.css";
 import styles from "./MapBoxMap.module.css";
 import MapSearch from "./MapSearch";
@@ -574,7 +575,11 @@ export default function MapBoxMap({
         // Załaduj piny dla każdej kategorii, następnie zainicjalizuj warstwy i eventy
         const categoryMap = new Map<number, string>();
         placesRef.current.forEach((p) =>
-          p.Kategorie.forEach((cat) => categoryMap.set(cat.id, cat.color)),
+          p.Kategorie.forEach((cat) =>
+            // Dieselbe abgedunkelte Fassung wie überall sonst, damit die Pins
+            // auf der Karte zu den Kacheln und Seiten passen.
+            categoryMap.set(cat.id, categoryColorFor(cat)),
+          ),
         );
         const categories = Array.from(categoryMap.entries()).map(
           ([id, color]) => ({ id, color }),

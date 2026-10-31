@@ -4,6 +4,7 @@ import CategoryInfoModal from "./CategoryInfoModal";
 import styles from "./CategoryFilter.module.css";
 import type { Category } from "../types";
 import { getCategoryIconPaths, DEFAULT_ICON_PATHS } from "../lib/categoryIcons";
+import { categoryColorFor } from "./CategoryIcon";
 
 function CategoryPin({
   category,
@@ -13,7 +14,7 @@ function CategoryPin({
   isActive: boolean;
 }) {
   const iconPaths = getCategoryIconPaths(category.id) ?? DEFAULT_ICON_PATHS;
-  const color = isActive ? category.color : "#ccc";
+  const color = isActive ? categoryColorFor(category) : "#ccc";
 
   return (
     <svg

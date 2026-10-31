@@ -107,10 +107,26 @@
 }
 
 .mainInner {
-  /* Rund 70 bis 80 Zeichen je Zeile — die Breite, bei der sich längere Texte
-     am besten lesen. */
-  max-width: 720px;
   padding: 3rem clamp(1.5rem, 4vw, 3.5rem);
+}
+
+/* ─── Hauptbild ──────────────────────────────────────────────────────────── */
+
+/* Mittig über dem Text, in der Höhe begrenzt: groß genug, um den Ort zu
+   zeigen, klein genug, dass der Text ohne Scrollen anfängt. */
+.heroFigure {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 2.25rem;
+}
+
+.heroImage {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 42vh;
+  object-fit: cover;
+  background-color: #f2efea;
 }
 
 .description {

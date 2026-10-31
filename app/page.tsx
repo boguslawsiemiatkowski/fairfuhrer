@@ -11,6 +11,7 @@ import MuxVideoEmbed from "@/components/MuxVideoEmbed";
 import { ConditionalMuxVideo } from "@/components/ConditionalMuxVideo";
 import styles from "./page.module.css";
 import { getHomePageContent } from "@/lib/directus";
+import { categoryColorFor } from "@/components/CategoryIcon";
 
 const APP_STORE_URL =
   "https://apps.apple.com/de/app/fairf%C3%BChrer/id6778095803";
@@ -299,12 +300,12 @@ export default async function HomePage() {
                     viewBox="0 0 80 80"
                     aria-hidden="true"
                   >
-                    <circle cx="40" cy="40" r="38" fill={cat.color} />
+                    <circle cx="40" cy="40" r="38" fill={categoryColorFor(cat)} />
                     <circle cx="40" cy="40" r="28" fill="white" />
                     <g
                       transform="translate(22, 22) scale(1.5)"
                       fill="none"
-                      stroke={cat.color}
+                      stroke={categoryColorFor(cat)}
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"

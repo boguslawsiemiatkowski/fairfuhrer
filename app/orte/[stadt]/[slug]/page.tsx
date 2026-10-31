@@ -9,9 +9,10 @@
 // ausgeliefert werden, wenn Directus gerade nicht antwortet.
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
-import CategoryIcon, { CATEGORY_COLORS } from "@/components/CategoryIcon";
+import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import {
   cityToSegment,
   fetchAllPlaces,
@@ -150,21 +151,6 @@ function audioSrc(place: Place): string | null {
   return null;
 }
 
-/**
- * Hintergrund der linken Spalte: die Kategoriefarbe, um 50 % abgedunkelt.
- *
- * Nötig, weil die Farben aus Directus für weiße Schrift viel zu hell sind —
- * gemessen: Gelb #E0D12E kommt auf 1,58:1, Grün #42D742 auf 1,90:1, verlangt
- * sind 4,5:1. Um 50 % abgedunkelt liegen alle fünf Kategorien über 5,6:1 und
- * bleiben trotzdem als ihre Farbe erkennbar.
- */
-function columnColor(hex: string | undefined, fallback: string): string {
-  const source = /^#[0-9a-f]{6}$/i.test(hex ?? "") ? hex! : fallback;
-  const dim = (from: number) =>
-    Math.round(parseInt(source.slice(from, from + 2), 16) * 0.5);
-  return `rgb(${dim(1)}, ${dim(3)}, ${dim(5)})`;
-}
-
 export default async function OrtPage({ params }: RouteParams) {
   const { stadt, slug } = await params;
   const place = await getPlace(stadt, slug);
@@ -177,11 +163,11 @@ export default async function OrtPage({ params }: RouteParams) {
   // Beide Bildformen berücksichtigen — nur 197 von 592 Orten haben ein
   // Directus-`Titelbild`, 574 dagegen ein `Hauptbild` in Supabase Storage.
   const audio = audioSrc(place);
+  // Beide Bildformen: nur 197 von 592 Orten haben ein Directus-`Titelbild`,
+  // 574 dagegen ein `Hauptbild` in Supabase Storage.
+  const heroUrl = mainImageUrl(place);
   const firstCategory = place.Kategorie[0];
-  const sidebarColor = columnColor(
-    firstCategory?.color || CATEGORY_COLORS[firstCategory?.id ?? 0],
-    "#fc6c14",
-  );
+  const sidebarColor = categoryColorFor(firstCategory);
 
   return (
     <>
@@ -200,7 +186,7 @@ export default async function OrtPage({ params }: RouteParams) {
 
       <article className={styles.layout}>
         {/* Linke Spalte: steht fest, scrollt nicht mit. Hintergrund ist die
-            Farbe der Kategorie (abgedunkelt, siehe columnColor), damit schon
+            Farbe der Kategorie (abgedunkelt, siehe categoryColor), damit schon
             am Farbton erkennbar ist, worum es geht. */}
         <aside className={styles.sidebar} style={{ backgroundColor: sidebarColor }}>
           <div className={styles.sidebarInner}>
@@ -260,6 +246,20 @@ export default async function OrtPage({ params }: RouteParams) {
         {/* Rechte Spalte: der Text, hier wird gescrollt. */}
         <div className={styles.main}>
           <div className={styles.mainInner}>
+            {heroUrl && (
+              <figure className={styles.heroFigure}>
+                <Image
+                  src={heroUrl}
+                  alt={place.Name}
+                  width={900}
+                  height={600}
+                  priority
+                  sizes="(max-width: 900px) 100vw, 60vw"
+                  className={styles.heroImage}
+                />
+              </figure>
+            )}
+
             {place.Vollbeschreibung ? (
               <div
                 className={styles.description}

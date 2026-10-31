@@ -17,7 +17,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Category, Place } from "@/types";
 import PlaceRail from "@/components/PlaceRail";
-import CategoryIcon, { CATEGORY_COLORS } from "@/components/CategoryIcon";
+import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import StadtSuche, { type CityOption } from "./StadtSuche";
 import { cityToSegment } from "@/lib/orte-shared";
 import styles from "./page.module.css";
@@ -186,7 +186,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
   }, [categories, places, activeLand]);
 
   const barColor = activeCategory
-    ? activeCategory.color || CATEGORY_COLORS[activeCategory.id] || "#fc6c14"
+    ? categoryColorFor(activeCategory)
     : undefined;
 
   const selectedCityName = cityOptions.find((c) => c.segment === stadtParam)?.name;
@@ -333,7 +333,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
                 <span className={styles.menuIcon}>
                   <CategoryIcon
                     categoryId={cat.id}
-                    color={cat.color || CATEGORY_COLORS[cat.id] || "#666"}
+                    color={categoryColorFor(cat)}
                     size={36}
                   />
                 </span>

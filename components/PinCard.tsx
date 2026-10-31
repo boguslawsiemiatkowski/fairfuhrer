@@ -10,7 +10,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Place } from "@/types";
-import CategoryIcon, { CATEGORY_COLORS } from "./CategoryIcon";
+import CategoryIcon, { categoryColorFor } from "./CategoryIcon";
 import { cityToSegment, mainImageUrl } from "@/lib/orte-shared";
 import styles from "./PinCard.module.css";
 
@@ -46,7 +46,7 @@ export default function PinCard({ place }: { place: Place }) {
               <CategoryIcon
                 key={cat.id}
                 categoryId={cat.id}
-                color={cat.color || CATEGORY_COLORS[cat.id] || "#666"}
+                color={categoryColorFor(cat)}
                 size={40}
               />
             ))}
