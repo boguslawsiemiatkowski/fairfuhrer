@@ -28,10 +28,11 @@ interface PlaceRailProps {
   resetKey?: string;
 }
 
-/** Maße aus app/(tabs)/index.tsx der App. */
+/** Maß aus app/(tabs)/index.tsx der App; nötig für die Schrittweite der
+ *  Pfeiltasten. Kartenbreite, -höhe und der sichtbare Rest der nächsten
+ *  Karte stehen in PlaceRail.module.css — in JS gerechnet sprang die
+ *  Breite nach dem Mounten sichtbar um. */
 const CARD_GAP = 12;
-const CARD_PEEK = 44;
-const MAX_CARD_WIDTH = 420;
 
 /** Ab welcher Mausbewegung ein Ziehen als Scrollen gilt (statt als Klick). */
 const DRAG_THRESHOLD = 6;

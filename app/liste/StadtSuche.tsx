@@ -107,6 +107,7 @@ export default function StadtSuche({
       >
       <ul
         ref={listRef}
+        id="stadt-suche-liste"
         className={`${styles.suggestions} ${
           open && suggestions.length > 0 ? styles.suggestionsOpen : ""
         }`}
@@ -176,8 +177,14 @@ export default function StadtSuche({
           onKeyDown={onKeyDown}
           placeholder="Stadt suchen"
           aria-label="Stadt suchen"
+          // `aria-expanded` gehört zur Rolle combobox, nicht zur Rolle
+          // textbox, die ein <input type="text"> von sich aus hat. Ohne die
+          // Rolle erfährt ein Screenreader nicht, dass unter dem Feld eine
+          // Liste aufgeht.
+          role="combobox"
           aria-autocomplete="list"
           aria-expanded={open}
+          aria-controls="stadt-suche-liste"
           className={styles.searchInput}
           // Browser-Autofill würde hier Adressen vorschlagen.
           autoComplete="off"
