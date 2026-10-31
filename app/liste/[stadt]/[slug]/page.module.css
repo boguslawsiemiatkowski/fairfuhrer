@@ -12,6 +12,7 @@
 */
 
 .layout {
+  position: relative;
   display: grid;
   /* Die feste Spalte wächst mit dem Fenster, bleibt aber in lesbaren Grenzen. */
   grid-template-columns: clamp(300px, 34vw, 460px) 1fr;
@@ -26,6 +27,8 @@
 /* ─── Linke Spalte ───────────────────────────────────────────────────────── */
 
 .sidebar {
+  /* Kontext für das Zertifikats-Zeichen, das auf der rechten Kante sitzt. */
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -173,6 +176,80 @@
   color: #fc6c14;
 }
 
+/* ─── Zertifikate auf der Spaltengrenze ─────────────────────────────────── */
+
+/* Sitzt mittig auf der Kante zwischen den Spalten: verankert an der rechten
+   Kante der linken Spalte, mit translateX(50%) genau auf die Linie gerückt.
+   Steht fest, weil die linke Spalte selbst nicht mitrollt.
+   Weiter oben als auf halber Höhe (28 %), damit es den Namen darunter nicht
+   überdeckt.
+   Fast alle Orte haben genau ein Zertifikat (105 von 108), höchstens drei —
+   die stapeln sich dann untereinander. */
+.zertAnchor {
+  position: absolute;
+  top: 28%;
+  right: 0;
+  transform: translateX(50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.zertBadge {
+  width: 86px;
+  height: 86px;
+  padding: 10px;
+  border-radius: 50%;
+  background-color: #fff;
+  box-shadow: 0 2px 12px rgba(24, 34, 47, 0.22);
+  object-fit: contain;
+}
+
+.zertText {
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background-color: #fff;
+  box-shadow: 0 2px 12px rgba(24, 34, 47, 0.22);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #18222f;
+  text-align: center;
+}
+
+/* ─── Galerie am Seitenende ─────────────────────────────────────────────── */
+
+.gallerySection {
+  margin-top: 3rem;
+}
+
+.galleryTitle {
+  margin: 0 0 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 3px solid #fc6c14;
+  font-family: var(--font-anton);
+  font-size: 1.35rem;
+  color: #3e6b4f;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.6rem;
+}
+
+.galleryImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background-color: #f2efea;
+}
+
+
 /* ─── Schmale Bildschirme ────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
@@ -185,7 +262,35 @@
 
   .sidebar {
     overflow: visible;
-    padding: 2.5rem 1.5rem;
+    /* Unten Platz, damit das Zertifikats-Zeichen auf der Kante nicht den
+       Audioguide überdeckt. */
+    padding: 2.5rem 1.5rem 3.5rem;
+  }
+
+  /* Untereinander gibt es keine senkrechte Grenze mehr: das Zeichen rutscht
+     auf die Mitte der waagerechten Kante zwischen farbigem Block und Text. */
+  .zertAnchor {
+    top: auto;
+    right: auto;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Untereinander gibt es keine senkrechte Grenze mehr: das Zeichen rutscht
+     auf die Mitte der waagerechten Kante zwischen farbigem Block und Text. */
+  .zertAnchor {
+    top: auto;
+    right: auto;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .main {

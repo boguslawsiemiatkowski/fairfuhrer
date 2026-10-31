@@ -18,6 +18,7 @@ import {
   fetchAllPlaces,
   findPlaceBySlug,
   htmlToPlainText,
+  galleryUrls,
   mainImageUrl,
   truncateAtWord,
 } from "@/lib/orte";
@@ -160,12 +161,12 @@ export default async function OrtPage({ params }: RouteParams) {
   const canonical = `${SITE_URL}/liste/${stadt}/${slug}`;
   const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
 
-  // Beide Bildformen berücksichtigen — nur 197 von 592 Orten haben ein
-  // Directus-`Titelbild`, 574 dagegen ein `Hauptbild` in Supabase Storage.
   const audio = audioSrc(place);
   // Beide Bildformen: nur 197 von 592 Orten haben ein Directus-`Titelbild`,
   // 574 dagegen ein `Hauptbild` in Supabase Storage.
   const heroUrl = mainImageUrl(place);
+  const galerie = galleryUrls(place);
+  const zertifizierungen = place.Zertifizierungen ?? [];
   const firstCategory = place.Kategorie[0];
   const sidebarColor = categoryColorFor(firstCategory);
 
@@ -241,7 +242,36 @@ export default async function OrtPage({ params }: RouteParams) {
               </div>
             )}
           </div>
+
+          {/* Zertifikate sitzen auf der Grenze zwischen den Spalten, mittig auf
+              der Kante und weiter oben als auf halber Höhe. Sie gehören zu
+              keiner der beiden Spalten, sondern liegen darüber — deshalb
+              absolut positioniert und wie die linke Spalte unbeweglich.
+              Fast alle Orte haben genau ein Zertifikat (105 von 108), höchstens
+              drei; sie stapeln sich daher untereinander. */}
+          {zertifizierungen.length > 0 && directusUrl && (
+            <div className={styles.zertAnchor} aria-label="Zertifizierungen">
+              {zertifizierungen.map((zert) =>
+                zert.imageUuid ? (
+                  <Image
+                    key={zert.id}
+                    src={`${directusUrl}/assets/${zert.imageUuid}`}
+                    alt={zert.name}
+                    title={zert.name}
+                    width={96}
+                    height={96}
+                    className={styles.zertBadge}
+                  />
+                ) : (
+                  <span key={zert.id} className={styles.zertText}>
+                    {zert.name}
+                  </span>
+                ),
+              )}
+            </div>
+          )}
         </aside>
+
 
         {/* Rechte Spalte: der Text, hier wird gescrollt. */}
         <div className={styles.main}>
@@ -269,6 +299,28 @@ export default async function OrtPage({ params }: RouteParams) {
               <p className={styles.noText}>
                 Für diesen Ort liegt noch keine Beschreibung vor.
               </p>
+            )}
+
+            {galerie.length > 0 && (
+              <section className={styles.gallerySection} aria-labelledby="galerie">
+                <h2 id="galerie" className={styles.galleryTitle}>
+                  Bildergalerie
+                </h2>
+                <div className={styles.gallery}>
+                  {galerie.map((url, index) => (
+                    <Image
+                      key={url}
+                      src={url}
+                      alt={`${place.Name} — Bild ${index + 1}`}
+                      width={400}
+                      height={300}
+                      loading="lazy"
+                      sizes="(max-width: 900px) 45vw, 260px"
+                      className={styles.galleryImage}
+                    />
+                  ))}
+                </div>
+              </section>
             )}
 
             <p className={styles.backLink}>
