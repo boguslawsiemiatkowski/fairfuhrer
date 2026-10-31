@@ -283,12 +283,12 @@ export async function fetchAllPlaces(): Promise<Place[]> {
 export interface SitemapPlace {
   slug?: string;
   Stadt?: string;
-  hasAudio: boolean;
 }
 
 /**
- * Schlanke Abfrage für die Sitemap: nur slug, Stadt und ob es einen
- * Audioguide gibt — rund 30 KB statt 3 MB.
+ * Schlanke Abfrage für die Sitemap: nur slug und Stadt — rund 30 KB statt
+ * 3 MB. Das Audio-Feld fiel mit `priority` aus der Sitemap weg; Google
+ * wertet `priority` nicht aus.
  *
  * Eigener Cache-Tag "sitemap" statt "orte". Das ist der eigentliche Grund,
  * warum die Search Console „could not be read" meldete: die Sitemap hing am
@@ -302,17 +302,14 @@ export interface SitemapPlace {
  * ist unerheblich — Google liest Sitemaps ohnehin nicht häufiger.
  */
 export async function fetchPlacesForSitemap(): Promise<SitemapPlace[]> {
-  const data = await fetchFromDirectus<
-    Pick<DirectusOrte, "slug" | "Stadt" | "Audio" | "Audio_Datei">
-  >(
-    buildOrteUrl(["slug", "Stadt", "Audio", "Audio_Datei"]),
+  const data = await fetchFromDirectus<Pick<DirectusOrte, "slug" | "Stadt">>(
+    buildOrteUrl(["slug", "Stadt"]),
     "sitemap",
   );
 
   return data.data.map((o) => ({
     slug: o.slug?.trim() || undefined,
     Stadt: o.Stadt?.trim() || undefined,
-    hasAudio: Boolean(o.Audio || o.Audio_Datei),
   }));
 }
 

@@ -8,7 +8,6 @@ import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { ConditionalMapbox } from "../../components/ConditionalMapbox";
 import MapRealtimeRefresh from "../../components/MapRealtimeRefresh";
 import { fetchAllPlaces, fetchCategories } from "@/lib/orte";
-import type { Category, Place } from "../../types";
 
 // ISR revalidation - dane będą odświeżane co 24 godziny
 // Miejsca turystyczne zmieniają się rzadko, dłuższy cache = lepsza wydajność
@@ -45,51 +44,13 @@ export default async function KartePage() {
 
   return (
     <div>
-      {/* SSR TREŚĆ - UKRYTA DLA GOOGLE
-          TODO: entfällt, sobald /liste und /liste/[stadt]/[slug] indexiert sind
-          (dann ist dieser Block nur noch ein Duplikat dieser Seiten). */}
-      <div
-        style={{
-          position: "absolute",
-          left: "-9999px",
-          width: "1px",
-          height: "1px",
-          overflow: "hidden",
-        }}
-      >
-        <h1>Interaktive Karte - {places.length} Orte entdecken</h1>
-        <p>
-          Entdecken Sie {places.length} interessante Orte in{" "}
-          {categories.length} Kategorien am Bodensee und im Allgäu.
-        </p>
-
-        <h2>Verfügbare Kategorien:</h2>
-        <ul>
-          {categories.map((category: Category) => (
-            <li key={category.id}>{category.name}</li>
-          ))}
-        </ul>
-
-        <h2>Ausgewählte Orte:</h2>
-        {places.slice(0, 10).map((place: Place) => (
-          <div key={place.id}>
-            <h3>{place.Name}</h3>
-            <p>📍 {place.Adresse}</p>
-            {place.Vollbeschreibung && (
-              <p>
-                {place.Vollbeschreibung.replace(/<[^>]*>/g, "").substring(
-                  0,
-                  200
-                )}
-              </p>
-            )}
-            <div>
-              Kategorien:{" "}
-              {place.Kategorie.map((kat: Category) => kat.name).join(", ")}
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Der ausgeblendete SSR-Block ist entfallen. Er stand per
+          `left: -9999px` außerhalb des Sichtfelds — genau das Muster, das
+          Googles Spam-Richtlinien unter „versteckter Text" nennen. Getragen
+          hat er ohnehin nichts: wer einen Ortsnamen sucht, findet jetzt
+          dessen eigene Seite unter /liste/[stadt]/[slug], mit vollem Text
+          und strukturierten Daten. Eine unsichtbare Liste von zehn Pins
+          konnte dagegen nie konkurrieren. */}
 
       {/* MAPA OWRAPOWANA W CONDITIONAL MAPBOX */}
       <ConditionalMapbox>

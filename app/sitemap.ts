@@ -3,6 +3,11 @@
 // Vorher standen hier nur die acht statischen Seiten — die 592 Orte und die
 // Stadt-Übersichten fehlten vollständig, obwohl sie den Großteil des Inhalts
 // ausmachen. Jetzt kommen sie aus Directus dazu.
+//
+// Kein `changefreq` und kein `priority`: Google wertet beide nicht aus und
+// sagt das ausdrücklich. Gelesen wird allein `lastmod` — und das nur, solange
+// es stimmt. Ein pauschales „weekly" für Seiten, die sich selten ändern,
+// nützt also nichts und untergräbt im Zweifel das Vertrauen in unsere Daten.
 import type { MetadataRoute } from "next";
 import { cityToSegment, fetchPlacesForSitemap } from "@/lib/orte";
 
@@ -16,67 +21,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
 
   const staticEntries: MetadataRoute.Sitemap = [
-    {
-      url: BASE_URL,
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 1,
-    },
-    {
-      url: `${BASE_URL}/karte`,
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${BASE_URL}/liste`,
-      lastModified,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${BASE_URL}/ueber-uns`,
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/partner-werden`,
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/partner-werden/voraussetzungen`,
-      lastModified,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${BASE_URL}/kontakt`,
-      lastModified,
-      changeFrequency: "yearly",
-      priority: 0.5,
-    },
-    {
-      url: `${BASE_URL}/impressum`,
-      lastModified,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${BASE_URL}/datenschutz`,
-      lastModified,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${BASE_URL}/agb`,
-      lastModified,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-  ];
+    "",
+    "/karte",
+    "/liste",
+    "/ueber-uns",
+    "/partner-werden",
+    "/partner-werden/voraussetzungen",
+    "/kontakt",
+    "/impressum",
+    "/datenschutz",
+    "/agb",
+  ].map((path) => ({ url: `${BASE_URL}${path}`, lastModified }));
 
   // Fällt Directus aus, soll die Sitemap nicht leer werden: dann bleiben
   // wenigstens die statischen Seiten drin, statt dass die Route einen Fehler
@@ -89,25 +44,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return staticEntries;
   }
 
-  // Stadt-Übersichten. Priorität nach Anzahl der Orte: Lindau mit 71 Pins ist
-  // als Landeseite mehr wert als ein Ort mit einem einzigen Pin.
-  const cityCounts = new Map<string, number>();
-  for (const place of places) {
-    const segment = cityToSegment(place.Stadt);
-    if (!segment) continue;
-    cityCounts.set(segment, (cityCounts.get(segment) ?? 0) + 1);
-  }
-  const maxCityPins = Math.max(1, ...cityCounts.values());
-
-  const cityEntries: MetadataRoute.Sitemap = [...cityCounts.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0], "de"))
-    .map(([segment, count]) => ({
-      url: `${BASE_URL}/liste/${segment}`,
-      lastModified,
-      changeFrequency: "weekly" as const,
-      // 0.5 bis 0.8, abhängig vom Umfang der Stadt.
-      priority: Math.round((0.5 + 0.3 * (count / maxCityPins)) * 100) / 100,
-    }));
+  // Stadt-Übersichten stehen hier bewusst nicht mehr: die Route
+  // /liste/[stadt] ist entfallen, die Adressen liefern 404. Sie in der
+  // Sitemap zu melden, hieße Google 155 fehlende Seiten anzubieten. SEO für
+  // Städte soll über Blogbeiträge kommen, nicht über generierte Pin-Listen.
 
   // Detailseiten. Ohne slug oder Stadt gibt es keine Seite (siehe
   // generateStaticParams der Route), also auch keinen Sitemap-Eintrag.
@@ -115,16 +55,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .map((place) => {
       const segment = cityToSegment(place.Stadt);
       if (!segment || !place.slug) return null;
-      return {
-        url: `${BASE_URL}/liste/${segment}/${place.slug}`,
-        lastModified,
-        changeFrequency: "monthly" as const,
-        // Pins mit Audioguide sind die eigentliche Besonderheit des
-        // Fairführers; sie bekommen etwas mehr Gewicht.
-        priority: place.hasAudio ? 0.7 : 0.6,
-      };
+      return { url: `${BASE_URL}/liste/${segment}/${place.slug}`, lastModified };
     })
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
-  return [...staticEntries, ...cityEntries, ...placeEntries];
+  return [...staticEntries, ...placeEntries];
 }
