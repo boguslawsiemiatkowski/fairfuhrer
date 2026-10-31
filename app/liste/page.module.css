@@ -286,7 +286,6 @@
   box-shadow: none;
 }
 
-
 @media (prefers-reduced-motion: reduce) {
   .menu {
     transition: none;
@@ -350,7 +349,6 @@
 .menuItemActive .menuCount {
   color: rgba(255, 255, 255, 0.8);
 }
-
 
 /* Nur für Screenreader und Suchmaschinen sichtbar. */
 .srOnly {
@@ -493,4 +491,74 @@
 .gpsError {
   font-size: 12px;
   color: #a33;
+}
+
+/* ─── Handy ──────────────────────────────────────────────────────────────── */
+
+/* Die Maße oben stammen aus dem Liste-Tab der App, wo der Bildschirm der
+   ganzen Ansicht gehört. Im Browser kommen 90px Kopfzeile dazu, und auf
+   einem Handy bleibt für Karten und Bedienelemente deutlich weniger Platz:
+   Schrift und Abstände müssen mitgehen, sonst drängt sich alles. */
+@media (max-width: 600px) {
+  .belowCards {
+    min-height: 48px;
+    padding: 4px 0;
+  }
+
+  .chipRow {
+    gap: 6px;
+    padding: 0 14px;
+  }
+
+  .chip {
+    padding: 6px 12px;
+    font-size: 12px;
+    letter-spacing: 0.2px;
+  }
+
+  /* Der Kategorie-Balken behält seine Größe: er ist das Hauptbedienelement
+     der Ansicht. Den Platz dafür geben die Streifen über und unter den
+     Karten ab — siehe .aboveCards und .belowCards. */
+
+  .aboveCards {
+    min-height: 26px;
+    padding: 0 14px;
+  }
+
+  .gpsBtn,
+  .gpsLabel {
+    font-size: 11px;
+    letter-spacing: 0.4px;
+  }
+}
+
+/* ─── Sehr schmale Schirme ───────────────────────────────────────────────── */
+
+/* Vier Chips („Alle" und drei Länder) passen unter 445px nicht mehr in eine
+   Zeile. Statt sie waagerecht scrollen zu lassen — was man erst entdecken
+   muss — stehen sie in zwei Reihen zu zwei Spalten. */
+@media (max-width: 445px) {
+  .belowCards {
+    /* Zwei Reihen brauchen die doppelte Höhe. */
+    min-height: 76px;
+  }
+
+  .chipRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    /* Kein waagerechtes Scrollen mehr: es gibt nichts zu verschieben. */
+    overflow-x: visible;
+  }
+
+  .chip {
+    /* Mittig in der eigenen Spalte, Text darin zentriert. */
+    width: 100%;
+    text-align: center;
+    /* Lange Namen wie „Deutschland (418)" dürfen nicht umbrechen und die
+       Reihen unterschiedlich hoch machen. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

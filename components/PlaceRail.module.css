@@ -53,12 +53,35 @@
 
      Die Rechnung entspricht der App: Fensterbreite minus 28px Seitenstreifen
      minus 44px, damit von der nächsten Karte ein Stück sichtbar bleibt —
-     gedeckelt bei 420px wie dort. */
+     gedeckelt bei 420px wie dort.
+
+     Auf großen Schirmen bleibt es dabei — dort stimmen die Maße. */
   width: min(calc(100vw - 28px - 44px), 420px);
   aspect-ratio: 1 / 1.25;
   /* Auf niedrigen Fenstern begrenzt die Höhe, nicht die Breite. */
   max-height: 52vh;
   scroll-snap-align: start;
+}
+
+/* Auf dem Handy führt die Höhe, nicht die Breite.
+
+   Grund: `aspect-ratio` zusammen mit `max-height` ergab dort breite, flache
+   Karten — die Höhe wurde gekappt, die Breite blieb bei fast der ganzen
+   Fensterbreite stehen, und das Verhältnis brach. Leitet man die Breite aus
+   der erlaubten Höhe ab, bleibt das Verhältnis erhalten und die Karte wird
+   als Ganzes kleiner. */
+/* Dieselbe Grenze wie für die Chips in app/liste/page.module.css — sonst
+   würden die Karten schon kleiner, während die Bedienelemente noch groß
+   sind. */
+@media (max-width: 600px) {
+  .item {
+    /* 52vh wie oben, nur hier als führendes Maß. */
+    --card-height: min(calc((100vw - 72px) * 1.25), 52vh);
+    height: var(--card-height);
+    width: calc(var(--card-height) / 1.25);
+    aspect-ratio: auto;
+    max-height: none;
+  }
 }
 
 /* ─── Pfeile ─────────────────────────────────────────────────────────────── */

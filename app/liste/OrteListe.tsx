@@ -13,7 +13,7 @@
 //
 // Der Filterzustand steht in der URL (?land=&kategorie=&q=), damit ein
 // gefilterter Blick teilbar ist und der Zurück-Button funktioniert.
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Category, Place } from "@/types";
 import PlaceRail from "@/components/PlaceRail";
@@ -39,6 +39,40 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
   const stadtParam = searchParams.get("stadt") ?? "";
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuClipRef = useRef<HTMLDivElement>(null);
+  const kategorieBarRef = useRef<HTMLDivElement>(null);
+
+  // Klick daneben schließt das Kategorie-Menü — wie bei der Städte-Suche.
+  // Vorher ließ es sich nur über den Balken selbst wieder zuklappen, was man
+  // erst erraten musste.
+  //
+  // Der Balken ist dabei ausgenommen: er schaltet um, und würde dieser
+  // Handler zuerst schließen, öffnete sein eigener onClick das Menü direkt
+  // wieder.
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (
+        menuClipRef.current?.contains(target) ||
+        kategorieBarRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setMenuOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
 
   // Sortierung nach Entfernung — wie im Liste-Tab der App, aber per Knopf:
@@ -291,6 +325,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
             translate3d unterhalb seiner eigenen Unterkante, und ohne dieses
             overflow:hidden würde es über Suchfeld und Balken hinausragen. */}
         <div
+          ref={menuClipRef}
           className={`${styles.menuClip} ${menuOpen ? styles.menuClipOpen : ""}`}
         >
         {/* Kategorie-Menü: bleibt im DOM und wird über eine Klasse animiert,
@@ -351,7 +386,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
           onSelect={(segment) => setParam("stadt", segment)}
         />
 
-        <div className={styles.kategorieBarWrap}>
+        <div className={styles.kategorieBarWrap} ref={kategorieBarRef}>
           <button
             type="button"
             className={styles.kategorieBar}
