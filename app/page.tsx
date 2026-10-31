@@ -61,7 +61,7 @@ function StoreBadgeLinks({
 
 const CATEGORIES = [
   { id: 1, name: "Sehenswertes", color: "#E45858" },
-  { id: 3, name: "Einkaufen", color: "#F0873D" },
+  { id: 3, name: "Einkaufen", color: "#B8A2CD" },
   { id: 5, name: "Engagement", color: "#42D742" },
   { id: 8, name: "Unternehmen &\nHandwerk", color: "#E0D12E" },
   { id: 2, name: "Essen &\nÜbernachten", color: "#6477E3" },
@@ -300,7 +300,12 @@ export default async function HomePage() {
                     viewBox="0 0 80 80"
                     aria-hidden="true"
                   >
-                    <circle cx="40" cy="40" r="38" fill={categoryColorFor(cat)} />
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="38"
+                      fill={categoryColorFor(cat)}
+                    />
                     <circle cx="40" cy="40" r="28" fill="white" />
                     <g
                       transform="translate(22, 22) scale(1.5)"
