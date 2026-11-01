@@ -9,9 +9,9 @@ import { CATEGORY_ICON_PATHS, DEFAULT_ICON_PATHS } from "@/lib/categoryIcons";
 export const CATEGORY_COLORS: Record<number, string> = {
   1: "#E45858", // Sehenswertes
   2: "#6477E3", // Essen & Übernachten
-  3: "#F0873D", // Einkaufen
+  3: "#B8A2CD", // Einkaufen
   5: "#42D742", // Engagement
-  8: "#9B59B6", // Unternehmen & Handwerk
+  8: "#E0D12E", // Unternehmen & Handwerk
 };
 
 /**
@@ -22,7 +22,7 @@ export const CATEGORY_COLORS: Record<number, string> = {
  *
  *   #E45858 Sehenswertes 3,60   #42D742 Engagement  1,90
  *   #6477E3 Essen        3,97   #E0D12E Unternehmen 1,58
- *   #F0873D Einkaufen    2,55
+ *   #B8A2CD Einkaufen    2,16
  *
  * Keine einzige erfüllt die Vorgabe, Gelb und Grün sind praktisch unlesbar.
  * Um 50 % abgedunkelt liegen alle fünf über 5,6:1 und bleiben als derselbe
