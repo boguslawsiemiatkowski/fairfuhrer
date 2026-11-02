@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import type { AuthUser } from "@/types/auth";
+import { isPremiumActiveForDates, type AuthUser } from "@/types/auth";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -99,9 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       isAuthenticated: user !== null,
-      isPro:
-        user?.profile?.premium_until != null &&
-        new Date(user.profile.premium_until) > new Date(),
+      isPro: isPremiumActiveForDates(
+        user?.profile?.premium_until,
+        user?.partnerProfile?.premium_until,
+      ),
       logout,
       refreshUser,
     }),

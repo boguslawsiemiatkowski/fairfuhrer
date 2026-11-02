@@ -24,17 +24,50 @@
   margin: 0 0 0.25rem;
 }
 
+.roleBadges {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
 .role {
   display: inline-block;
   background-color: darkred;
   color: #fff;
   font-family: var(--font-fira);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 700;
   padding: 0.2rem 0.75rem;
   border-radius: 100px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.roleBadgePremium {
+  display: inline-block;
+  background-color: #2e7d32;
+  color: #fff;
+  font-family: var(--font-fira);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.2rem 0.8rem;
+  border-radius: 100px;
+  letter-spacing: 0.04em;
+}
+
+.roleBadgeStandard {
+  display: inline-block;
+  background-color: #f2f2f2;
+  color: #444;
+  border: 1px solid #d5d5d5;
+  font-family: var(--font-fira);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.18rem 0.7rem;
+  border-radius: 100px;
 }
 
 .bannerSuccess {

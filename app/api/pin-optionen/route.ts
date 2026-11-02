@@ -18,11 +18,13 @@ interface DirectusKategorie {
   id: number;
   Name: string;
   Reihenfolge: string | null;
+  Farbe?: string | null;
 }
 
 interface DirectusZertifizierung {
   id: string;
   Name: string;
+  Image?: string | null;
 }
 
 export async function GET() {
@@ -30,8 +32,12 @@ export async function GET() {
   const directusToken = process.env.DIRECTUS_TOKEN;
 
   const fallback = {
-    kategorien: KATEGORIEN.map((k) => ({ id: k.id, name: k.name })),
-    zertifizierungen: ZERTIFIZIERUNGEN.map((z) => ({ id: z.id, name: z.name })),
+    kategorien: KATEGORIEN.map((k) => ({ id: k.id, name: k.name, color: undefined })),
+    zertifizierungen: ZERTIFIZIERUNGEN.map((z) => ({
+      id: z.id,
+      name: z.name,
+      imageUuid: undefined,
+    })),
     stale: true,
   };
 
@@ -47,11 +53,11 @@ export async function GET() {
 
   try {
     const [katRes, zertRes] = await Promise.all([
-      fetch(`${directusUrl}/items/Kategorie?fields=id,Name,Reihenfolge&limit=50`, {
+      fetch(`${directusUrl}/items/Kategorie?fields=id,Name,Reihenfolge,Farbe&limit=50`, {
         headers,
         next: { revalidate: 3600, tags: ["pin-optionen"] },
       }),
-      fetch(`${directusUrl}/items/Zertifizierungen?fields=id,Name&limit=100`, {
+      fetch(`${directusUrl}/items/Zertifizierungen?fields=id,Name,Image&limit=100`, {
         headers,
         next: { revalidate: 3600, tags: ["pin-optionen"] },
       }),
@@ -73,13 +79,18 @@ export async function GET() {
       .map((k) => ({
         id: k.id,
         name: k.Name,
+        color: k.Farbe ?? undefined,
         sort: Number(k.Reihenfolge ?? 999),
       }))
       .sort((a, b) => a.sort - b.sort)
-      .map(({ id, name }) => ({ id, name }));
+      .map(({ id, name, color }) => ({ id, name, color }));
 
     const zertifizierungen = ((zertData.data ?? []) as DirectusZertifizierung[])
-      .map((z) => ({ id: z.id, name: z.Name }))
+      .map((z) => ({
+        id: z.id,
+        name: z.Name,
+        imageUuid: z.Image ?? undefined,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name, "de"));
 
     // Pusta odpowiedź z Directusa oznaczałaby formularz bez żadnych opcji —

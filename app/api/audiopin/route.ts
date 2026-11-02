@@ -6,6 +6,7 @@ import { sanitizeExternalUrl, sanitizeWordHtml } from "@/lib/orte-shared";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { createAudiopinSchema, firstZodError } from "@/lib/validations/api";
+import { isPremiumActiveForDates } from "@/types/auth";
 
 // Lista zapasowa — uzywana tylko gdy Directus nie odpowie (patrz
 // api/pin-optionen). Zrodlem prawdy sa kolekcje Kategorie i Zertifizierungen
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, first_name, last_name")
+      .select("role, first_name, last_name, premium_until")
       .eq("id", user.id)
       .single();
 
@@ -99,9 +100,11 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    const isPremium = partnerProfile?.premium_until
-      ? new Date(partnerProfile.premium_until) > new Date()
-      : false;
+    // Ujednolicone sprawdzanie statusu Premium z obu tabel (profiles i partner_profiles)
+    const isPremium = isPremiumActiveForDates(
+      profile?.premium_until,
+      partnerProfile?.premium_until,
+    );
 
     const parsedBody = createAudiopinSchema.safeParse(await request.json());
     if (!parsedBody.success) {

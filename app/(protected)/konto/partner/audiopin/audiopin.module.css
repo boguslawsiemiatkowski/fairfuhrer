@@ -1,65 +1,443 @@
-.wrapper {
+/* app/(protected)/konto/partner/audiopin/audiopin.module.css
+ * Stylizacja interaktywnego Partner-Pin Live-Studio (podgląd na żywo Panelu Mapy + Strony Audiopinu).
+ */
+
+.studioWrapper {
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  max-width: 840px;
-  width: 50%;
-}
-
-.freeAccountInfo {
+  gap: 1.5rem;
   font-family: var(--font-fira);
-  font-size: 1rem;
-  font-weight: 400;
-  color: #000;
-  line-height: 1.7;
-  padding: 0.75rem 1rem;
-  margin: 0;
-  text-align: center;
-}
-
-.intro {
-  font-family: var(--font-fira);
-  font-size: 2rem;
-  font-weight: 500;
-  text-align: center;
   color: #18222f;
-  line-height: 1.6;
-  margin: 0;
 }
 
-.formDisabled {
-  pointer-events: none;
-  opacity: 0.6;
-}
-
-.form {
+.loadingState {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-}
-
-.fieldset {
-  border: 1.5px solid #000;
-  padding: 1.25rem 1.25rem 1rem;
-  display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 1rem;
+  padding: 4rem 1.5rem;
+  font-size: 1rem;
+  color: #444;
 }
 
-.legend {
-  font-family: var(--font-fira);
-  font-size: 0.75rem;
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #2e7d32;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hiddenInput {
+  display: none;
+}
+
+/* ─── 1. Pasek nagłówka Studio ───────────────────────────────────────────── */
+
+.studioTopBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 1.5rem 1.75rem;
+  background: #f8faf8;
+  border: 2px solid #18222f;
+  box-shadow: 0 4px 16px rgba(24, 34, 47, 0.06);
+}
+
+.studioTopLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-width: 780px;
+}
+
+.studioStatusRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.badgePartnerPin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  background-color: #2e7d32;
+  color: #fff;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #18222f;
-  padding: 0 0.5rem;
+  letter-spacing: 0.05em;
+  border-radius: 999px;
 }
+
+.badgeFreePin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  background-color: #e9ecef;
+  color: #18222f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 999px;
+}
+
+.statusPublished {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1b5e20;
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+}
+
+.statusPending {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #8a5300;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+}
+
+.publicPageLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fc6c14;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.studioHeading {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-anton);
+  font-size: clamp(1.5rem, 2.5vw, 2.15rem);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: #18222f;
+}
+
+.studioSubheading {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #3a4654;
+}
+
+/* Przełącznik trybu podglądu */
+.viewModeGroup {
+  display: inline-flex;
+  background: #fff;
+  border: 1.5px solid #18222f;
+  padding: 0.2rem;
+  gap: 0.2rem;
+  align-self: center;
+}
+
+.viewModeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.9rem;
+  border: none;
+  background: transparent;
+  color: #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.viewModeBtn:hover {
+  background: #f2f4f7;
+}
+
+.viewModeBtnActive {
+  background: #18222f;
+  color: #fff;
+}
+
+.viewModeBtnActive:hover {
+  background: #18222f;
+  color: #fff;
+}
+
+/* ─── Baner Upsell dla konta bezpłatnego ─────────────────────────────────── */
+
+.upsellBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem 1.35rem;
+  background: linear-gradient(90deg, #fff8f2 0%, #f1f8e9 100%);
+  border: 1.5px solid #fc6c14;
+}
+
+.upsellBannerText {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #18222f;
+  max-width: 880px;
+}
+
+.upsellBannerCta {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 1.1rem;
+  background: #fc6c14;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.upsellBannerCta:hover {
+  background: #d95608;
+}
+
+/* ─── Pasek klocków (Module Chips) ───────────────────────────────────────── */
+
+.moduleBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.moduleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.48rem 0.85rem;
+  background: #fff;
+  border: 1.5px solid #cfd6de;
+  color: #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    transform 0.1s;
+}
+
+.moduleChip:hover {
+  border-color: #fc6c14;
+  background: #fffaf6;
+}
+
+.moduleChipFilled {
+  border-color: #81c784;
+  background: #f4fbf5;
+}
+
+.moduleChipActive {
+  border-color: #fc6c14;
+  background: #18222f;
+  color: #fff;
+}
+
+.moduleChipActive:hover {
+  background: #18222f;
+  color: #fff;
+}
+
+.chipIconCheck {
+  color: #2e7d32;
+}
+
+.moduleChipActive .chipIconCheck,
+.moduleChipActive .chipIconEdit,
+.moduleChipActive .chipIconLock {
+  color: #fc6c14;
+}
+
+.chipIconEdit {
+  color: #fc6c14;
+}
+
+.chipIconLock {
+  color: #888;
+}
+
+.chipPartnerTag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.08rem 0.35rem;
+  background: #fc6c14;
+  color: #fff;
+  border-radius: 4px;
+}
+
+/* ─── Powiadomienie o zapisie ────────────────────────────────────────────── */
+
+.savedNotification {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  background: #e8f5e9;
+  border: 1.5px solid #2e7d32;
+  color: #1b5e20;
+  font-size: 0.88rem;
+  font-weight: 700;
+  align-self: flex-start;
+}
+
+/* ─── Szuflada edytora wybranej sekcji (Inline Studio Drawer) ───────────── */
+
+.editorDrawer {
+  background: #ffffff;
+  border: 2px solid #fc6c14;
+  box-shadow: 0 8px 28px rgba(24, 34, 47, 0.12);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.editorDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #eceff3;
+}
+
+.editorTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #18222f;
+}
+
+.editorDrawerTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.lockIcon {
+  color: #fc6c14;
+}
+
+.closeEditorBtn {
+  padding: 0.35rem 0.85rem;
+  background: #f1f3f5;
+  border: 1px solid #ced4da;
+  color: #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.closeEditorBtn:hover {
+  background: #e2e6ea;
+}
+
+.editorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.editorActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.saveSectionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.35rem;
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  font-family: var(--font-fira);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.saveSectionBtn:hover:not(:disabled) {
+  background: #1b5e20;
+}
+
+.saveSectionBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.upsellText {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+.upgradeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem 1.3rem;
+  background: #2e7d32;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.upgradeBtn:hover {
+  background: #1b5e20;
+}
+
+/* ─── Pola formularza wewnątrz szuflady edytora ──────────────────────────── */
 
 .field {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
 .fieldRow {
@@ -68,287 +446,272 @@
   gap: 1rem;
 }
 
-@media (max-width: 500px) {
-  .fieldRow {
+.fieldRowTriple {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.9fr;
+  gap: 0.85rem;
+}
+
+@media (max-width: 720px) {
+  .fieldRow,
+  .fieldRowTriple {
     grid-template-columns: 1fr;
   }
 }
 
 .label {
-  font-family: var(--font-fira);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.86rem;
+  font-weight: 700;
   color: #18222f;
 }
 
 .input {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1.5px solid #000;
+  padding: 0.7rem 0.95rem;
+  border: 1.5px solid #18222f;
   font-family: var(--font-fira);
-  font-size: 1rem;
+  font-size: 0.96rem;
   color: #18222f;
-  background-color: #f0fff4;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+  background-color: #f9fffb;
   box-sizing: border-box;
 }
 
 .input:focus {
   outline: none;
   border-color: #fc6c14;
-  box-shadow: 0 0 0 3px rgba(252, 108, 20, 0.12);
   background-color: #fff;
-}
-
-.inputError {
-  border-color: #770606;
+  box-shadow: 0 0 0 3px rgba(252, 108, 20, 0.14);
 }
 
 .textarea {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1.5px solid #000;
+  padding: 0.75rem 0.95rem;
+  border: 1.5px solid #18222f;
   font-family: var(--font-fira);
-  font-size: 1rem;
+  font-size: 0.96rem;
+  line-height: 1.6;
   color: #18222f;
-  background-color: #f0fff4;
+  background-color: #f9fffb;
   resize: vertical;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
   box-sizing: border-box;
 }
 
 .textarea:focus {
   outline: none;
   border-color: #fc6c14;
-  box-shadow: 0 0 0 3px rgba(252, 108, 20, 0.12);
   background-color: #fff;
-}
-
-.fieldError {
-  font-family: var(--font-fira);
-  font-size: 0.8rem;
-  color: #7e1206;
+  box-shadow: 0 0 0 3px rgba(252, 108, 20, 0.14);
 }
 
 .hint {
-  font-family: var(--font-fira);
-  font-size: 0.8rem;
-  color: #18222f;
   margin: 0;
+  font-size: 0.83rem;
+  color: #4a5568;
   line-height: 1.5;
 }
 
-/* Blok wprowadzajacy nad formularzem */
-.introBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.introText {
-  font-family: var(--font-fira);
-  font-size: 0.95rem;
-  font-weight: 400;
-  color: #18222f;
-  line-height: 1.6;
+.coordHint {
   margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2e7d32;
 }
 
-/* Licznik znakow pod polem opisu */
+.fieldError,
+.uploadError {
+  margin: 0;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #b71c1c;
+}
+
 .charCounterRow {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
 }
 
 .charCounter {
-  font-family: var(--font-fira);
   font-size: 0.8rem;
-  color: #666;
-  white-space: nowrap;
-  flex-shrink: 0;
+  font-weight: 600;
+  color: #555;
 }
 
 .charCounterMax {
-  color: #b22222;
-  font-weight: 600;
+  color: #b71c1c;
 }
 
-/* Rzad przyciskow (upload audio + wytyczne) */
-.buttonRow {
+/* Wybór kategorii w edytorze */
+.categoryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.65rem;
+}
+
+.categoryChoiceBtn {
   display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
   align-items: center;
-}
-
-.secondaryButton {
-  padding: 0.5rem 1rem;
-  background-color: beige;
-  color: #18222f;
-  border: 1.5px solid #18222f;
-  border-radius: 6px;
+  gap: 0.65rem;
+  padding: 0.6rem 0.85rem;
+  background: #fff;
+  border: 1.5px solid #d0d7de;
+  cursor: pointer;
+  text-align: left;
   font-family: var(--font-fira);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  transition:
-    background-color 0.2s,
-    color 0.2s;
-}
-
-.secondaryButton:hover {
-  background-color: saddleBrown;
-  color: #fff;
-}
-
-/* Checkboxy */
-.checkboxGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.checkboxLabel {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-family: var(--font-fira);
-  font-size: 0.95rem;
   color: #18222f;
-  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
 }
 
-.checkbox {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 2px solid #18222f;
-  background-color: #fff;
-  cursor: pointer;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.checkbox:checked {
-  background-color: #18222f;
+.categoryChoiceBtn:hover {
   border-color: #18222f;
 }
 
-.checkbox:checked::after {
-  content: "";
-  position: absolute;
-  left: 3px;
-  top: 0px;
-  width: 5px;
-  height: 10px;
-  border: 2px solid #fff;
-  border-top: none;
-  border-left: none;
-  transform: rotate(45deg);
+.categoryChoiceSelected {
+  font-weight: 700;
 }
 
-/* Upload */
+.categoryChoiceName {
+  flex: 1;
+}
+
+.categoryCheck {
+  color: #2e7d32;
+}
+
+/* Geocoding dropdown */
+.geoWrapper {
+  position: relative;
+}
+
+.geoLoading {
+  position: absolute;
+  right: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.78rem;
+  color: #666;
+}
+
+.geoDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  background: #fff;
+  border: 1.5px solid #18222f;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.geoDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  color: #18222f;
+}
+
+.geoDropdownItem:hover {
+  background: #fff4ec;
+  color: #fc6c14;
+}
+
+/* Przyciski uploadu */
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .uploadButton {
-  padding: 0.5rem 1rem;
-  background-color: #18222f;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  background: #18222f;
   color: #fff;
   border: none;
-  border-radius: 6px;
   font-family: var(--font-fira);
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 600;
   cursor: pointer;
-  align-self: flex-start;
-  transition: background-color 0.2s;
 }
 
 .uploadButton:hover:not(:disabled) {
-  background-color: firebrick;
+  background: #fc6c14;
 }
 
 .uploadButton:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .removeButton {
-  padding: 0.4rem 0.75rem;
-  background-color: transparent;
-  color: #18222f;
-  border: 1.5px solid #18222f;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.95rem;
+  background: #fff;
+  color: #b71c1c;
+  border: 1.5px solid #b71c1c;
   font-family: var(--font-fira);
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
-  align-self: flex-start;
 }
 
 .removeButton:hover {
-  opacity: 0.7;
+  background: #ffebee;
 }
 
-.uploadError {
-  font-family: var(--font-fira);
-  font-size: 0.8rem;
-  color: #831205;
-  margin: 0;
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.95rem;
+  background: #fdf6e3;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
 }
 
-.hiddenInput {
-  display: none;
+.secondaryButton:hover {
+  background: #f5ebd0;
 }
 
-/* Titelbild */
-.titelbildPreview {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-self: flex-start;
-}
-
-.titelbildImg {
-  width: 200px;
-  height: 140px;
-  object-fit: cover;
-  border: 1.5px solid #000;
-}
-
-/* Galerie */
+/* Edytor galerii i certyfikatów */
 .galerieGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 0.75rem;
-}
-
-@media (max-width: 480px) {
-  .galerieGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .galerieItem {
   position: relative;
+  aspect-ratio: 4 / 3;
+  border: 1.5px solid #18222f;
+  overflow: hidden;
+  background: #f4f4f4;
 }
 
 .galerieImg {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  height: 100%;
   object-fit: cover;
-  border: 1.5px solid #000;
   display: block;
 }
 
@@ -358,345 +721,32 @@
   right: 4px;
   width: 24px;
   height: 24px;
-  background: rgba(0, 0, 0, 0.65);
-  color: #fff;
-  border: none;
   border-radius: 50%;
+  border: none;
+  background: rgba(183, 28, 28, 0.9);
+  color: #fff;
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
-}
-
-.removeButtonSmall:hover {
-  background: #8d1306;
-}
-
-/* Audio */
-.audioPreview {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.audioPlayer {
-  width: 100%;
-  max-width: 400px;
-}
-
-/* Submit */
-.submitButton {
-  padding: 0.875rem 2rem;
-  background-color: #b22222;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-family: var(--font-fira);
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  align-self: flex-start;
-  transition: background-color 0.2s;
-}
-
-.submitButton:hover:not(:disabled) {
-  background-color: #000;
-}
-
-.submitButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Premium */
-.premiumBanner {
-  background-color: #fff8f0;
-  border: 1.5px solid #000;
-  padding: 0.75rem 1rem;
-  font-family: var(--font-fira);
-  font-weight: 400;
-  font-size: 0.875rem;
-  color: #18222f;
-}
-
-.premiumLocked {
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-.premiumBadge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background-color: gold;
-  color: #000;
-  border: 1px solid #000;
-  border-radius: 4px;
-  padding: 0 0.35rem;
-  vertical-align: middle;
-}
-
-/* Geocoding autocomplete */
-.geoWrapper {
-  position: relative;
-  width: 100%;
-}
-
-.geoLoading {
-  font-family: var(--font-fira);
-  font-size: 0.8rem;
-  color: #000;
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.geoDropdown {
-  position: absolute;
-  top: calc(100% + 2px);
-  left: 0;
-  right: 0;
-  background-color: #fff;
-  border: 1.5px solid #000;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  z-index: 100;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.geoDropdownItem {
-  padding: 0.6rem 1rem;
-  font-family: var(--font-fira);
-  font-size: 0.875rem;
-  color: #18222f;
-  cursor: pointer;
-  border-bottom: 1px solid #eee;
-}
-
-.geoDropdownItem:last-child {
-  border-bottom: none;
-}
-
-.geoDropdownItem:hover {
-  background-color: #f0fff4;
-}
-
-.coordsHint {
-  font-family: var(--font-fira);
-  font-size: 0.75rem;
-  color: #000;
-  margin: 0;
-}
-
-.geoHint {
-  font-family: var(--font-fira);
-  font-size: 0.8rem;
-  color: #666;
-  margin-top: 0.25rem;
-}
-
-.inputReadonly {
-  background-color: #f5f5f5;
-  color: #555;
-  cursor: default;
-}
-
-/* Komunikaty */
-.successMessage {
-  background: #f0fff4;
-  color: #27ae60;
-  border: 1px solid #b7e5c8;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  font-family: var(--font-fira);
-  font-size: 0.875rem;
-}
-
-.errorMessage {
-  background: #fff0f0;
-  color: #b22222;
-  border: 1px solid #f5c6c6;
-  padding: 0.75rem 1rem;
-  font-family: var(--font-fira);
-  font-size: 0.875rem;
-}
-
-/* Per-field view/edit */
-.viewBox {
-  display: flex;
-  flex-direction: column;
-  border: 4px solid #000;
-  background-color: #fff8f4;
-  width: 100%;
-}
-
-.viewField {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.9rem 1.25rem;
-  border-bottom: 1px solid #eee;
-}
-
-.viewField:last-child {
-  border-bottom: none;
-}
-
-.viewFieldHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.viewFieldLabel {
-  font-family: var(--font-fira);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #555;
-}
-
-.viewFieldValue {
-  font-family: var(--font-fira);
-  font-size: 0.95rem;
-  color: #18222f;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.viewFieldLong {
-  font-family: var(--font-fira);
-  font-size: 0.9rem;
-  color: #18222f;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-.viewFieldEmpty {
-  color: #aaa;
-  font-style: italic;
-}
-
-.viewLink {
-  color: #18222f;
-  text-decoration: underline;
-  font-family: var(--font-fira);
-  font-size: 0.95rem;
-}
-
-.viewLink:hover {
-  color: #fc6c14;
-}
-
-.viewFieldEdit {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.viewFieldActions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.editFieldBtn {
-  font-family: var(--font-fira);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #18222f;
-  background-color: white;
-  border: 1px solid #18222f;
-  padding: 0.25rem 0.65rem;
-  cursor: pointer;
-  transition:
-    background 0.12s,
-    color 0.12s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.editFieldBtn:hover {
-  background: #18222f;
-  color: #fff;
-}
-
-.saveFieldBtn {
-  font-family: var(--font-fira);
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #fff;
-  background: #18222f;
-  border: none;
-  padding: 0.4rem 0.9rem;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-
-.saveFieldBtn:hover:not(:disabled) {
-  background: #fc6c14;
-}
-
-.saveFieldBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.cancelFieldBtn {
-  font-family: var(--font-fira);
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #555;
-  background: none;
-  border: 1px solid #ccc;
-  padding: 0.4rem 0.75rem;
-  cursor: pointer;
-  transition: color 0.12s;
-}
-
-.cancelFieldBtn:hover:not(:disabled) {
-  color: #000;
-}
-
-.savedBadge {
-  font-family: var(--font-fira);
-  font-size: 0.75rem;
-  color: #27ae60;
-  font-weight: 600;
-}
-
-.fieldGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
 }
 
 .galerieAddBtn {
-  width: 100%;
   aspect-ratio: 4 / 3;
-  background: #f5f5f5;
-  border: 1.5px dashed #aaa;
-  font-size: 2rem;
-  color: #aaa;
-  cursor: pointer;
+  border: 2px dashed #18222f;
+  background: #f9fffb;
+  color: #18222f;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition:
-    border-color 0.15s,
-    color 0.15s;
+  gap: 0.25rem;
+  font-family: var(--font-fira);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .galerieAddBtn:hover:not(:disabled) {
@@ -704,87 +754,770 @@
   color: #fc6c14;
 }
 
-/* Podsumowanie po wysłaniu */
-.submittedBox {
-  border: 1.5px solid #000;
+.zertSelectGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.55rem;
+}
+
+.zertSelectBtn {
   display: flex;
-  flex-direction: column;
-}
-
-.submittedRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-  padding: 0.65rem 1rem;
-  border-bottom: 1px solid #eee;
-}
-
-.submittedRow:last-child {
-  border-bottom: none;
-}
-
-.submittedLabel {
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  background: #fff;
+  border: 1.5px solid #d0d7de;
   font-family: var(--font-fira);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #444;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #18222f;
+  cursor: pointer;
+  text-align: left;
+}
+
+.zertSelectBtn:hover {
+  border-color: #18222f;
+}
+
+.zertSelectBtnActive {
+  border-color: #2e7d32;
+  background: #f1f8e9;
+  color: #1b5e20;
+}
+
+.zertSelectIcon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
-.submittedValue {
-  font-family: var(--font-fira);
-  font-size: 0.9rem;
-  color: #18222f;
-  text-align: right;
+/* ─── 2. UKŁAD DWÓCH PODGLĄDÓW NA ŻYWO (Split / Single) ──────────────────── */
+
+.previewsGrid {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 1.75rem;
+  align-items: start;
 }
 
-/* Przycisk edycji */
-.editButton {
-  padding: 0.75rem 1.5rem;
-  background-color: #18222f;
+.previewsSinglePanel {
+  grid-template-columns: minmax(320px, 460px);
+  justify-content: center;
+}
+
+.previewsSinglePage {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1120px) {
+  .previewsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.previewColumnPanel,
+.previewColumnPage {
+  display: flex;
+  flex-direction: column;
+  border: 2px solid #18222f;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(24, 34, 47, 0.08);
+  overflow: hidden;
+}
+
+.previewFrameHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1rem;
+  background: #18222f;
   color: #fff;
-  border: none;
-  font-family: var(--font-fira);
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  cursor: pointer;
-  align-self: flex-start;
-  transition: background-color 0.15s;
   letter-spacing: 0.02em;
 }
 
-.editButton:hover {
-  background-color: #fc6c14;
+.previewFrameDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fc6c14;
+  flex-shrink: 0;
 }
 
-/* Przyciski formularza edycji */
-.formActions {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  flex-wrap: wrap;
+.previewFrameTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.cancelButton {
-  padding: 0.875rem 1.5rem;
-  background-color: transparent;
-  color: #18222f;
-  border: 1.5px solid #18222f;
-  font-family: var(--font-fira);
-  font-size: 0.95rem;
-  font-weight: 600;
+/* Interaktywna strefa edycji w podglądach */
+.editableZone {
+  position: relative;
   cursor: pointer;
+  border: 2px dashed transparent;
+  transition:
+    border-color 0.18s,
+    background-color 0.18s,
+    box-shadow 0.18s;
+}
+
+.editableZone:hover,
+.editableZone:focus-visible {
+  outline: none;
+  border-color: #fc6c14;
+  background-color: rgba(252, 108, 20, 0.04);
+}
+
+.editableZoneActive {
+  border-color: #fc6c14;
+  border-style: solid;
+  box-shadow: 0 0 0 3px rgba(252, 108, 20, 0.18);
+}
+
+.zoneCornerHint {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.18rem 0.5rem;
+  background: rgba(24, 34, 47, 0.86);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s;
 }
 
-.cancelButton:hover:not(:disabled) {
-  opacity: 0.7;
+.editableZone:hover .zoneCornerHint,
+.editableZone:focus-visible .zoneCornerHint,
+.editableZoneActive .zoneCornerHint {
+  opacity: 1;
 }
 
-.cancelButton:disabled {
-  opacity: 0.4;
+.zoneFloatingBadge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.65rem;
+  background: rgba(24, 34, 47, 0.82);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  border-radius: 999px;
+}
+
+/* ─── WZORZEC 1: KARTEN-PANEL (PlaceInfoPanel) ──────────────────────────── */
+
+.mockPanel {
+  background: #fdf6e3;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 1.5rem;
+}
+
+.mockPanelHeroWrap {
+  position: relative;
+  width: 100%;
+  margin-bottom: 2.5rem;
+}
+
+.mockPanelHero {
+  width: 100%;
+  height: 220px;
+  background: #eae2cd;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mockPanelHeroImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mockHeroPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: #4a4538;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.mockHeroPlaceholder small {
+  font-size: 0.75rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.mockPanelAudioOverlay {
+  position: absolute;
+  bottom: -1.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 86%;
+  z-index: 5;
+  background: #fff;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  padding: 0.35rem 0.65rem;
+}
+
+.mockPanelAudioPlayer {
+  width: 100%;
+  height: 36px;
+  display: block;
+}
+
+.mockAudioPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  color: #18222f;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.mockPanelCategories {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  margin: 0.25rem 0.75rem 0;
+}
+
+.mockCategoryBadge {
+  color: #fff;
+  text-shadow: 0.5px 0.5px 1px #000;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.mockEmptyPill {
+  padding: 0.3rem 0.85rem;
+  border: 1.5px dashed #fc6c14;
+  border-radius: 999px;
+  color: #fc6c14;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: #fff;
+}
+
+.mockPanelHeaderSection {
+  text-align: center;
+  padding: 0.4rem 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.mockNameZone,
+.mockAddressZone,
+.mockContactInline {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+}
+
+.mockPanelTitle {
+  margin: 0;
+  font-family: var(--font-anton);
+  font-size: 1.7rem;
+  font-weight: 400;
+  color: #2c3e50;
+}
+
+.mockPanelAddress {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 0.98rem;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.mockPanelPhone {
+  display: inline-block;
+  color: #28a745;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.mockOptionalHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #5c6470;
+}
+
+.mockPanelSection {
+  margin: 0.4rem 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.mockPanelDescription {
+  font-size: 0.94rem;
+  line-height: 1.6;
+  color: #343a40;
+  text-align: justify;
+}
+
+.mockPanelDescription p {
+  margin: 0 0 0.75rem;
+}
+
+.mockPanelDescription p:last-child {
+  margin-bottom: 0;
+}
+
+.mockTextPlaceholder {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px dashed #b5ad99;
+  color: #495057;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.mockWebsiteButton {
+  display: inline-block;
+  padding: 0.65rem 1.35rem;
+  background: #fc6c14;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 8px;
+}
+
+.mockWebsitePlaceholder {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px dashed #b5ad99;
+  color: #495057;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mockPanelSubheading {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.mockPanelGalleryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+}
+
+.mockPanelGalleryThumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+
+.mockGalleryPlaceholder {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px dashed #b5ad99;
+  color: #495057;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mockZertGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.mockZertBadgeItem {
+  background: #fff;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #e2dccb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mockZertLogo {
+  height: 36px;
+  width: auto;
+  max-width: 90px;
+  object-fit: contain;
+}
+
+.mockZertName {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #18222f;
+}
+
+/* ─── WZORZEC 2: AUDIOPIN-DETAILSEITE (/liste/[stadt]/[slug]) ────────────── */
+
+.mockDetailPage {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  min-height: 680px;
+  background: #fff;
+}
+
+@media (max-width: 760px) {
+  .mockDetailPage {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mockDetailSidebar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem;
+  color: #fff;
+  transition: background-color 0.25s ease;
+}
+
+.mockDetailSidebarInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  text-align: center;
+}
+
+.sidebarEditableZone {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1.5px dashed rgba(255, 255, 255, 0.32);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.sidebarEditableZone:hover,
+.sidebarEditableZone:focus-visible {
+  outline: none;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: #fff;
+}
+
+.sidebarEditableZoneActive {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid #fff;
+}
+
+.mockDetailTitle {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.mockDetailAddress {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.mockSidebarContact {
+  font-size: 0.9rem;
+}
+
+.mockSidebarLink {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.mockSidebarHint {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.mockSidebarPlayerWrap {
+  margin-top: 0.4rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.mockSidebarAudioEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Prawa kolumna Detailseite */
+.mockDetailMain {
+  padding: 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.mockDetailHeroZone {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 10px;
+}
+
+.mockDetailHeroImg {
+  width: auto;
+  max-width: 100%;
+  max-height: 270px;
+  object-fit: cover;
+  border: 2px solid #18222f;
+  border-bottom-left-radius: 15px 255px;
+  border-bottom-right-radius: 225px 15px;
+  border-top-left-radius: 255px 15px;
+  border-top-right-radius: 15px 225px;
+  box-shadow:
+    rgba(0, 0, 0, 0.35) 0px 2px 4px,
+    rgba(0, 0, 0, 0.25) 0px 7px 13px -3px;
+}
+
+.mockDetailHeroEmpty {
+  width: 100%;
+  min-height: 180px;
+  background: #f6f4ef;
+  border: 2px dashed #18222f;
+  border-bottom-left-radius: 15px 255px;
+  border-bottom-right-radius: 225px 15px;
+  border-top-left-radius: 255px 15px;
+  border-top-right-radius: 15px 225px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: #495057;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.mockDetailTextZone {
+  padding: 0.85rem;
+  border-radius: 8px;
+}
+
+.mockDetailDescription {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #18222f;
+}
+
+.mockDetailDescription p {
+  margin: 0 0 1rem;
+}
+
+.mockDetailDescription p:last-child {
+  margin-bottom: 0;
+}
+
+.mockDetailNoText {
+  margin: 0;
+  color: #666;
+  font-style: italic;
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.mockDetailZertZone {
+  padding: 0.65rem;
+  border-radius: 8px;
+}
+
+.mockDetailZertRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mockDetailZertBadge {
+  height: 52px;
+  width: auto;
+  max-width: 130px;
+  object-fit: contain;
+}
+
+.mockDetailZertPill {
+  padding: 0.3rem 0.75rem;
+  border: 1.5px solid #18222f;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mockDetailGalleryZone,
+.mockDetailMapZone {
+  padding: 0.75rem;
+  border-radius: 8px;
+  border-top: 1px solid #e9ecef;
+}
+
+.mockDetailSectionTitle {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #18222f;
+}
+
+.mockDetailGalleryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.65rem;
+}
+
+.mockDetailGalleryImg {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1.5px solid #18222f;
+  display: block;
+}
+
+.mockMapCard {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.15rem;
+  background: #f4f6f8;
+  border: 1.5px solid #d8dee4;
+  border-radius: 8px;
+}
+
+.mockMapPinCircle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.mockMapInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.88rem;
+}
+
+.mockMapInfo span {
+  color: #4a5568;
+  font-size: 0.82rem;
+}
+
+/* ─── 3. Dolny pasek publikacji nowego pina ──────────────────────────────── */
+
+.publishFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 1.35rem 1.75rem;
+  background: #f0fff4;
+  border: 2px solid #18222f;
+}
+
+.publishFooterInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 720px;
+  font-size: 0.9rem;
+}
+
+.publishFooterInfo span {
+  color: #3a4654;
+  line-height: 1.5;
+}
+
+.submitErrorText {
+  margin: 0.35rem 0 0;
+  color: #b71c1c;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.publishPrimaryBtn {
+  padding: 0.85rem 1.65rem;
+  background: #2e7d32;
+  color: #fff;
+  border: 2px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
+}
+
+.publishPrimaryBtn:hover:not(:disabled) {
+  background: #1b5e20;
+}
+
+.publishPrimaryBtn:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }

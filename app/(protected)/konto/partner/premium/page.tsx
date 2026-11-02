@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/app/actions/auth";
 import { PartnerSubscriptionForm } from "@/components/PartnerSubscriptionForm";
 import { getTaxBucket } from "@/lib/countries";
+import { isPremiumActiveForDates, resolvePremiumUntil } from "@/types/auth";
 import styles from "./premium.module.css";
 
 export default async function PartnerPremiumPage() {
@@ -9,10 +10,15 @@ export default async function PartnerPremiumPage() {
   const companySize = user?.profile?.company_size ?? null;
   const partner = user?.partnerProfile;
 
-  const premiumUntil = user?.profile?.premium_until ?? null;
-  const isPremiumActive = premiumUntil
-    ? new Date(premiumUntil) > new Date()
-    : false;
+  // Ujednolicone sprawdzanie daty ważności Partner-Pin z obu tabel (profiles i partner_profiles)
+  const premiumUntil = resolvePremiumUntil(
+    user?.profile?.premium_until,
+    partner?.premium_until,
+  );
+  const isPremiumActive = isPremiumActiveForDates(
+    user?.profile?.premium_until,
+    partner?.premium_until,
+  );
 
   // Koszyk VAT z zapisanych danych profilu lub obliczony na bieżąco
   const taxBucket =

@@ -30,14 +30,24 @@ function verifySharedSecret(req: NextRequest): boolean {
 async function updatePremiumUntil(userId: string, expirationMs: number | null) {
   const premiumUntil = expirationMs ? new Date(expirationMs).toISOString() : null;
 
-  const { error } = await supabaseAdmin
-    .from("profiles")
-    .update({ premium_until: premiumUntil })
-    .eq("id", userId);
+  // Aktualizujemy obie tabele, aby uniknąć rozjazdu między `profiles` a `partner_profiles`
+  const [profileRes, partnerRes] = await Promise.all([
+    supabaseAdmin
+      .from("profiles")
+      .update({ premium_until: premiumUntil })
+      .eq("id", userId),
+    supabaseAdmin
+      .from("partner_profiles")
+      .update({ premium_until: premiumUntil })
+      .eq("id", userId),
+  ]);
 
-  if (error) {
-    console.error("[RC webhook] failed to update premium_until:", error);
+  if (profileRes.error) {
+    console.error("[RC webhook] failed to update profiles.premium_until:", profileRes.error);
     return false;
+  }
+  if (partnerRes.error) {
+    console.error("[RC webhook] failed to update partner_profiles.premium_until:", partnerRes.error);
   }
   return true;
 }

@@ -1,9 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download } from "lucide-react";
+import Link from "next/link";
+import {
+  Check,
+  Download,
+  ExternalLink,
+  Image as ImageIcon,
+  Layers,
+  Lock,
+  MapPin,
+  Mic,
+  Pencil,
+  Phone,
+  Plus,
+  Sparkles,
+  Trash2,
+  Globe,
+  FileText,
+  Award,
+  LayoutPanelLeft,
+  Monitor,
+} from "lucide-react";
+import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
+import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
 import { useAuth } from "@/context/AuthContext";
+import { cityToSegment, sanitizeExternalUrl, sanitizeWordHtml } from "@/lib/orte-shared";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { isPremiumActiveForDates } from "@/types/auth";
 import {
   AUDIO_GUIDE_PDF,
   fetchMapboxGeoSuggestions,
@@ -14,9 +38,16 @@ import {
 } from "@/utils/pinFormHelpers";
 import styles from "./audiopin.module.css";
 
-interface Option<T> {
-  id: T;
+interface KategorieOption {
+  id: number;
   name: string;
+  color?: string;
+}
+
+interface ZertOption {
+  id: string;
+  name: string;
+  imageUuid?: string;
 }
 
 interface GalerieItem {
@@ -29,6 +60,7 @@ interface GalerieItem {
 interface PinData {
   id: number;
   Name: string;
+  slug?: string | null;
   Adresse: string;
   Stadt: string;
   Land: string | null;
@@ -38,11 +70,26 @@ interface PinData {
   Link_Text: string | null;
   Titelbild: string | null;
   Audio: string | null;
+  Pin_Typ?: string | null;
+  Bearbeitungsstatus?: string | null;
   location: { type: string; coordinates: [number, number] } | null;
   Galerie: { id: number; directus_files_id: string }[];
   Kategorie: { Kategorie_id: number }[];
   Zertifizierungen: { Zertifizierungen_id: string }[];
 }
+
+type StudioSection =
+  | "name"
+  | "adresse"
+  | "kategorien"
+  | "titelbild"
+  | "audio"
+  | "beschreibung"
+  | "kontakt"
+  | "galerie"
+  | "zertifizierungen";
+
+type PreviewViewMode = "split" | "panel" | "page";
 
 // Proxy przez nasz API dla plików wymagających autoryzacji (galeria, titelbild, audio partnera)
 function assetUrl(uuid: string) {
@@ -50,89 +97,81 @@ function assetUrl(uuid: string) {
 }
 
 export default function AudiopinPage() {
-  const { user } = useAuth();
-  const [isPremium, setIsPremium] = useState(false);
+  const { user, isPro } = useAuth();
+  const [dbPremiumUntil, setDbPremiumUntil] = useState<string | null>(null);
   const [premiumChecked, setPremiumChecked] = useState(false);
 
-  // Kategorie i certyfikaty pochodza z Directusa (api/pin-optionen), zeby
-  // formularz nie rozjezdzal sie z CMS przy kazdej zmianie nazwy.
-  const [kategorienOptions, setKategorienOptions] = useState<Option<number>[]>(
-    [],
-  );
-  const [zertOptions, setZertOptions] = useState<Option<string>[]>([]);
+  // Ujednolicony status Premium: z kontekstu Auth (profiles + partner_profiles) lub świeżego odczytu
+  const isPremium =
+    isPro ||
+    isPremiumActiveForDates(
+      user?.profile?.premium_until,
+      dbPremiumUntil ?? user?.partnerProfile?.premium_until,
+    );
 
-  // Tryby strony
+  // Opcje kategorii i certyfikatów z Directusa (/api/pin-optionen)
+  const [kategorienOptions, setKategorienOptions] = useState<KategorieOption[]>([]);
+  const [zertOptions, setZertOptions] = useState<ZertOption[]>([]);
+
+  // Tryby strony: loading | new_form (tworzenie nowego pina na żywo) | view (edycja istniejącego pina na żywo) | submitting
   type PageMode = "loading" | "new_form" | "view" | "submitting";
   const [mode, setMode] = useState<PageMode>("loading");
   const [pinId, setPinId] = useState<number | null>(null);
   const [pinData, setPinData] = useState<PinData | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
 
-  // Które pola są w trybie edycji (per-field)
-  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
-  const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
-  const [fieldSaveErrors, setFieldSaveErrors] = useState<
-    Record<string, string>
-  >({});
-  const [fieldSaveSuccess, setFieldSaveSuccess] = useState<
-    Record<string, boolean>
-  >({});
+  // Wybrany widok podglądu oraz aktualnie otwarta sekcja edytora w Studio
+  const [previewMode, setPreviewMode] = useState<PreviewViewMode>("split");
+  const [activeSection, setActiveSection] = useState<StudioSection | null>("name");
 
-  // Wartości edytowanych pól (lokalne kopie)
-  const [editValues, setEditValues] = useState<Record<string, unknown>>({});
+  // Stan zapisywania pojedynczych sekcji (w trybie istniejącego pina)
+  const [savingSection, setSavingSection] = useState<StudioSection | null>(null);
+  const [sectionError, setSectionError] = useState<string | null>(null);
+  const [savedBanner, setSavedBanner] = useState<string | null>(null);
 
-  // Galerie edycja
-  const [galerieItems, setGalerieItems] = useState<GalerieItem[]>([]);
-  const [galerieUploading, setGalerieUploading] = useState(false);
-  const [galerieError, setGalerieError] = useState<string | null>(null);
-  const galerieRef = useRef<HTMLInputElement>(null);
-
-  // Geocoding (tylko przy edycji adresu)
-  const [geoSuggestions, setGeoSuggestions] = useState<GeocodingSuggestion[]>(
-    [],
-  );
-  const [geoLoading, setGeoLoading] = useState(false);
-  const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Nowy formularz (gdy brak pina)
+  // Wartości robocze formularza / edytora (używane zarówno przy tworzeniu nowego pina, jak i edycji istniejącego)
+  const [name, setName] = useState("");
   const [adresse, setAdresse] = useState("");
   const [stadt, setStadt] = useState("");
   const [land, setLand] = useState("");
-  const [coordinates, setCoordinates] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
   const [geoQuery, setGeoQuery] = useState("");
-  const [geoSuggestionsNew, setGeoSuggestionsNew] = useState<
-    GeocodingSuggestion[]
-  >([]);
-  const [geoLoadingNew, setGeoLoadingNew] = useState(false);
-  const geoDebounceNewRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [name, setName] = useState("");
+  const [geoSuggestions, setGeoSuggestions] = useState<GeocodingSuggestion[]>([]);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [telefon, setTelefon] = useState("");
-  const [vollbeschreibung, setVollbeschreibung] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+  const [vollbeschreibung, setVollbeschreibung] = useState("");
   const [kategorien, setKategorien] = useState<number[]>([]);
   const [zertifizierungen, setZertifizierungen] = useState<string[]>([]);
+
+  // Pliki: Titelbild, Audio, Galerie
   const [titelbildId, setTitelbildId] = useState<string | null>(null);
   const [titelbildPreview, setTitelbildPreview] = useState<string | null>(null);
   const [titelbildUploading, setTitelbildUploading] = useState(false);
   const [titelbildError, setTitelbildError] = useState<string | null>(null);
   const titelbildRef = useRef<HTMLInputElement>(null);
-  const [galerieIds, setGalerieIds] = useState<string[]>([]);
-  const [galeriePreviews, setGaleriePreviews] = useState<string[]>([]);
-  const [galerieUploadingNew, setGalerieUploadingNew] = useState(false);
-  const [galerieErrorNew, setGalerieErrorNew] = useState<string | null>(null);
-  const galerieRefNew = useRef<HTMLInputElement>(null);
+
   const [audioId, setAudioId] = useState<string | null>(null);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const [audioUploading, setAudioUploading] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const audioRef = useRef<HTMLInputElement>(null);
+
+  const [galerieItems, setGalerieItems] = useState<GalerieItem[]>([]);
+  const [galerieUploading, setGalerieUploading] = useState(false);
+  const [galerieError, setGalerieError] = useState<string | null>(null);
+  const galerieRef = useRef<HTMLInputElement>(null);
+
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Załaduj listy kategorii i certyfikatów z Directusa
+  const editorPanelRef = useRef<HTMLDivElement>(null);
+
+  // 1. Załaduj opcje kategorii i certyfikatów z Directusa
   useEffect(() => {
     fetch("/api/pin-optionen")
       .then((r) => r.json())
@@ -143,7 +182,7 @@ export default function AudiopinPage() {
       .catch(() => {});
   }, []);
 
-  // Załaduj status premium i pin_id
+  // 2. Załaduj status premium i pin_id (z uwzględnieniem danych z AuthContext oraz Supabase)
   useEffect(() => {
     if (!user) return;
     const supabase = getSupabaseBrowserClient();
@@ -151,39 +190,46 @@ export default function AudiopinPage() {
       .from("partner_profiles")
       .select("premium_until, pin_id")
       .eq("id", user.id)
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
-        const premium = data?.premium_until
-          ? new Date(data.premium_until) > new Date()
-          : false;
-        setIsPremium(premium);
-        if (data?.pin_id) {
-          setPinId(data.pin_id);
-          // Ustawiamy stan ładowania już przy przejściu w tryb "view",
-          // aby uniknąć synchronicznego setState wewnątrz useEffect.
+        if (data?.premium_until) {
+          setDbPremiumUntil(data.premium_until);
+        }
+        const effectivePinId = data?.pin_id ?? user.partnerProfile?.pin_id ?? null;
+        if (effectivePinId) {
+          setPinId(effectivePinId);
           setPinLoading(true);
           setMode("view");
+          setActiveSection(null);
         } else {
+          // Pre-fill z danych profilu partnera dla wygodniejszego startu
+          if (user.partnerProfile?.company_name) {
+            setName((prev) => prev || user.partnerProfile?.company_name || "");
+          }
+          if (user.partnerProfile?.phone_number) {
+            setTelefon((prev) => prev || user.partnerProfile?.phone_number || "");
+          }
+          if (user.partnerProfile?.website_url) {
+            setLinkUrl((prev) => prev || user.partnerProfile?.website_url || "");
+          }
           setMode("new_form");
+          setActiveSection("name");
         }
         setPremiumChecked(true);
       });
   }, [user]);
 
-  // Załaduj dane pina gdy tryb view
+  // 3. Załaduj dane istniejącego pina z Directusa i zsynchronizuj ze stanem roboczym podglądu
   useEffect(() => {
     if (mode !== "view" || !pinId) return;
     fetch(`/api/audiopin/${pinId}`)
       .then(async (r) => {
-        // Pin usuniety w Directusie (np. po odrzuceniu zgloszenia), a pin_id
-        // wciaz w partner_profiles — bez tego konto zostaje z formularzem
-        // w trybie edycji, ktorej nie da sie wykonac, i nowego pina tez nie
-        // mozna dodac. Traktujemy brak pina jak jego brak w profilu.
         if (r.status === 404 || r.status === 403) {
           setPinId(null);
           setPinData(null);
           setGalerieItems([]);
           setMode("new_form");
+          setActiveSection("name");
           return null;
         }
         if (!r.ok) throw new Error(`Pin konnte nicht geladen werden (${r.status})`);
@@ -192,191 +238,71 @@ export default function AudiopinPage() {
       .then((data) => {
         if (!data) return;
         setPinData(data);
-        const items = (data.Galerie ?? []).map((g) => ({
-          junctionId: g.id,
-          fileId: g.directus_files_id,
-          preview: assetUrl(g.directus_files_id),
-        }));
-        setGalerieItems(items);
+        setName(data.Name ?? "");
+        setAdresse(data.Adresse ?? "");
+        setStadt(data.Stadt ?? "");
+        setLand(data.Land ?? "");
+        setGeoQuery(
+          [data.Adresse, data.Stadt, data.Land].filter(Boolean).join(", "),
+        );
+        if (
+          data.location?.coordinates &&
+          data.location.coordinates.length === 2
+        ) {
+          setCoordinates({
+            lng: data.location.coordinates[0],
+            lat: data.location.coordinates[1],
+          });
+        }
+        setTelefon(data.Telefon ?? "");
+        setLinkUrl(data.Link_URL ?? "");
+        setVollbeschreibung(data.Vollbeschreibung ?? "");
+        setKategorien((data.Kategorie ?? []).map((k) => k.Kategorie_id));
+        setZertifizierungen(
+          (data.Zertifizierungen ?? []).map((z) => z.Zertifizierungen_id),
+        );
+        setTitelbildId(data.Titelbild ?? null);
+        setTitelbildPreview(data.Titelbild ? assetUrl(data.Titelbild) : null);
+        setAudioId(data.Audio ?? null);
+        setAudioPreview(data.Audio ? assetUrl(data.Audio) : null);
+        setGalerieItems(
+          (data.Galerie ?? []).map((g) => ({
+            junctionId: g.id,
+            fileId: g.directus_files_id,
+            preview: assetUrl(g.directus_files_id),
+          })),
+        );
       })
       .catch(() => {})
       .finally(() => setPinLoading(false));
   }, [mode, pinId]);
 
-  // ======== Helpers per-field edit ========
-
-  function startEdit(field: string, currentValue: unknown) {
-    setEditingFields((prev) => new Set(prev).add(field));
-    setEditValues((prev) => ({ ...prev, [field]: currentValue }));
-    setFieldSaveErrors((prev) => {
-      const n = { ...prev };
-      delete n[field];
-      return n;
-    });
-    setFieldSaveSuccess((prev) => {
-      const n = { ...prev };
-      delete n[field];
-      return n;
-    });
+  // Funkcja otwierająca wybraną sekcję edycji po kliknięciu elementu na podglądzie
+  function openSectionEditor(section: StudioSection) {
+    setSectionError(null);
+    setActiveSection(section);
+    // Przewiń delikatnie do paska edytora, jeśli znajduje się poza widokiem
+    setTimeout(() => {
+      editorPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }, 50);
   }
 
-  function cancelEdit(field: string) {
-    setEditingFields((prev) => {
-      const n = new Set(prev);
-      n.delete(field);
-      return n;
-    });
-    setEditValues((prev) => {
-      const n = { ...prev };
-      delete n[field];
-      return n;
-    });
-  }
-
-  async function saveField(field: string, value: unknown) {
-    if (!pinId) return;
-    setSavingFields((prev) => new Set(prev).add(field));
-    setFieldSaveErrors((prev) => {
-      const n = { ...prev };
-      delete n[field];
-      return n;
-    });
-    try {
-      // Specjalne przypadki wymagające dodatkowych danych
-      let payload: Record<string, unknown>;
-      if (field === "adresse_group") {
-        payload = {
-          Adresse: editValues.Adresse,
-          Stadt: editValues.Stadt,
-          Land: editValues.Land,
-          ...(editValues.location ? { location: editValues.location } : {}),
-        };
-      } else if (field === "Kategorie") {
-        const currentIds = (pinData?.Kategorie ?? []).map(
-          (k) => k.Kategorie_id,
-        );
-        payload = {
-          Kategorie: value,
-          Kategorie_delete: currentIds,
-        };
-      } else if (field === "Zertifizierungen") {
-        const currentIds = (pinData?.Zertifizierungen ?? []).map(
-          (z) => z.Zertifizierungen_id,
-        );
-        payload = {
-          Zertifizierungen: value,
-          Zertifizierungen_delete: currentIds,
-        };
-      } else {
-        payload = { [field]: value };
-      }
-
-      const res = await fetch(`/api/audiopin/${pinId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFieldSaveErrors((prev) => ({
-          ...prev,
-          [field]: data.error ?? "Fehler.",
-        }));
-        return;
-      }
-      // Aktualizuj lokalne dane pina
-      if (field === "adresse_group") {
-        setPinData((prev) =>
-          prev
-            ? {
-                ...prev,
-                Adresse: (editValues.Adresse as string) ?? prev.Adresse,
-                Stadt: (editValues.Stadt as string) ?? prev.Stadt,
-                Land: (editValues.Land as string) ?? prev.Land,
-              }
-            : prev,
-        );
-      } else if (field === "Kategorie") {
-        setPinData((prev) =>
-          prev
-            ? {
-                ...prev,
-                Kategorie: (value as number[]).map((id) => ({
-                  Kategorie_id: id,
-                })),
-              }
-            : prev,
-        );
-      } else if (field === "Zertifizierungen") {
-        setPinData((prev) =>
-          prev
-            ? {
-                ...prev,
-                Zertifizierungen: (value as string[]).map((id) => ({
-                  Zertifizierungen_id: id,
-                })),
-              }
-            : prev,
-        );
-      } else {
-        setPinData((prev) => (prev ? { ...prev, [field]: value } : prev));
-      }
-      setFieldSaveSuccess((prev) => ({ ...prev, [field]: true }));
-      setEditingFields((prev) => {
-        const n = new Set(prev);
-        n.delete(field);
-        return n;
-      });
-      setTimeout(
-        () =>
-          setFieldSaveSuccess((prev) => {
-            const n = { ...prev };
-            delete n[field];
-            return n;
-          }),
-        3000,
+  function showSavedNotification(label: string) {
+    setSavedBanner(`${label} wurde gespeichert und aktualisiert.`);
+    setTimeout(() => {
+      setSavedBanner((prev) =>
+        prev === `${label} wurde gespeichert und aktualisiert.` ? null : prev,
       );
-    } catch {
-      setFieldSaveErrors((prev) => ({ ...prev, [field]: "Netzwerkfehler." }));
-    } finally {
-      setSavingFields((prev) => {
-        const n = new Set(prev);
-        n.delete(field);
-        return n;
-      });
-    }
+    }, 3500);
   }
 
-  // ======== Geocoding (wspólne helpery z utils/pinFormHelpers.ts) ========
-
-  function handleGeoQueryChange(value: string) {
+  // ======== Geocoding (Mapbox) ========
+  function handleGeoInput(value: string) {
     setGeoQuery(value);
-    if (geoDebounceNewRef.current) clearTimeout(geoDebounceNewRef.current);
-    geoDebounceNewRef.current = setTimeout(
-      () =>
-        fetchMapboxGeoSuggestions(
-          value,
-          setGeoSuggestionsNew,
-          setGeoLoadingNew,
-          "address,place",
-        ),
-      300,
-    );
-  }
-
-  function selectGeoSuggestion(suggestion: GeocodingSuggestion) {
-    const parsed = parseMapboxSuggestion(suggestion);
-    setCoordinates({ lat: parsed.lat, lng: parsed.lng });
-    setAdresse(parsed.adresse);
-    if (parsed.stadt) setStadt(parsed.stadt);
-    if (parsed.land) setLand(parsed.land);
-    setGeoQuery(parsed.placeName);
-    setGeoSuggestionsNew([]);
-  }
-
-  // Edycja adresu (per-field)
-  function handleEditGeoQueryChange(value: string) {
-    setEditValues((prev) => ({ ...prev, geoQuery: value, Adresse: value }));
+    setAdresse(value);
     if (geoDebounceRef.current) clearTimeout(geoDebounceRef.current);
     geoDebounceRef.current = setTimeout(
       () =>
@@ -390,20 +316,15 @@ export default function AudiopinPage() {
     );
   }
 
-  function selectEditGeoSuggestion(suggestion: GeocodingSuggestion) {
+  function handleSelectGeoSuggestion(suggestion: GeocodingSuggestion) {
     const parsed = parseMapboxSuggestion(suggestion);
-    setEditValues((prev) => ({
-      ...prev,
-      geoQuery: parsed.placeName,
-      Adresse: parsed.adresse,
-      Stadt: parsed.stadt ?? prev.Stadt,
-      Land: parsed.land ?? prev.Land,
-      location: { type: "Point", coordinates: [parsed.lng, parsed.lat] },
-    }));
+    setCoordinates({ lat: parsed.lat, lng: parsed.lng });
+    setAdresse(parsed.adresse);
+    if (parsed.stadt) setStadt(parsed.stadt);
+    if (parsed.land) setLand(parsed.land);
+    setGeoQuery(parsed.placeName);
     setGeoSuggestions([]);
   }
-
-  // ======== Upload helpers ========
 
   function toggleMulti<T>(list: T[], value: T): T[] {
     return list.includes(value)
@@ -411,130 +332,234 @@ export default function AudiopinPage() {
       : [...list, value];
   }
 
-  async function handleTitelbildUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // ======== Zapis pojedynczej sekcji (w trybie istniejącego pina dla Partner-Pin Premium) ========
+  async function saveExistingPinSection(section: StudioSection) {
+    if (!pinId || !isPremium) return;
+    setSavingSection(section);
+    setSectionError(null);
+
+    try {
+      let payload: Record<string, unknown> = {};
+      let label = "Änderung";
+
+      if (section === "name") {
+        if (!name.trim()) {
+          setSectionError("Der Name des Ortes darf nicht leer sein.");
+          return;
+        }
+        payload = { Name: name.trim() };
+        label = "Name";
+      } else if (section === "adresse") {
+        if (!adresse.trim() || !stadt.trim()) {
+          setSectionError("Bitte geben Sie Straße und Stadt an.");
+          return;
+        }
+        payload = {
+          Adresse: adresse.trim(),
+          Stadt: stadt.trim(),
+          Land: land.trim() || null,
+          ...(coordinates
+            ? {
+                location: {
+                  type: "Point",
+                  coordinates: [coordinates.lng, coordinates.lat],
+                },
+              }
+            : {}),
+        };
+        label = "Adresse & Standort";
+      } else if (section === "kategorien") {
+        if (kategorien.length === 0) {
+          setSectionError("Bitte wählen Sie mindestens eine Kategorie.");
+          return;
+        }
+        payload = { Kategorie: kategorien };
+        label = "Kategorien";
+      } else if (section === "titelbild") {
+        payload = { Titelbild: titelbildId };
+        label = "Titelbild";
+      } else if (section === "audio") {
+        payload = { Audio: audioId };
+        label = "Audiodatei";
+      } else if (section === "beschreibung") {
+        payload = { Vollbeschreibung: vollbeschreibung.trim() || null };
+        label = "Beschreibung";
+      } else if (section === "kontakt") {
+        payload = {
+          Telefon: telefon.trim() || null,
+          Link_URL: linkUrl.trim() || null,
+        };
+        label = "Kontakt & Website";
+      } else if (section === "zertifizierungen") {
+        payload = { Zertifizierungen: zertifizierungen };
+        label = "Zertifizierungen";
+      }
+
+      const res = await fetch(`/api/audiopin/${pinId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSectionError(data.error ?? "Fehler beim Speichern.");
+        return;
+      }
+
+      setPinData((prev) =>
+        prev
+          ? {
+              ...prev,
+              Name: name.trim(),
+              Adresse: adresse.trim(),
+              Stadt: stadt.trim(),
+              Land: land.trim() || null,
+              Telefon: telefon.trim() || null,
+              Link_URL: linkUrl.trim() || null,
+              Vollbeschreibung: vollbeschreibung.trim() || null,
+              Titelbild: titelbildId,
+              Audio: audioId,
+              Pin_Typ: "premium",
+              Bearbeitungsstatus: "veroeffentlicht",
+              Kategorie: kategorien.map((id) => ({ Kategorie_id: id })),
+              Zertifizierungen: zertifizierungen.map((id) => ({
+                Zertifizierungen_id: id,
+              })),
+            }
+          : prev,
+      );
+      showSavedNotification(label);
+    } catch {
+      setSectionError("Netzwerkfehler beim Speichern.");
+    } finally {
+      setSavingSection(null);
+    }
+  }
+
+  // ======== Upload plików (Titelbild, Audio, Galerie) ========
+  async function handleTitelbildChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setTitelbildError(null);
     setTitelbildUploading(true);
     try {
       const id = await uploadToDirectus(file);
+      const localUrl = URL.createObjectURL(file);
       setTitelbildId(id);
-      setTitelbildPreview(URL.createObjectURL(file));
+      setTitelbildPreview(localUrl);
+
+      // Jeśli edytujemy istniejący pin w trybie Premium, zapisz od razu w Directusie
+      if (mode === "view" && pinId && isPremium) {
+        const res = await fetch(`/api/audiopin/${pinId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ Titelbild: id }),
+        });
+        if (res.ok) {
+          showSavedNotification("Titelbild");
+        }
+      }
     } catch {
-      setTitelbildError("Fehler beim Hochladen.");
+      setTitelbildError("Fehler beim Hochladen des Bildes (max. 5 MB, JPG/PNG/WebP).");
     } finally {
       setTitelbildUploading(false);
       if (titelbildRef.current) titelbildRef.current.value = "";
     }
   }
 
-  async function handleGalerieUploadNew(
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    const remaining = 6 - galerieIds.length;
-    if (remaining <= 0) {
-      setGalerieErrorNew("Maximal 6 Bilder erlaubt.");
-      return;
-    }
-    setGalerieErrorNew(null);
-    setGalerieUploadingNew(true);
-    try {
-      const newIds: string[] = [],
-        newPreviews: string[] = [];
-      for (const file of files.slice(0, remaining)) {
-        newIds.push(await uploadToDirectus(file));
-        newPreviews.push(URL.createObjectURL(file));
-      }
-      setGalerieIds((p) => [...p, ...newIds]);
-      setGaleriePreviews((p) => [...p, ...newPreviews]);
-    } catch {
-      setGalerieErrorNew("Fehler beim Hochladen.");
-    } finally {
-      setGalerieUploadingNew(false);
-      if (galerieRefNew.current) galerieRefNew.current.value = "";
-    }
-  }
-
-  async function handleAudioUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAudioChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setAudioError(null);
     setAudioUploading(true);
     try {
       const id = await uploadToDirectus(file);
+      const localUrl = URL.createObjectURL(file);
       setAudioId(id);
-      setAudioPreview(URL.createObjectURL(file));
+      setAudioPreview(localUrl);
+
+      if (mode === "view" && pinId && isPremium) {
+        const res = await fetch(`/api/audiopin/${pinId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ Audio: id }),
+        });
+        if (res.ok) {
+          showSavedNotification("Audiodatei");
+        }
+      }
     } catch {
-      setAudioError("Fehler beim Hochladen.");
+      setAudioError("Fehler beim Hochladen der Audiodatei (max. 50 MB, MP3/M4A/WAV).");
     } finally {
       setAudioUploading(false);
       if (audioRef.current) audioRef.current.value = "";
     }
   }
 
-  // Upload dla galerii w trybie edycji
-  async function handleGalerieEditUpload(
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) {
+  async function handleGalerieUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     const remaining = 6 - galerieItems.length;
     if (remaining <= 0) {
-      setGalerieError("Maximal 6 Bilder erlaubt.");
+      setGalerieError("Maximal 6 Bilder in der Galerie erlaubt.");
       return;
     }
     setGalerieError(null);
     setGalerieUploading(true);
     try {
-      const newItems: GalerieItem[] = [];
+      const uploadedItems: GalerieItem[] = [];
       for (const file of files.slice(0, remaining)) {
         const fileId = await uploadToDirectus(file);
-        newItems.push({
+        uploadedItems.push({
           junctionId: `new-${fileId}`,
           fileId,
           preview: URL.createObjectURL(file),
           isNew: true,
         });
       }
-      const updated = [...galerieItems, ...newItems];
-      setGalerieItems(updated);
-      // Natychmiastowy zapis nowych zdjęć
-      const patchRes = await fetch(`/api/audiopin/${pinId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Galerie_add: newItems.map((i) => i.fileId) }),
-      });
-      if (patchRes.ok) {
-        // Odśwież przez GET żeby dostać aktualne junction IDs
-        const getRes = await fetch(`/api/audiopin/${pinId}`);
-        if (getRes.ok) {
-          const freshData = (await getRes.json()) as PinData;
-          setGalerieItems(
-            (freshData.Galerie ?? []).map((g) => ({
-              junctionId: g.id,
-              fileId: g.directus_files_id,
-              preview: assetUrl(g.directus_files_id),
-            })),
-          );
+
+      if (mode === "view" && pinId && isPremium) {
+        const patchRes = await fetch(`/api/audiopin/${pinId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Galerie_add: uploadedItems.map((i) => i.fileId),
+          }),
+        });
+        if (patchRes.ok) {
+          const getRes = await fetch(`/api/audiopin/${pinId}`);
+          if (getRes.ok) {
+            const fresh = (await getRes.json()) as PinData;
+            setGalerieItems(
+              (fresh.Galerie ?? []).map((g) => ({
+                junctionId: g.id,
+                fileId: g.directus_files_id,
+                preview: assetUrl(g.directus_files_id),
+              })),
+            );
+            showSavedNotification("Bildergalerie");
+            return;
+          }
         }
       }
+
+      setGalerieItems((prev) => [...prev, ...uploadedItems]);
     } catch {
-      setGalerieError("Fehler beim Hochladen.");
+      setGalerieError("Fehler beim Hochladen der Galeriebilder.");
     } finally {
       setGalerieUploading(false);
       if (galerieRef.current) galerieRef.current.value = "";
     }
   }
 
-  async function removeGalerieItem(item: GalerieItem) {
-    if (item.isNew) {
+  async function handleRemoveGalerieItem(item: GalerieItem) {
+    if (mode === "new_form" || item.isNew) {
       setGalerieItems((prev) =>
         prev.filter((g) => g.junctionId !== item.junctionId),
       );
       return;
     }
+    if (!pinId || !isPremium) return;
     const res = await fetch(`/api/audiopin/${pinId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -544,24 +569,30 @@ export default function AudiopinPage() {
       setGalerieItems((prev) =>
         prev.filter((g) => g.junctionId !== item.junctionId),
       );
+      showSavedNotification("Bildergalerie");
     }
   }
 
-  // ======== Submit nowego pina ========
-
-  async function handleSubmit(e: React.SyntheticEvent) {
+  // ======== Utworzenie nowego pina (POST /api/audiopin) ========
+  async function handleCreatePin(e: React.SyntheticEvent) {
     e.preventDefault();
     setSubmitError(null);
     const errors: Record<string, string> = {};
-    if (!name.trim()) errors.name = "Name ist erforderlich.";
-    if (!adresse.trim()) errors.adresse = "Adresse ist erforderlich.";
-    if (!stadt.trim()) errors.stadt = "Stadt ist erforderlich.";
-    if (kategorien.length === 0)
-      errors.kategorien = "Bitte mindestens eine Kategorie wählen.";
+    if (!name.trim()) errors.name = "Bitte geben Sie den Namen Ihres Ortes ein.";
+    if (!adresse.trim() || !stadt.trim()) {
+      errors.adresse = "Bitte wählen Sie eine vollständige Adresse (Straße & Stadt).";
+    }
+    if (kategorien.length === 0) {
+      errors.kategorien = "Bitte wählen Sie mindestens eine Kategorie aus.";
+    }
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      if (errors.name) setActiveSection("name");
+      else if (errors.kategorien) setActiveSection("kategorien");
+      else if (errors.adresse) setActiveSection("adresse");
       return;
     }
+
     setFieldErrors({});
     setMode("submitting");
     try {
@@ -581,382 +612,533 @@ export default function AudiopinPage() {
           Kategorie: kategorien,
           Zertifizierungen: zertifizierungen,
           Titelbild: titelbildId ?? null,
-          Galerie: isPremium && galerieIds.length > 0 ? galerieIds : null,
+          Galerie:
+            isPremium && galerieItems.length > 0
+              ? galerieItems.map((g) => g.fileId)
+              : null,
           Audio: audioId ?? null,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setSubmitError(data.error ?? "Fehler.");
+        setSubmitError(data.error ?? "Fehler beim Speichern des Pins.");
         setMode("new_form");
         return;
       }
       setPinId(data.id);
       setPinLoading(true);
       setMode("view");
+      setActiveSection(null);
+      showSavedNotification("Ihr Audiopin");
     } catch {
-      setSubmitError("Es ist ein Fehler aufgetreten.");
+      setSubmitError("Es ist ein Verbindungsfehler aufgetreten.");
       setMode("new_form");
     }
   }
 
   if (!premiumChecked) return null;
 
-  // ==============================
-  // TRYB VIEW — per-field edycja
-  // ==============================
-  if (mode === "view") {
-    if (pinLoading || !pinData) {
-      return (
-        <div className={styles.wrapper}>
-          <p className={styles.hint}>Wird geladen…</p>
+  if (mode === "view" && pinLoading && !pinData) {
+    return (
+      <div className={styles.studioWrapper}>
+        <div className={styles.loadingState}>
+          <span className={styles.spinner} aria-hidden="true" />
+          <p>Ihr Audiopin-Studio wird geladen…</p>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    const kategorienIds = (pinData.Kategorie ?? []).map((k) => k.Kategorie_id);
+  // Dane wyliczone do żywego podglądu (Live Preview)
+  const selectedCategories = kategorien
+    .map((id) => kategorienOptions.find((k) => k.id === id))
+    .filter((k): k is KategorieOption => Boolean(k));
+  const primaryCategory = selectedCategories[0] ?? null;
+  const themeColor = categoryColorFor(primaryCategory);
 
-    // Funkcja pomocnicza renderująca wiersz pola (zamiast zagnieżdżonego komponentu <FieldRow />),
-    // aby React nie tworzył nowego typu komponentu przy każdym renderze i nie gubił fokusu w polach input.
-    function renderFieldRow({
-      field,
-      label,
-      value,
-      renderEdit,
-    }: {
-      field: string;
-      label: string;
-      value: React.ReactNode;
-      renderEdit: () => React.ReactNode;
-    }) {
-      const isEditing = editingFields.has(field);
-      const isSaving = savingFields.has(field);
-      const error = fieldSaveErrors[field];
-      const success = fieldSaveSuccess[field];
+  const selectedZerts = zertifizierungen
+    .map((id) => zertOptions.find((z) => z.id === id))
+    .filter((z): z is ZertOption => Boolean(z));
 
+  const safePreviewDescription = vollbeschreibung.trim()
+    ? sanitizeWordHtml(vollbeschreibung)
+    : null;
+  const safePreviewLink = sanitizeExternalUrl(linkUrl);
+
+  // Czy partner może aktualnie edytować pola?
+  // - W trybie nowego pina ("new_form"): tak (pola podstawowe dla każdego, pola Premium dla Partner-Pin).
+  // - W trybie istniejącego pina ("view"): pełna edycja na żywo z Partner-Pin (`isPremium === true`).
+  const canEditBasic = mode === "new_form" || isPremium;
+
+  const publicUrl =
+    pinData?.slug && stadt && cityToSegment(stadt)
+      ? `/liste/${cityToSegment(stadt)}/${pinData.slug}`
+      : null;
+
+  // Lista klocków (Checkliste) na pasku szybkiego wyboru
+  const studioModules: {
+    id: StudioSection;
+    label: string;
+    filled: boolean;
+    premiumOnly?: boolean;
+  }[] = [
+    { id: "name", label: "Name", filled: Boolean(name.trim()) },
+    {
+      id: "kategorien",
+      label: "Kategorien",
+      filled: kategorien.length > 0,
+    },
+    {
+      id: "adresse",
+      label: "Adresse & Lage",
+      filled: Boolean(adresse.trim() && stadt.trim()),
+    },
+    {
+      id: "titelbild",
+      label: "Titelbild",
+      filled: Boolean(titelbildPreview),
+    },
+    {
+      id: "audio",
+      label: "Audiodatei",
+      filled: Boolean(audioPreview),
+    },
+    {
+      id: "beschreibung",
+      label: "Beschreibung",
+      filled: Boolean(vollbeschreibung.trim()),
+    },
+    {
+      id: "kontakt",
+      label: "Telefon & Website",
+      filled: Boolean(telefon.trim() || linkUrl.trim()),
+      premiumOnly: true,
+    },
+    {
+      id: "galerie",
+      label: `Galerie (${galerieItems.length}/6)`,
+      filled: galerieItems.length > 0,
+      premiumOnly: true,
+    },
+    {
+      id: "zertifizierungen",
+      label: `Zertifikate (${zertifizierungen.length})`,
+      filled: zertifizierungen.length > 0,
+    },
+  ];
+
+  // ==============================
+  // RENDEROWANIE PANELU EDYTORA DLA WYBRANEJ SEKCJI
+  // ==============================
+  function renderActiveSectionEditor() {
+    if (!activeSection) return null;
+
+    const isLockedByFreeView = mode === "view" && !isPremium;
+    const isLockedByPremiumFeature =
+      !isPremium &&
+      (activeSection === "kontakt" || activeSection === "galerie");
+
+    if (isLockedByFreeView || isLockedByPremiumFeature) {
       return (
-        <div className={styles.viewField}>
-          <div className={styles.viewFieldHeader}>
-            <span className={styles.viewFieldLabel}>{label}</span>
-            {isPremium && !isEditing && (
-              <button
-                type="button"
-                className={styles.editFieldBtn}
-                onClick={() =>
-                  startEdit(
-                    field,
-                    editValues[field] ?? pinData?.[field as keyof PinData],
-                  )
-                }
-              >
-                Bearbeiten
-              </button>
-            )}
+        <div ref={editorPanelRef} className={styles.editorDrawer}>
+          <div className={styles.editorDrawerHeader}>
+            <div className={styles.editorTitleGroup}>
+              <Lock size={18} className={styles.lockIcon} />
+              <h4 className={styles.editorDrawerTitle}>
+                {isLockedByFreeView
+                  ? "Bearbeitung mit dem Partner-Pin freischalten"
+                  : "Exklusives Partner-Pin Feature"}
+              </h4>
+            </div>
+            <button
+              type="button"
+              className={styles.closeEditorBtn}
+              onClick={() => setActiveSection(null)}
+            >
+              Schließen
+            </button>
           </div>
-          {isEditing ? (
-            <div className={styles.viewFieldEdit}>
-              {renderEdit()}
-              {error && <p className={styles.fieldError}>{error}</p>}
-              <div className={styles.viewFieldActions}>
-                <button
-                  type="button"
-                  className={styles.saveFieldBtn}
-                  disabled={isSaving}
-                  onClick={() => saveField(field, editValues[field])}
-                >
-                  {isSaving ? "Speichern…" : "Speichern"}
-                </button>
-                <button
-                  type="button"
-                  className={styles.cancelFieldBtn}
-                  onClick={() => cancelEdit(field)}
-                  disabled={isSaving}
-                >
-                  Abbrechen
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className={styles.viewFieldValue}>
-              {success && (
-                <span className={styles.savedBadge}>✓ Gespeichert</span>
-              )}
-              {value || <span className={styles.viewFieldEmpty}>—</span>}
-            </div>
-          )}
+          <p className={styles.upsellText}>
+            Mit dem <strong>Partner-Pin</strong> können Sie Ihren Pin jederzeit
+            in Echtzeit bearbeiten, sofort veröffentlichen sowie Website-Link,
+            Telefonnummer mit Anruffunktion, bis zu 6 Galeriebilder und mehrere
+            Zertifizierungen hinterlegen.
+          </p>
+          <div className={styles.editorActions}>
+            <Link href="/konto/partner/premium" className={styles.upgradeBtn}>
+              <Sparkles size={16} />
+              Jetzt Partner-Pin aktivieren →
+            </Link>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className={styles.wrapper}>
-        <h3 className={styles.intro}>Dein Audiopin</h3>
-        {!isPremium && (
-          <p className={styles.freeAccountInfo}>
-            Mit einem kostenlosen Konto kann der PIN nach der Einreichung nicht
-            mehr bearbeitet werden. Mit dem{" "}
-            <span className={styles.premiumBadge}>Partner PIN</span>
-            kannst du jederzeit Änderungen vornehmen.
-          </p>
-        )}
+      <div ref={editorPanelRef} className={styles.editorDrawer}>
+        <div className={styles.editorDrawerHeader}>
+          <div className={styles.editorTitleGroup}>
+            <Pencil size={17} />
+            <h4 className={styles.editorDrawerTitle}>
+              {activeSection === "name" && "Name des Ortes bearbeiten"}
+              {activeSection === "kategorien" && "Kategorien & Farbschema wählen"}
+              {activeSection === "adresse" && "Adresse & Karten-Standort"}
+              {activeSection === "titelbild" && "Hauptbild (Titelbild)"}
+              {activeSection === "audio" && "Audioguide / Audiodatei"}
+              {activeSection === "beschreibung" && "Vollständige Beschreibung"}
+              {activeSection === "kontakt" && "Telefonnummer & Website-Link"}
+              {activeSection === "galerie" && "Bildergalerie (bis zu 6 Fotos)"}
+              {activeSection === "zertifizierungen" && "Zertifizierungen & Labels"}
+            </h4>
+          </div>
+          <button
+            type="button"
+            className={styles.closeEditorBtn}
+            onClick={() => setActiveSection(null)}
+          >
+            Fertig
+          </button>
+        </div>
 
-        <div className={styles.viewBox}>
-          {renderFieldRow({
-            field: "Name",
-            label: "Name des PINs",
-            value: pinData.Name,
-            renderEdit: () => (
+        {/* Zawartość edytora zależna od wybranej sekcji */}
+        <div className={styles.editorBody}>
+          {activeSection === "name" && (
+            <div className={styles.field}>
+              <label htmlFor="studio-name" className={styles.label}>
+                Wie heißt Ihr Ort / Unternehmen auf der Karte? *
+              </label>
               <input
+                id="studio-name"
                 type="text"
-                aria-label="Name des PINs"
                 className={styles.input}
-                value={(editValues.Name as string) ?? ""}
-                onChange={(e) =>
-                  setEditValues((p) => ({ ...p, Name: e.target.value }))
-                }
+                placeholder="z. B. Bio-Hof Bodensee"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 autoFocus
               />
-            ),
-          })}
+              {fieldErrors.name && (
+                <span className={styles.fieldError}>{fieldErrors.name}</span>
+              )}
+            </div>
+          )}
 
-          {renderFieldRow({
-            field: "adresse_group",
-            label: "Adresse",
-            value: (
-              <span>
-                {pinData.Adresse || "—"}
-                {pinData.Stadt ? (
-                  <>
-                    , <strong>{pinData.Stadt}</strong>
-                  </>
-                ) : null}
-                {pinData.Land ? <> ({pinData.Land})</> : null}
+          {activeSection === "kategorien" && (
+            <div className={styles.field}>
+              <span className={styles.hint}>
+                Die erste gewählte Kategorie bestimmt die Hintergrundfarbe Ihrer
+                Detailseite und das Symbol auf der Karte.
               </span>
-            ),
-            renderEdit: () => (
-              <div className={styles.geoWrapper}>
-                <input
-                  type="text"
-                  aria-label="Adresse suchen"
-                  className={styles.input}
-                  value={
-                    (editValues.geoQuery as string) ??
-                    [pinData.Adresse, pinData.Stadt, pinData.Land]
-                      .filter(Boolean)
-                      .join(", ")
-                  }
-                  onChange={(e) => handleEditGeoQueryChange(e.target.value)}
-                  onBlur={() => setTimeout(() => setGeoSuggestions([]), 150)}
-                  placeholder="Straße, Stadt…"
-                  autoComplete="off"
-                  autoFocus
-                />
-                {geoLoading && (
-                  <span className={styles.geoLoading}>Suche…</span>
-                )}
-                {geoSuggestions.length > 0 && (
-                  <ul className={styles.geoDropdown}>
-                    {geoSuggestions.map((s) => (
-                      <li
-                        key={s.place_name}
-                        className={styles.geoDropdownItem}
-                        onMouseDown={() => selectEditGeoSuggestion(s)}
-                      >
-                        {s.place_name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <div className={styles.categoryGrid}>
+                {kategorienOptions.map((kat) => {
+                  const selected = kategorien.includes(kat.id);
+                  const katColor = categoryColorFor(kat);
+                  return (
+                    <button
+                      key={kat.id}
+                      type="button"
+                      onClick={() =>
+                        setKategorien((prev) => toggleMulti(prev, kat.id))
+                      }
+                      className={`${styles.categoryChoiceBtn} ${
+                        selected ? styles.categoryChoiceSelected : ""
+                      }`}
+                      style={
+                        selected
+                          ? ({
+                              borderColor: katColor,
+                              backgroundColor: `${katColor}15`,
+                            } as React.CSSProperties)
+                          : undefined
+                      }
+                    >
+                      <CategoryIcon
+                        categoryId={kat.id}
+                        color={katColor}
+                        size={28}
+                      />
+                      <span className={styles.categoryChoiceName}>
+                        {kat.name}
+                      </span>
+                      {selected && (
+                        <Check size={16} className={styles.categoryCheck} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            ),
-          })}
+              {fieldErrors.kategorien && (
+                <span className={styles.fieldError}>
+                  {fieldErrors.kategorien}
+                </span>
+              )}
+            </div>
+          )}
 
-          {renderFieldRow({
-            field: "Telefon",
-            label: "Telefonnummer mit Anruffunktion",
-            value: pinData.Telefon,
-            renderEdit: () => (
-              <input
-                type="tel"
-                aria-label="Telefonnummer mit Anruffunktion"
-                className={styles.input}
-                value={(editValues.Telefon as string) ?? ""}
-                onChange={(e) =>
-                  setEditValues((p) => ({ ...p, Telefon: e.target.value }))
-                }
-                autoFocus
-              />
-            ),
-          })}
-
-          {renderFieldRow({
-            field: "Vollbeschreibung",
-            label: "Vollständige Beschreibung",
-            value: pinData.Vollbeschreibung ? (
-              <span className={styles.viewFieldLong}>
-                {pinData.Vollbeschreibung}
-              </span>
-            ) : null,
-            renderEdit: () => {
-              const value = (editValues.Vollbeschreibung as string) ?? "";
-              return (
-                <div className={styles.fieldGroup}>
-                  <textarea
-                    aria-label="Vollständige Beschreibung"
-                    className={styles.textarea}
-                    rows={10}
-                    maxLength={MAX_BESCHREIBUNG}
-                    value={value}
-                    onChange={(e) =>
-                      setEditValues((p) => ({
-                        ...p,
-                        Vollbeschreibung: e.target.value.slice(
-                          0,
-                          MAX_BESCHREIBUNG,
-                        ),
-                      }))
-                    }
+          {activeSection === "adresse" && (
+            <div className={styles.fieldGroup}>
+              <div className={styles.field}>
+                <label htmlFor="studio-geo" className={styles.label}>
+                  Adresse suchen (automatische Koordinaten-Ermittlung) *
+                </label>
+                <div className={styles.geoWrapper}>
+                  <input
+                    id="studio-geo"
+                    type="text"
+                    className={styles.input}
+                    value={geoQuery}
+                    onChange={(e) => handleGeoInput(e.target.value)}
+                    onBlur={() => setTimeout(() => setGeoSuggestions([]), 180)}
+                    placeholder="Straße, Hausnummer, PLZ, Stadt eingeben…"
+                    autoComplete="off"
                     autoFocus
                   />
-                  <div className={styles.charCounterRow}>
-                    <span className={styles.hint}>
-                      ca. 1.300 – 1.800 Zeichen inklusive Leerzeichen
-                    </span>
-                    <span
-                      className={`${styles.charCounter} ${
-                        value.length >= MAX_BESCHREIBUNG
-                          ? styles.charCounterMax
-                          : ""
-                      }`}
-                    >
-                      {value.length} / {MAX_BESCHREIBUNG}
-                    </span>
-                  </div>
+                  {geoLoading && (
+                    <span className={styles.geoLoading}>Suche…</span>
+                  )}
+                  {geoSuggestions.length > 0 && (
+                    <ul className={styles.geoDropdown}>
+                      {geoSuggestions.map((s) => (
+                        <li
+                          key={s.place_name}
+                          className={styles.geoDropdownItem}
+                          onMouseDown={() => handleSelectGeoSuggestion(s)}
+                        >
+                          <MapPin size={15} />
+                          <span>{s.place_name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              );
-            },
-          })}
+              </div>
 
-          {renderFieldRow({
-            field: "Link_URL",
-            label: "Website",
-            value: pinData.Link_URL ? (
-              <a
-                href={pinData.Link_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.viewLink}
-              >
-                {pinData.Link_URL}
-              </a>
-            ) : null,
-            renderEdit: () => (
-              // Link_Text ustawia serwer na stale ("Website") — partner podaje
-              // wylacznie adres.
-              <input
-                type="url"
-                aria-label="Website"
-                className={styles.input}
-                placeholder="https://…"
-                value={(editValues.Link_URL as string) ?? ""}
+              <div className={styles.fieldRowTriple}>
+                <div className={styles.field}>
+                  <label htmlFor="studio-strasse" className={styles.label}>
+                    Straße &amp; PLZ *
+                  </label>
+                  <input
+                    id="studio-strasse"
+                    type="text"
+                    className={styles.input}
+                    value={adresse}
+                    onChange={(e) => setAdresse(e.target.value)}
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="studio-stadt" className={styles.label}>
+                    Stadt *
+                  </label>
+                  <input
+                    id="studio-stadt"
+                    type="text"
+                    className={styles.input}
+                    value={stadt}
+                    onChange={(e) => setStadt(e.target.value)}
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="studio-land" className={styles.label}>
+                    Land
+                  </label>
+                  <input
+                    id="studio-land"
+                    type="text"
+                    className={styles.input}
+                    value={land}
+                    onChange={(e) => setLand(e.target.value)}
+                    placeholder="z. B. Deutschland"
+                  />
+                </div>
+              </div>
+              {coordinates && (
+                <p className={styles.coordHint}>
+                  ✓ Karten-Koordinaten gesetzt ({coordinates.lat.toFixed(5)},{" "}
+                  {coordinates.lng.toFixed(5)})
+                </p>
+              )}
+              {fieldErrors.adresse && (
+                <span className={styles.fieldError}>{fieldErrors.adresse}</span>
+              )}
+            </div>
+          )}
+
+          {activeSection === "titelbild" && (
+            <div className={styles.fieldGroup}>
+              <p className={styles.hint}>
+                Das Titelbild erscheint ganz oben im Karten-Panel und als
+                großes Hauptbild auf Ihrer Audiopin-Seite (JPG, PNG, WebP — max.
+                5 MB).
+              </p>
+              <div className={styles.buttonRow}>
+                <button
+                  type="button"
+                  className={styles.uploadButton}
+                  onClick={() => titelbildRef.current?.click()}
+                  disabled={titelbildUploading}
+                >
+                  <ImageIcon size={16} />
+                  {titelbildUploading
+                    ? "Wird hochgeladen…"
+                    : titelbildPreview
+                      ? "Titelbild ersetzen"
+                      : "Titelbild auswählen & hochladen"}
+                </button>
+                {titelbildPreview && (
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    onClick={() => {
+                      setTitelbildId(null);
+                      setTitelbildPreview(null);
+                    }}
+                  >
+                    <Trash2 size={15} />
+                    Bild entfernen
+                  </button>
+                )}
+              </div>
+              {titelbildError && (
+                <p className={styles.uploadError}>{titelbildError}</p>
+              )}
+            </div>
+          )}
+
+          {activeSection === "audio" && (
+            <div className={styles.fieldGroup}>
+              <p className={styles.hint}>
+                Laden Sie Ihren gesprochenen Audiobeitrag hoch (MP3, M4A, WAV —
+                max. 50 MB). Der Player erscheint sowohl im Karten-Panel als
+                auch in der linken Spalte Ihrer Detailseite.
+              </p>
+              <div className={styles.buttonRow}>
+                <button
+                  type="button"
+                  className={styles.uploadButton}
+                  onClick={() => audioRef.current?.click()}
+                  disabled={audioUploading}
+                >
+                  <Mic size={16} />
+                  {audioUploading
+                    ? "Wird hochgeladen…"
+                    : audioPreview
+                      ? "Audiodatei ersetzen"
+                      : "Audiodatei auswählen & hochladen"}
+                </button>
+                {audioPreview && (
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    onClick={() => {
+                      setAudioId(null);
+                      setAudioPreview(null);
+                    }}
+                  >
+                    <Trash2 size={15} />
+                    Audio entfernen
+                  </button>
+                )}
+                <a
+                  href={AUDIO_GUIDE_PDF}
+                  download
+                  className={styles.secondaryButton}
+                >
+                  <Download size={15} aria-hidden="true" />
+                  Leitfaden &amp; Tipps (PDF)
+                </a>
+              </div>
+              {audioError && <p className={styles.uploadError}>{audioError}</p>}
+            </div>
+          )}
+
+          {activeSection === "beschreibung" && (
+            <div className={styles.fieldGroup}>
+              <p className={styles.hint}>
+                Die Beschreibung begleitet Ihren Audiopin zum Mitlesen oder
+                Nachlesen. Empfohlen: ca. 1.300 – 1.800 Zeichen (max.{" "}
+                {MAX_BESCHREIBUNG}).
+              </p>
+              <textarea
+                aria-label="Vollständige Beschreibung"
+                className={styles.textarea}
+                rows={8}
+                maxLength={MAX_BESCHREIBUNG}
+                placeholder="Erzählen Sie die Geschichte Ihres Ortes, was Besucher*innen erwartet und was Ihr Angebot besonders nachhaltig macht…"
+                value={vollbeschreibung}
                 onChange={(e) =>
-                  setEditValues((p) => ({ ...p, Link_URL: e.target.value }))
+                  setVollbeschreibung(e.target.value.slice(0, MAX_BESCHREIBUNG))
                 }
                 autoFocus
               />
-            ),
-          })}
-
-          {renderFieldRow({
-            field: "Titelbild",
-            label: "Titelbild",
-            value: pinData.Titelbild ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={assetUrl(pinData.Titelbild!)}
-                alt="Titelbild"
-                className={styles.titelbildImg}
-              />
-            ) : null,
-            renderEdit: () => {
-              const previewUrl = editValues.Titelbild
-                ? typeof editValues._titelbildPreview === "string"
-                  ? editValues._titelbildPreview
-                  : assetUrl(editValues.Titelbild as string)
-                : pinData.Titelbild
-                  ? assetUrl(pinData.Titelbild)
-                  : null;
-              return (
-                <div className={styles.fieldGroup}>
-                  {previewUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={previewUrl}
-                      alt=""
-                      className={styles.titelbildImg}
-                    />
-                  )}
-                  <input
-                    ref={titelbildRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    aria-label="Neues Titelbild hochladen"
-                    className={styles.hiddenInput}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setTitelbildUploading(true);
-                      try {
-                        const id = await uploadToDirectus(file);
-                        setEditValues((p) => ({
-                          ...p,
-                          Titelbild: id,
-                          _titelbildPreview: URL.createObjectURL(file),
-                        }));
-                      } catch {
-                        setTitelbildError("Fehler beim Hochladen.");
-                      } finally {
-                        setTitelbildUploading(false);
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className={styles.uploadButton}
-                    onClick={() => titelbildRef.current?.click()}
-                    disabled={titelbildUploading}
-                  >
-                    {titelbildUploading
-                      ? "Wird hochgeladen…"
-                      : "Neues Bild hochladen"}
-                  </button>
-                  {titelbildError && (
-                    <p className={styles.uploadError}>{titelbildError}</p>
-                  )}
-                </div>
-              );
-            },
-          })}
-
-          {/* Galerie — premium, zawsze widoczna w view, edycja inline */}
-          {isPremium && (
-            <div className={styles.viewField}>
-              <div className={styles.viewFieldHeader}>
-                <span className={styles.viewFieldLabel}>Bildergalerie</span>
+              <div className={styles.charCounterRow}>
+                <span className={styles.hint}>
+                  Änderungen sind sofort unten in beiden Vorschauen sichtbar.
+                </span>
+                <span
+                  className={`${styles.charCounter} ${
+                    vollbeschreibung.length >= MAX_BESCHREIBUNG
+                      ? styles.charCounterMax
+                      : ""
+                  }`}
+                >
+                  {vollbeschreibung.length} / {MAX_BESCHREIBUNG} Zeichen
+                </span>
               </div>
+            </div>
+          )}
+
+          {activeSection === "kontakt" && (
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <label htmlFor="studio-tel" className={styles.label}>
+                  Telefonnummer (mit direkter Anruffunktion)
+                </label>
+                <input
+                  id="studio-tel"
+                  type="tel"
+                  className={styles.input}
+                  placeholder="+49 7531 …"
+                  value={telefon}
+                  onChange={(e) => setTelefon(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="studio-url" className={styles.label}>
+                  Website-URL (Button „Website besuchen")
+                </label>
+                <input
+                  id="studio-url"
+                  type="url"
+                  className={styles.input}
+                  placeholder="https://www.ihre-website.de"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {activeSection === "galerie" && (
+            <div className={styles.fieldGroup}>
+              <p className={styles.hint}>
+                Präsentieren Sie Ihren Ort mit bis zu 6 zusätzlichen Fotos in
+                der interaktiven Bildergalerie (JPG, PNG, WebP).
+              </p>
               <div className={styles.galerieGrid}>
                 {galerieItems.map((item) => (
                   <div key={item.junctionId} className={styles.galerieItem}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={item.preview}
-                      alt=""
+                      alt="Galeriebild"
                       className={styles.galerieImg}
                     />
                     <button
                       type="button"
                       className={styles.removeButtonSmall}
-                      onClick={() => removeGalerieItem(item)}
+                      onClick={() => handleRemoveGalerieItem(item)}
+                      aria-label="Galeriebild entfernen"
                     >
                       ×
                     </button>
@@ -969,754 +1151,1030 @@ export default function AudiopinPage() {
                     onClick={() => galerieRef.current?.click()}
                     disabled={galerieUploading}
                   >
-                    {galerieUploading ? "…" : "+"}
+                    <Plus size={22} />
+                    <span>
+                      {galerieUploading
+                        ? "Lädt…"
+                        : `Foto (${galerieItems.length}/6)`}
+                    </span>
                   </button>
                 )}
               </div>
               {galerieError && (
                 <p className={styles.uploadError}>{galerieError}</p>
               )}
-              <input
-                ref={galerieRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                aria-label="Galeriebilder hochladen"
-                className={styles.hiddenInput}
-                onChange={handleGalerieEditUpload}
-              />
             </div>
           )}
 
-          {/* Audio */}
-          <div className={styles.viewField}>
-            <div className={styles.viewFieldHeader}>
-              <span className={styles.viewFieldLabel}>Audiodatei</span>
-              {isPremium && !editingFields.has("Audio") && (
-                <button
-                  type="button"
-                  className={styles.editFieldBtn}
-                  onClick={() => startEdit("Audio", pinData.Audio)}
-                >
-                  Bearbeiten
-                </button>
-              )}
-            </div>
-            {editingFields.has("Audio") ? (
-              <div className={styles.viewFieldEdit}>
-                {typeof editValues.Audio === "string" && (
-                  <audio
-                    controls
-                    src={
-                      typeof editValues._audioPreview === "string"
-                        ? editValues._audioPreview
-                        : assetUrl(editValues.Audio as string)
-                    }
-                    className={styles.audioPlayer}
-                  />
-                )}
-                <input
-                  ref={audioRef}
-                  type="file"
-                  accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a"
-                  aria-label="Neue Audiodatei hochladen"
-                  className={styles.hiddenInput}
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    setAudioUploading(true);
-                    try {
-                      const id = await uploadToDirectus(file);
-                      setEditValues((p) => ({
-                        ...p,
-                        Audio: id,
-                        _audioPreview: URL.createObjectURL(file),
-                      }));
-                    } catch {
-                      setAudioError("Fehler beim Hochladen.");
-                    } finally {
-                      setAudioUploading(false);
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className={styles.uploadButton}
-                  onClick={() => audioRef.current?.click()}
-                  disabled={audioUploading}
-                >
-                  {audioUploading
-                    ? "Wird hochgeladen…"
-                    : "Neue Audiodatei hochladen"}
-                </button>
-                {audioError && (
-                  <p className={styles.uploadError}>{audioError}</p>
-                )}
-                <div className={styles.viewFieldActions}>
-                  <button
-                    type="button"
-                    className={styles.saveFieldBtn}
-                    disabled={savingFields.has("Audio") || audioUploading}
-                    onClick={() => saveField("Audio", editValues.Audio)}
-                  >
-                    {savingFields.has("Audio") ? "Speichern…" : "Speichern"}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.cancelFieldBtn}
-                    onClick={() => cancelEdit("Audio")}
-                  >
-                    Abbrechen
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className={styles.viewFieldValue}>
-                {fieldSaveSuccess.Audio && (
-                  <span className={styles.savedBadge}>✓ Gespeichert</span>
-                )}
-                {pinData.Audio ? (
-                  <audio
-                    controls
-                    src={assetUrl(pinData.Audio!)}
-                    className={styles.audioPlayer}
-                  />
-                ) : (
-                  <span className={styles.viewFieldEmpty}>—</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Kategorien */}
-          <div className={styles.viewField}>
-            <div className={styles.viewFieldHeader}>
-              <span className={styles.viewFieldLabel}>Kategorien</span>
-              {isPremium && !editingFields.has("Kategorie") && (
-                <button
-                  type="button"
-                  className={styles.editFieldBtn}
-                  onClick={() => {
-                    startEdit("Kategorie", kategorienIds);
-                    setEditValues((p) => ({ ...p, Kategorie: kategorienIds }));
-                  }}
-                >
-                  Bearbeiten
-                </button>
-              )}
-            </div>
-            {editingFields.has("Kategorie") ? (
-              <div className={styles.viewFieldEdit}>
-                <div className={styles.checkboxGroup}>
-                  {kategorienOptions.map((kat) => {
-                    const selected =
-                      (editValues.Kategorie as number[]) ?? kategorienIds;
-                    return (
-                      <label key={kat.id} className={styles.checkboxLabel}>
-                        <input
-                          type="checkbox"
-                          className={styles.checkbox}
-                          checked={selected.includes(kat.id)}
-                          onChange={() =>
-                            setEditValues((p) => ({
-                              ...p,
-                              Kategorie: toggleMulti(selected, kat.id),
-                            }))
-                          }
-                        />
-                        {kat.name}
-                      </label>
-                    );
-                  })}
-                </div>
-                <div className={styles.viewFieldActions}>
-                  <button
-                    type="button"
-                    className={styles.saveFieldBtn}
-                    disabled={savingFields.has("Kategorie")}
-                    onClick={() => saveField("Kategorie", editValues.Kategorie)}
-                  >
-                    {savingFields.has("Kategorie") ? "Speichern…" : "Speichern"}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.cancelFieldBtn}
-                    onClick={() => cancelEdit("Kategorie")}
-                  >
-                    Abbrechen
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className={styles.viewFieldValue}>
-                {fieldSaveSuccess.Kategorie && (
-                  <span className={styles.savedBadge}>✓ Gespeichert</span>
-                )}
-                {kategorienIds.length > 0 ? (
-                  kategorienIds
-                    .map(
-                      (id) => kategorienOptions.find((k) => k.id === id)?.name,
-                    )
-                    .filter(Boolean)
-                    .join(", ")
-                ) : (
-                  <span className={styles.viewFieldEmpty}>—</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Zertifizierungen */}
-          {(() => {
-            const zertIds = (pinData.Zertifizierungen ?? []).map(
-              (z) => z.Zertifizierungen_id,
-            );
-            return (
-              <div className={styles.viewField}>
-                <div className={styles.viewFieldHeader}>
-                  <span className={styles.viewFieldLabel}>
-                    Zertifizierungen &amp; Labels
-                  </span>
-                  {isPremium && !editingFields.has("Zertifizierungen") && (
+          {activeSection === "zertifizierungen" && (
+            <div className={styles.fieldGroup}>
+              <p className={styles.hint}>
+                {isPremium
+                  ? "Als Partner-Pin können Sie beliebig viele zutreffende Zertifizierungen & Nachhaltigkeits-Labels auswählen."
+                  : "Im kostenlosen Basis-Konto können Sie 1 Zertifizierung wählen. Mit dem Partner-Pin sind beliebig viele Labels möglich."}
+              </p>
+              <div className={styles.zertSelectGrid}>
+                {zertOptions.map((zert) => {
+                  const selected = zertifizierungen.includes(zert.id);
+                  return (
                     <button
+                      key={zert.id}
                       type="button"
-                      className={styles.editFieldBtn}
-                      onClick={() => {
-                        startEdit("Zertifizierungen", zertIds);
-                        setEditValues((p) => ({
-                          ...p,
-                          Zertifizierungen: zertIds,
-                        }));
-                      }}
+                      onClick={() =>
+                        setZertifizierungen((prev) =>
+                          isPremium
+                            ? toggleMulti(prev, zert.id)
+                            : prev.includes(zert.id)
+                              ? []
+                              : [zert.id],
+                        )
+                      }
+                      className={`${styles.zertSelectBtn} ${
+                        selected ? styles.zertSelectBtnActive : ""
+                      }`}
                     >
-                      Bearbeiten
+                      {zert.imageUuid && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={assetUrl(zert.imageUuid)}
+                          alt=""
+                          className={styles.zertSelectIcon}
+                        />
+                      )}
+                      <span>{zert.name}</span>
+                      {selected && <Check size={15} />}
                     </button>
-                  )}
-                </div>
-                {editingFields.has("Zertifizierungen") ? (
-                  <div className={styles.viewFieldEdit}>
-                    <div className={styles.checkboxGroup}>
-                      {zertOptions.map((zert) => {
-                        const selected =
-                          (editValues.Zertifizierungen as string[]) ?? zertIds;
-                        return (
-                          <label key={zert.id} className={styles.checkboxLabel}>
-                            <input
-                              type="checkbox"
-                              className={styles.checkbox}
-                              checked={selected.includes(zert.id)}
-                              onChange={() =>
-                                setEditValues((p) => ({
-                                  ...p,
-                                  Zertifizierungen: toggleMulti(
-                                    selected,
-                                    zert.id,
-                                  ),
-                                }))
-                              }
-                            />
-                            {zert.name}
-                          </label>
-                        );
-                      })}
-                    </div>
-                    <div className={styles.viewFieldActions}>
-                      <button
-                        type="button"
-                        className={styles.saveFieldBtn}
-                        disabled={savingFields.has("Zertifizierungen")}
-                        onClick={() =>
-                          saveField(
-                            "Zertifizierungen",
-                            editValues.Zertifizierungen,
-                          )
-                        }
-                      >
-                        {savingFields.has("Zertifizierungen")
-                          ? "Speichern…"
-                          : "Speichern"}
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.cancelFieldBtn}
-                        onClick={() => cancelEdit("Zertifizierungen")}
-                      >
-                        Abbrechen
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={styles.viewFieldValue}>
-                    {fieldSaveSuccess.Zertifizierungen && (
-                      <span className={styles.savedBadge}>✓ Gespeichert</span>
-                    )}
-                    {zertIds.length > 0 ? (
-                      zertIds
-                        .map((id) => zertOptions.find((z) => z.id === id)?.name)
-                        .filter(Boolean)
-                        .join(", ")
-                    ) : (
-                      <span className={styles.viewFieldEmpty}>—</span>
-                    )}
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            );
-          })()}
+            </div>
+          )}
+
+          {sectionError && <p className={styles.fieldError}>{sectionError}</p>}
+
+          {/* W trybie edycji istniejącego pina pokazujemy przycisk bezpośredniego zapisu sekcji */}
+          {mode === "view" &&
+            isPremium &&
+            activeSection !== "titelbild" &&
+            activeSection !== "audio" &&
+            activeSection !== "galerie" && (
+              <div className={styles.editorActions}>
+                <button
+                  type="button"
+                  className={styles.saveSectionBtn}
+                  disabled={savingSection === activeSection}
+                  onClick={() => saveExistingPinSection(activeSection)}
+                >
+                  <Check size={16} />
+                  {savingSection === activeSection
+                    ? "Wird gespeichert…"
+                    : "Änderung jetzt speichern"}
+                </button>
+              </div>
+            )}
         </div>
       </div>
     );
   }
 
-  // ==============================
-  // TRYB NOWY FORMULARZ
-  // ==============================
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.studioWrapper}>
+      {/* Ukryte inputy dla uploadu plików (dostępne z każdego miejsca w Studio) */}
+      <input
+        ref={titelbildRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        aria-label="Titelbild hochladen"
+        className={styles.hiddenInput}
+        onChange={handleTitelbildChange}
+      />
+      <input
+        ref={audioRef}
+        type="file"
+        accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a"
+        aria-label="Audiodatei hochladen"
+        className={styles.hiddenInput}
+        onChange={handleAudioChange}
+      />
+      <input
+        ref={galerieRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        aria-label="Galeriebilder hochladen"
+        className={styles.hiddenInput}
+        onChange={handleGalerieUpload}
+      />
+
+      {/* 1. PASEK NAGŁÓWKA STUDIO (Status konta, przełącznik widoków, publikacja) */}
+      <div className={styles.studioTopBar}>
+        <div className={styles.studioTopLeft}>
+          <div className={styles.studioStatusRow}>
+            {isPremium ? (
+              <span className={styles.badgePartnerPin}>
+                <Sparkles size={14} />
+                Partner-Pin Studio (Premium aktiv)
+              </span>
+            ) : (
+              <span className={styles.badgeFreePin}>
+                Basis-Version (Kostenloser Audiopin)
+              </span>
+            )}
+
+            {mode === "view" && pinData && (
+              <span
+                className={
+                  pinData.Bearbeitungsstatus === "veroeffentlicht" || isPremium
+                    ? styles.statusPublished
+                    : styles.statusPending
+                }
+              >
+                {pinData.Bearbeitungsstatus === "veroeffentlicht" || isPremium
+                  ? "● Auf der Karte veröffentlicht"
+                  : "◐ Wartet auf redaktionelle Freigabe"}
+              </span>
+            )}
+
+            {publicUrl && (
+              <Link
+                href={publicUrl}
+                target="_blank"
+                className={styles.publicPageLink}
+              >
+                Live-Seite öffnen <ExternalLink size={13} />
+              </Link>
+            )}
+          </div>
+
+          <h2 className={styles.studioHeading}>
+            {mode === "new_form"
+              ? isPremium
+                ? "Gestalten Sie Ihren Partner-Pin in der Live-Vorschau"
+                : "Gestalten Sie Ihren Audiopin in der Live-Vorschau"
+              : "Ihr Audiopin — Interaktive Live-Vorschau & Bearbeitung"}
+          </h2>
+          <p className={styles.studioSubheading}>
+            Klicken Sie direkt auf ein beliebiges Element im{" "}
+            <strong>Karten-Panel</strong> oder auf der{" "}
+            <strong>Audiopin-Detailseite</strong>, um Ihre Inhalte einzufügen
+            und sofort zu sehen, wie Besucher*innen Ihren Ort erleben.
+          </p>
+        </div>
+
+        {/* Przełącznik widoku: Split vs Panel Mapy vs Strona szczegółowa */}
+        <div className={styles.viewModeGroup} role="tablist" aria-label="Vorschau-Ansicht wählen">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={previewMode === "split"}
+            className={`${styles.viewModeBtn} ${
+              previewMode === "split" ? styles.viewModeBtnActive : ""
+            }`}
+            onClick={() => setPreviewMode("split")}
+          >
+            <Layers size={16} />
+            <span>Beide Ansichten</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={previewMode === "panel"}
+            className={`${styles.viewModeBtn} ${
+              previewMode === "panel" ? styles.viewModeBtnActive : ""
+            }`}
+            onClick={() => setPreviewMode("panel")}
+          >
+            <LayoutPanelLeft size={16} />
+            <span>Karten-Panel</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={previewMode === "page"}
+            className={`${styles.viewModeBtn} ${
+              previewMode === "page" ? styles.viewModeBtnActive : ""
+            }`}
+            onClick={() => setPreviewMode("page")}
+          >
+            <Monitor size={16} />
+            <span>Audiopin-Seite</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Baner dla konta darmowego zachęcający do odblokowania funkcji Partner-Pin */}
       {!isPremium && (
-        <div className={styles.introBlock}>
-          <p className={styles.introText}>
-            Hier kannst du <strong>einmalig deinen Audiopin einreichen</strong>.
-            Die Eingabefelder sind begrenzt und der PIN kann nach der
-            Einreichung nicht mehr bearbeitet werden.
-          </p>
-          <p className={styles.introText}>
-            Nach Prüfung und Freigabe wird dein PIN auf der Karte
-            veröffentlicht.
-          </p>
-          <p className={styles.introText}>
-            <strong>Mehr Möglichkeiten?</strong> Mit dem{" "}
-            <span className={styles.premiumBadge}>Partner PIN</span>&nbsp;kannst
-            du deinen PIN jederzeit bearbeiten und zusätzliche Infos wie Link
-            zur Website, Telefonnummer mit Anruffunktion, mehrere
-            Zertifizierungen &amp; Labels sowie bis zu 6 Bilder hinterlegen.
-            Damit unterstützt du außerdem die Weiterentwicklung des Fairführers.
-          </p>
+        <div className={styles.upsellBanner}>
+          <div className={styles.upsellBannerText}>
+            <strong>Mehr Sichtbarkeit mit dem Partner-Pin:</strong> Schalten Sie
+            jederzeitige Live-Bearbeitung, sofortige Veröffentlichung ohne
+            Wartezeit, bis zu 6 Galeriebilder, Website-Button, Telefon-Anrufknopf
+            und mehrere Zertifizierungen frei.
+          </div>
+          <Link href="/konto/partner/premium" className={styles.upsellBannerCta}>
+            Partner-Pin ansehen →
+          </Link>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className={styles.form} noValidate>
-        <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>Grunddaten</legend>
-          <div className={styles.field}>
-            <label htmlFor="pin-name" className={styles.label}>
-              Name des PINs
-            </label>
-            <input
-              id="pin-name"
-              type="text"
-              className={`${styles.input} ${fieldErrors.name ? styles.inputError : ""}`}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            {fieldErrors.name && (
-              <span className={styles.fieldError}>{fieldErrors.name}</span>
-            )}
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="pin-geo" className={styles.label}>
-              Adresse suchen
-            </label>
-            <div className={styles.geoWrapper}>
-              <input
-                id="pin-geo"
-                type="text"
-                className={`${styles.input} ${fieldErrors.adresse || fieldErrors.stadt ? styles.inputError : ""}`}
-                value={geoQuery}
-                onChange={(e) => handleGeoQueryChange(e.target.value)}
-                onBlur={() => setTimeout(() => setGeoSuggestionsNew([]), 150)}
-                placeholder="Straße, Stadt…"
-                autoComplete="off"
-              />
-              {geoLoadingNew && (
-                <span className={styles.geoLoading}>Suche…</span>
+      {/* Pasek szybkiego dostępu do poszczególnych klocków pina (Bausteine) */}
+      <div className={styles.moduleBar} aria-label="Pin-Bausteine">
+        {studioModules.map((mod) => {
+          const isActive = activeSection === mod.id;
+          const isLocked = mod.premiumOnly && !isPremium;
+          return (
+            <button
+              key={mod.id}
+              type="button"
+              onClick={() => openSectionEditor(mod.id)}
+              className={`${styles.moduleChip} ${
+                isActive ? styles.moduleChipActive : ""
+              } ${mod.filled ? styles.moduleChipFilled : ""}`}
+            >
+              {isLocked ? (
+                <Lock size={13} className={styles.chipIconLock} />
+              ) : mod.filled ? (
+                <Check size={14} className={styles.chipIconCheck} />
+              ) : (
+                <Pencil size={13} className={styles.chipIconEdit} />
               )}
-              {geoSuggestionsNew.length > 0 && (
-                <ul className={styles.geoDropdown}>
-                  {geoSuggestionsNew.map((s) => (
-                    <li
-                      key={s.place_name}
-                      className={styles.geoDropdownItem}
-                      onMouseDown={() => selectGeoSuggestion(s)}
-                    >
-                      {s.place_name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            {!coordinates && (
-              <span className={styles.geoHint}>
-                Bitte wählen Sie eine Adresse aus der Vorschlagsliste aus.
-              </span>
-            )}
-            {(fieldErrors.adresse || fieldErrors.stadt) && (
-              <span className={styles.fieldError}>
-                Bitte wählen Sie eine Adresse aus der Vorschlagsliste.
-              </span>
-            )}
-          </div>
-          {coordinates && (
-            <div className={styles.fieldRow}>
-              <div className={styles.field}>
-                <label htmlFor="pin-adresse-ro" className={styles.label}>
-                  Straße &amp; PLZ
-                </label>
-                <input
-                  id="pin-adresse-ro"
-                  type="text"
-                  className={`${styles.input} ${styles.inputReadonly}`}
-                  value={adresse}
-                  readOnly
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="pin-stadt-ro" className={styles.label}>
-                  Stadt
-                </label>
-                <input
-                  id="pin-stadt-ro"
-                  type="text"
-                  className={`${styles.input} ${styles.inputReadonly}`}
-                  value={stadt}
-                  readOnly
-                />
-              </div>
-              {land && (
-                <div className={styles.field}>
-                  <label htmlFor="pin-land-ro" className={styles.label}>
-                    Land
-                  </label>
-                  <input
-                    id="pin-land-ro"
-                    type="text"
-                    className={`${styles.input} ${styles.inputReadonly}`}
-                    value={land}
-                    readOnly
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          <div
-            className={`${styles.field} ${!isPremium ? styles.premiumLocked : ""}`}
-          >
-            <label htmlFor="pin-telefon" className={styles.label}>
-              Telefonnummer mit Anruffunktion&nbsp;
-              {!isPremium && (
-                <span className={styles.premiumBadge}>Partner PIN</span>
-              )}
-            </label>
-            <input
-              id="pin-telefon"
-              type="tel"
-              className={styles.input}
-              value={telefon}
-              onChange={(e) => setTelefon(e.target.value)}
-              disabled={!isPremium}
-              placeholder={!isPremium ? "Nur mit Partner PIN" : ""}
-            />
-          </div>
-          <div
-            className={`${styles.field} ${!isPremium ? styles.premiumLocked : ""}`}
-          >
-            <label htmlFor="pin-link-url" className={styles.label}>
-              Website&nbsp;
-              {!isPremium && (
-                <span className={styles.premiumBadge}>Partner PIN</span>
-              )}
-            </label>
-            <input
-              id="pin-link-url"
-              type="url"
-              className={styles.input}
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder={!isPremium ? "Nur mit Partner PIN" : "https://…"}
-              disabled={!isPremium}
-            />
-          </div>
-        </fieldset>
+              <span>{mod.label}</span>
+              {isLocked && <span className={styles.chipPartnerTag}>PRO</span>}
+            </button>
+          );
+        })}
+      </div>
 
-        <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>
-            Beschreibung &amp; Audiodatei
-          </legend>
-          <p className={styles.hint}>
-            Die Beschreibung ist der Text zu deinem Audiopin und sollte
-            möglichst dem Inhalt deiner Audiodatei entsprechen. So können
-            Besucher*innen die Geschichte während des Anhörens mitlesen oder sie
-            alternativ lesen.
-          </p>
-          <div className={styles.field}>
-            <label htmlFor="pin-beschreibung" className={styles.label}>
-              Vollständige Beschreibung
-            </label>
-            <textarea
-              id="pin-beschreibung"
-              className={styles.textarea}
-              value={vollbeschreibung}
-              onChange={(e) =>
-                setVollbeschreibung(e.target.value.slice(0, MAX_BESCHREIBUNG))
-              }
-              maxLength={MAX_BESCHREIBUNG}
-              rows={10}
-            />
-            <div className={styles.charCounterRow}>
-              <span className={styles.hint}>
-                ca. 1.300 – 1.800 Zeichen inklusive Leerzeichen
+      {/* Powiadomienie o zapisaniu zmian */}
+      {savedBanner && (
+        <div className={styles.savedNotification} role="status">
+          <Check size={16} />
+          <span>{savedBanner}</span>
+        </div>
+      )}
+
+      {/* Aktywny panel edycji wybranego elementu */}
+      {renderActiveSectionEditor()}
+
+      {/* GŁÓWNY OBSZAR PODGLĄDU NA ŻYWO (Karten-Panel + Audiopin-Detailseite) */}
+      <div
+        className={`${styles.previewsGrid} ${
+          previewMode === "panel"
+            ? styles.previewsSinglePanel
+            : previewMode === "page"
+              ? styles.previewsSinglePage
+              : ""
+        }`}
+      >
+        {/* ============================================================
+            WIDOK 1: KARTEN-PANEL (odpowiednik PlaceInfoPanel na /karte)
+           ============================================================ */}
+        {(previewMode === "split" || previewMode === "panel") && (
+          <section
+            className={styles.previewColumnPanel}
+            aria-label="Vorschau Karten-Panel"
+          >
+            <div className={styles.previewFrameHeader}>
+              <span className={styles.previewFrameDot} />
+              <span className={styles.previewFrameTitle}>
+                Vorschau 1: Seitenpanel auf der interaktiven Karte (/karte)
               </span>
-              <span
-                className={`${styles.charCounter} ${
-                  vollbeschreibung.length >= MAX_BESCHREIBUNG
-                    ? styles.charCounterMax
+            </div>
+
+            <div className={styles.mockPanel}>
+              {/* 1. Zdjęcie główne (Titelbild) + nakładany odtwarzacz Audio */}
+              <div className={styles.mockPanelHeroWrap}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("titelbild")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("titelbild");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockPanelHero} ${
+                    activeSection === "titelbild" ? styles.editableZoneActive : ""
+                  }`}
+                >
+                  {titelbildPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={titelbildPreview}
+                      alt={name || "Titelbild"}
+                      className={styles.mockPanelHeroImg}
+                    />
+                  ) : (
+                    <div className={styles.mockHeroPlaceholder}>
+                      <ImageIcon size={34} />
+                      <span>Klicken, um Titelbild hochzuladen</span>
+                      <small>JPG, PNG oder WebP (max. 5 MB)</small>
+                    </div>
+                  )}
+                  <span className={styles.zoneFloatingBadge}>
+                    <Pencil size={12} /> Titelbild
+                  </span>
+                </div>
+
+                {/* Nakładany pasek Audio na dolnej krawędzi zdjęcia */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("audio")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("audio");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockPanelAudioOverlay} ${
+                    activeSection === "audio" ? styles.editableZoneActive : ""
+                  }`}
+                >
+                  {audioPreview ? (
+                    <audio
+                      controls
+                      src={audioPreview}
+                      className={styles.mockPanelAudioPlayer}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <div className={styles.mockAudioPlaceholder}>
+                      <Mic size={16} />
+                      <span>+ Audiodatei hinzufügen (MP3/M4A/WAV)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Odznaki kategorii (Kategorien) */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => openSectionEditor("kategorien")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openSectionEditor("kategorien");
+                  }
+                }}
+                className={`${styles.editableZone} ${styles.mockPanelCategories} ${
+                  activeSection === "kategorien" ? styles.editableZoneActive : ""
+                }`}
+              >
+                {selectedCategories.length > 0 ? (
+                  selectedCategories.map((cat) => (
+                    <span
+                      key={cat.id}
+                      className={styles.mockCategoryBadge}
+                      style={{
+                        backgroundColor: categoryColorFor(cat),
+                      }}
+                    >
+                      {cat.name}
+                    </span>
+                  ))
+                ) : (
+                  <span className={styles.mockEmptyPill}>
+                    + Kategorien auswählen *
+                  </span>
+                )}
+                <span className={styles.zoneCornerHint}>
+                  <Pencil size={11} /> Kategorien
+                </span>
+              </div>
+
+              {/* 3. Nazwa miejsca + Adres + Telefon */}
+              <div className={styles.mockPanelHeaderSection}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("name")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("name");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockNameZone} ${
+                    activeSection === "name" ? styles.editableZoneActive : ""
+                  }`}
+                >
+                  <h3 className={styles.mockPanelTitle}>
+                    {name.trim() || "Name Ihres Ortes hier eingeben…"}
+                  </h3>
+                  <span className={styles.zoneCornerHint}>
+                    <Pencil size={11} /> Name
+                  </span>
+                </div>
+
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("adresse")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("adresse");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockAddressZone} ${
+                    activeSection === "adresse" ? styles.editableZoneActive : ""
+                  }`}
+                >
+                  <p className={styles.mockPanelAddress}>
+                    {adresse.trim() || stadt.trim() ? (
+                      <>
+                        {adresse}
+                        {stadt ? `, ${stadt}` : ""}
+                        {land ? ` (${land})` : ""}
+                      </>
+                    ) : (
+                      "📍 Straße, PLZ & Stadt hier auswählen…"
+                    )}
+                  </p>
+                  <span className={styles.zoneCornerHint}>
+                    <MapPin size={11} /> Adresse
+                  </span>
+                </div>
+
+                {/* Telefon w panelu mapy */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("kontakt")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("kontakt");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockContactInline} ${
+                    activeSection === "kontakt" ? styles.editableZoneActive : ""
+                  }`}
+                >
+                  {telefon.trim() && isPremium ? (
+                    <span className={styles.mockPanelPhone}>
+                      📞 {telefon}
+                    </span>
+                  ) : (
+                    <span className={styles.mockOptionalHint}>
+                      <Phone size={13} />
+                      {isPremium
+                        ? "+ Telefonnummer mit Anruffunktion hinzufügen"
+                        : "🔒 Telefon-Anrufbutton (Partner-Pin)"}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 4. Pełny opis (Vollbeschreibung) */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => openSectionEditor("beschreibung")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openSectionEditor("beschreibung");
+                  }
+                }}
+                className={`${styles.editableZone} ${styles.mockPanelSection} ${
+                  activeSection === "beschreibung" ? styles.editableZoneActive : ""
+                }`}
+              >
+                {safePreviewDescription ? (
+                  <div
+                    className={styles.mockPanelDescription}
+                    dangerouslySetInnerHTML={{ __html: safePreviewDescription }}
+                  />
+                ) : (
+                  <div className={styles.mockTextPlaceholder}>
+                    <FileText size={20} />
+                    <span>
+                      Hier erscheint Ihre ausführliche Beschreibung zum Mitlesen
+                      und Entdecken. Klicken Sie hier, um Ihren Text einzugeben.
+                    </span>
+                  </div>
+                )}
+                <span className={styles.zoneCornerHint}>
+                  <Pencil size={11} /> Beschreibung
+                </span>
+              </div>
+
+              {/* 5. Przycisk Website besuchen */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => openSectionEditor("kontakt")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openSectionEditor("kontakt");
+                  }
+                }}
+                className={`${styles.editableZone} ${styles.mockPanelSection} ${
+                  activeSection === "kontakt" ? styles.editableZoneActive : ""
+                }`}
+              >
+                {safePreviewLink && isPremium ? (
+                  <span className={styles.mockWebsiteButton}>
+                    Website besuchen
+                  </span>
+                ) : (
+                  <div className={styles.mockWebsitePlaceholder}>
+                    <Globe size={16} />
+                    <span>
+                      {isPremium
+                        ? "+ Website-Button („Website besuchen“) verlinken"
+                        : "🔒 Direktlink zur eigenen Website (Partner-Pin)"}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 6. Bildergalerie w panelu mapy */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => openSectionEditor("galerie")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openSectionEditor("galerie");
+                  }
+                }}
+                className={`${styles.editableZone} ${styles.mockPanelSection} ${
+                  activeSection === "galerie" ? styles.editableZoneActive : ""
+                }`}
+              >
+                <h4 className={styles.mockPanelSubheading}>Bildergalerie</h4>
+                {galerieItems.length > 0 && isPremium ? (
+                  <div className={styles.mockPanelGalleryGrid}>
+                    {galerieItems.map((g) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={g.junctionId}
+                        src={g.preview}
+                        alt=""
+                        className={styles.mockPanelGalleryThumb}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.mockGalleryPlaceholder}>
+                    <ImageIcon size={18} />
+                    <span>
+                      {isPremium
+                        ? "+ Bis zu 6 Galeriebilder hinzufügen"
+                        : "🔒 Bildergalerie mit bis zu 6 Fotos (Partner-Pin)"}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 7. Zertifizierungen & Labels w panelu mapy */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => openSectionEditor("zertifizierungen")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openSectionEditor("zertifizierungen");
+                  }
+                }}
+                className={`${styles.editableZone} ${styles.mockPanelSection} ${
+                  activeSection === "zertifizierungen"
+                    ? styles.editableZoneActive
                     : ""
                 }`}
               >
-                {vollbeschreibung.length} / {MAX_BESCHREIBUNG}
+                <h4 className={styles.mockPanelSubheading}>
+                  Zertifizierungen &amp; Labels
+                </h4>
+                {selectedZerts.length > 0 ? (
+                  <div className={styles.mockZertGrid}>
+                    {selectedZerts.map((z) => (
+                      <div key={z.id} className={styles.mockZertBadgeItem}>
+                        {z.imageUuid ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={assetUrl(z.imageUuid)}
+                            alt={z.name}
+                            title={z.name}
+                            className={styles.mockZertLogo}
+                          />
+                        ) : (
+                          <span className={styles.mockZertName}>{z.name}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.mockGalleryPlaceholder}>
+                    <Award size={18} />
+                    <span>+ Zertifizierungen &amp; Siegel auswählen</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ============================================================
+            WIDOK 2: AUDIOPIN-DETAILSEITE (odpowiednik /liste/[stadt]/[slug])
+           ============================================================ */}
+        {(previewMode === "split" || previewMode === "page") && (
+          <section
+            className={styles.previewColumnPage}
+            aria-label="Vorschau Audiopin-Detailseite"
+          >
+            <div className={styles.previewFrameHeader}>
+              <span className={styles.previewFrameDot} />
+              <span className={styles.previewFrameTitle}>
+                Vorschau 2: Eigene Audiopin-Detailseite (/liste/
+                {cityToSegment(stadt) || "stadt"}/…)
               </span>
             </div>
-          </div>
 
-          <div className={styles.field}>
-            <label className={styles.label}>Audiodatei</label>
-            {audioPreview ? (
-              <div className={styles.audioPreview}>
-                <audio
-                  controls
-                  src={audioPreview}
-                  className={styles.audioPlayer}
-                />
-                <button
-                  type="button"
-                  className={styles.removeButton}
-                  onClick={() => {
-                    setAudioId(null);
-                    setAudioPreview(null);
-                  }}
-                >
-                  Entfernen
-                </button>
-              </div>
-            ) : (
-              <div className={styles.buttonRow}>
-                <button
-                  type="button"
-                  className={styles.uploadButton}
-                  onClick={() => audioRef.current?.click()}
-                  disabled={audioUploading}
-                >
-                  {audioUploading
-                    ? "Wird hochgeladen…"
-                    : "Audiodatei hochladen"}
-                </button>
-                <a
-                  href={AUDIO_GUIDE_PDF}
-                  download
-                  className={styles.secondaryButton}
-                >
-                  <Download size={15} aria-hidden="true" />
-                  Tipps für die Audiodatei
-                </a>
-              </div>
-            )}
-            <p className={styles.hint}>MP3, M4A, WAV — max. 50 MB</p>
-            <p className={styles.hint}>
-              Du bist dir unsicher, wie du deine Aufnahme gestaltest? In unserem
-              Leitfaden (PDF) findest du Tipps zu Länge, Aufbau und Tonqualität
-              deiner Audiodatei.
-            </p>
-            {audioError && <p className={styles.uploadError}>{audioError}</p>}
-            <input
-              ref={audioRef}
-              type="file"
-              accept="audio/mpeg,audio/mp4,audio/wav,audio/x-m4a"
-              aria-label="Audiodatei hochladen"
-              className={styles.hiddenInput}
-              onChange={handleAudioUpload}
-            />
-          </div>
-        </fieldset>
-
-        <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>Kategorien</legend>
-          {fieldErrors.kategorien && (
-            <span className={styles.fieldError}>{fieldErrors.kategorien}</span>
-          )}
-          <div className={styles.checkboxGroup}>
-            {kategorienOptions.map((kat) => (
-              <label key={kat.id} className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  className={styles.checkbox}
-                  checked={kategorien.includes(kat.id)}
-                  onChange={() => setKategorien((p) => toggleMulti(p, kat.id))}
-                />
-                {kat.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>
-            Zertifizierungen &amp; Labels
-          </legend>
-          <p className={styles.hint}>
-            Bitte wähle eine Zertifizierung oder ein Label aus.
-            <br />
-            Mit dem <strong>Partner PIN</strong> kannst du mehrere hinterlegen.
-          </p>
-          <div className={styles.checkboxGroup}>
-            {zertOptions.map((zert) => (
-              <label key={zert.id} className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  className={styles.checkbox}
-                  checked={zertifizierungen.includes(zert.id)}
-                  onChange={() =>
-                    setZertifizierungen((p) =>
-                      // Bez Partner PIN mozna wybrac tylko jedna pozycje —
-                      // kolejny klik zastepuje poprzedni wybor.
-                      isPremium
-                        ? toggleMulti(p, zert.id)
-                        : p.includes(zert.id)
-                          ? []
-                          : [zert.id],
-                    )
-                  }
-                />
-                {zert.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>Titelbild</legend>
-          <p className={styles.hint}>
-            Hauptbild des Pins (JPG, PNG, WebP — max. 5 MB).
-          </p>
-          {titelbildPreview && (
-            <div className={styles.titelbildPreview}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={titelbildPreview}
-                alt="Titelbild"
-                className={styles.titelbildImg}
-              />
-              <button
-                type="button"
-                className={styles.removeButton}
-                onClick={() => {
-                  setTitelbildId(null);
-                  setTitelbildPreview(null);
-                }}
+            <div className={styles.mockDetailPage}>
+              {/* Lewa kolumna w kolorze wybranej kategorii */}
+              <aside
+                className={styles.mockDetailSidebar}
+                style={{ backgroundColor: themeColor }}
               >
-                Entfernen
-              </button>
-            </div>
-          )}
-          {!titelbildPreview && (
-            <button
-              type="button"
-              className={styles.uploadButton}
-              onClick={() => titelbildRef.current?.click()}
-              disabled={titelbildUploading}
-            >
-              {titelbildUploading ? "Wird hochgeladen…" : "Bild hochladen"}
-            </button>
-          )}
-          {titelbildError && (
-            <p className={styles.uploadError}>{titelbildError}</p>
-          )}
-          <input
-            ref={titelbildRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            aria-label="Titelbild hochladen"
-            className={styles.hiddenInput}
-            onChange={handleTitelbildUpload}
-          />
-        </fieldset>
+                <div className={styles.mockDetailSidebarInner}>
+                  {/* Kategoria i ikona */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("kategorien")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("kategorien");
+                      }
+                    }}
+                    className={`${styles.sidebarEditableZone} ${
+                      activeSection === "kategorien"
+                        ? styles.sidebarEditableZoneActive
+                        : ""
+                    }`}
+                  >
+                    <CategoryIcon
+                      categoryId={primaryCategory?.id ?? null}
+                      color="rgba(255,255,255,0.22)"
+                      strokeColor="#fff"
+                      size={32}
+                    />
+                    <span>
+                      {primaryCategory?.name ?? "Kategorie wählen"}
+                    </span>
+                  </div>
 
-        <fieldset
-          className={`${styles.fieldset} ${!isPremium ? styles.premiumLocked : ""}`}
-        >
-          <legend className={styles.legend}>
-            Bildergalerie (max. 6)&nbsp;
-            {!isPremium && (
-              <span className={styles.premiumBadge}>Partner PIN</span>
-            )}
-          </legend>
-          {!isPremium ? (
-            <p className={styles.hint}>
-              Die Bildergalerie ist nur mit dem Partner PIN verfügbar.
-            </p>
-          ) : (
-            <>
-              <p className={styles.hint}>
-                Laden Sie bis zu 6 Bilder hoch (JPG, PNG, WebP).
-              </p>
-              {galeriePreviews.length > 0 && (
-                <div className={styles.galerieGrid}>
-                  {galeriePreviews.map((url, i) => (
-                    <div key={url} className={styles.galerieItem}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" className={styles.galerieImg} />
-                      <button
-                        type="button"
-                        className={styles.removeButtonSmall}
-                        onClick={() => {
-                          setGalerieIds((p) => p.filter((_, j) => j !== i));
-                          setGaleriePreviews((p) =>
-                            p.filter((_, j) => j !== i),
-                          );
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  {/* Tytuł na pasku bocznym */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("name")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("name");
+                      }
+                    }}
+                    className={`${styles.sidebarEditableZone} ${
+                      activeSection === "name"
+                        ? styles.sidebarEditableZoneActive
+                        : ""
+                    }`}
+                  >
+                    <h3 className={styles.mockDetailTitle}>
+                      {name.trim() || "Name Ihres Ortes"}
+                    </h3>
+                  </div>
+
+                  {/* Adres na pasku bocznym */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("adresse")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("adresse");
+                      }
+                    }}
+                    className={`${styles.sidebarEditableZone} ${
+                      activeSection === "adresse"
+                        ? styles.sidebarEditableZoneActive
+                        : ""
+                    }`}
+                  >
+                    <p className={styles.mockDetailAddress}>
+                      {adresse.trim() || "Straße & Hausnummer"}
+                      <br />
+                      {stadt.trim() || "Stadt"}
+                      {land.trim() ? `, ${land.trim()}` : ""}
+                    </p>
+                  </div>
+
+                  {/* Telefon i Website na pasku bocznym */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("kontakt")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("kontakt");
+                      }
+                    }}
+                    className={`${styles.sidebarEditableZone} ${styles.mockSidebarContact} ${
+                      activeSection === "kontakt"
+                        ? styles.sidebarEditableZoneActive
+                        : ""
+                    }`}
+                  >
+                    {isPremium && (telefon.trim() || safePreviewLink) ? (
+                      <>
+                        {telefon.trim() && (
+                          <span className={styles.mockSidebarLink}>
+                            {telefon}
+                          </span>
+                        )}
+                        {safePreviewLink && (
+                          <span className={styles.mockSidebarLink}>
+                            Website besuchen
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className={styles.mockSidebarHint}>
+                        {isPremium
+                          ? "+ Telefon & Website hinzufügen"
+                          : "🔒 Telefon & Website (Partner-Pin)"}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Odtwarzacz ColumnAudioPlayer na pasku bocznym */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("audio")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("audio");
+                      }
+                    }}
+                    className={`${styles.sidebarEditableZone} ${styles.mockSidebarPlayerWrap} ${
+                      activeSection === "audio"
+                        ? styles.sidebarEditableZoneActive
+                        : ""
+                    }`}
+                  >
+                    {audioPreview ? (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ColumnAudioPlayer
+                          src={audioPreview}
+                          title={name || "Audioguide"}
+                        />
+                      </div>
+                    ) : (
+                      <div className={styles.mockSidebarAudioEmpty}>
+                        <Mic size={18} />
+                        <span>Audioguide hier hochladen</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-              {galerieIds.length < 6 && (
-                <button
-                  type="button"
-                  className={styles.uploadButton}
-                  onClick={() => galerieRefNew.current?.click()}
-                  disabled={galerieUploadingNew}
-                >
-                  {galerieUploadingNew
-                    ? "Wird hochgeladen…"
-                    : `Bilder hinzufügen (${galerieIds.length}/6)`}
-                </button>
-              )}
-              {galerieErrorNew && (
-                <p className={styles.uploadError}>{galerieErrorNew}</p>
-              )}
-              <input
-                ref={galerieRefNew}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                aria-label="Galeriebilder hochladen"
-                className={styles.hiddenInput}
-                onChange={handleGalerieUploadNew}
-              />
-            </>
-          )}
-        </fieldset>
+              </aside>
 
-        <button
-          type="submit"
-          className={styles.submitButton}
-          disabled={mode === "submitting"}
-        >
-          {mode === "submitting" ? "Wird eingereicht…" : "Audiopin einreichen"}
-        </button>
-        {submitError && <p className={styles.errorMessage}>{submitError}</p>}
-      </form>
+              {/* Prawa kolumna strony szczegółowej */}
+              <div className={styles.mockDetailMain}>
+                {/* Zdjęcie główne w charakterystycznej ręcznie rysowanej ramce */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("titelbild")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("titelbild");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockDetailHeroZone} ${
+                    activeSection === "titelbild" ? styles.editableZoneActive : ""
+                  }`}
+                >
+                  {titelbildPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={titelbildPreview}
+                      alt={name || "Titelbild"}
+                      className={styles.mockDetailHeroImg}
+                    />
+                  ) : (
+                    <div className={styles.mockDetailHeroEmpty}>
+                      <ImageIcon size={32} />
+                      <span>Titelbild in Handzeichnungs-Rahmen</span>
+                    </div>
+                  )}
+                  <span className={styles.zoneCornerHint}>
+                    <Pencil size={11} /> Titelbild
+                  </span>
+                </div>
+
+                {/* Pełny opis na stronie szczegółowej */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("beschreibung")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("beschreibung");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockDetailTextZone} ${
+                    activeSection === "beschreibung"
+                      ? styles.editableZoneActive
+                      : ""
+                  }`}
+                >
+                  {safePreviewDescription ? (
+                    <div
+                      className={styles.mockDetailDescription}
+                      dangerouslySetInnerHTML={{
+                        __html: safePreviewDescription,
+                      }}
+                    />
+                  ) : (
+                    <p className={styles.mockDetailNoText}>
+                      Für diesen Ort liegt noch keine Beschreibung vor — klicken
+                      Sie hier, um Ihren Beschreibungstext einzufügen.
+                    </p>
+                  )}
+                  <span className={styles.zoneCornerHint}>
+                    <Pencil size={11} /> Beschreibung
+                  </span>
+                </div>
+
+                {/* Rząd certyfikatów pod tekstem */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("zertifizierungen")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("zertifizierungen");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockDetailZertZone} ${
+                    activeSection === "zertifizierungen"
+                      ? styles.editableZoneActive
+                      : ""
+                  }`}
+                >
+                  {selectedZerts.length > 0 ? (
+                    <div className={styles.mockDetailZertRow}>
+                      {selectedZerts.map((z) =>
+                        z.imageUuid ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={z.id}
+                            src={assetUrl(z.imageUuid)}
+                            alt={z.name}
+                            title={z.name}
+                            className={styles.mockDetailZertBadge}
+                          />
+                        ) : (
+                          <span key={z.id} className={styles.mockDetailZertPill}>
+                            {z.name}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                  ) : (
+                    <div className={styles.mockGalleryPlaceholder}>
+                      <Award size={16} />
+                      <span>+ Zertifizierungen &amp; Labels unter dem Text anzeigen</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sekcja Bildergalerie na stronie szczegółowej */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("galerie")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("galerie");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockDetailGalleryZone} ${
+                    activeSection === "galerie" ? styles.editableZoneActive : ""
+                  }`}
+                >
+                  <h4 className={styles.mockDetailSectionTitle}>Bildergalerie</h4>
+                  {galerieItems.length > 0 && isPremium ? (
+                    <div className={styles.mockDetailGalleryGrid}>
+                      {galerieItems.map((g) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={g.junctionId}
+                          src={g.preview}
+                          alt=""
+                          className={styles.mockDetailGalleryImg}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.mockGalleryPlaceholder}>
+                      <ImageIcon size={18} />
+                      <span>
+                        {isPremium
+                          ? "+ Fotos zur Bildergalerie hinzufügen (bis zu 6 Bilder)"
+                          : "🔒 Bildergalerie auf der Detailseite (Partner-Pin)"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sekcja Lage (Mapa lokalizacji na dole strony szczegółowej) */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openSectionEditor("adresse")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openSectionEditor("adresse");
+                    }
+                  }}
+                  className={`${styles.editableZone} ${styles.mockDetailMapZone} ${
+                    activeSection === "adresse" ? styles.editableZoneActive : ""
+                  }`}
+                >
+                  <h4 className={styles.mockDetailSectionTitle}>Lage</h4>
+                  <div className={styles.mockMapCard}>
+                    <div
+                      className={styles.mockMapPinCircle}
+                      style={{ backgroundColor: themeColor }}
+                    >
+                      <MapPin size={20} color="#fff" />
+                    </div>
+                    <div className={styles.mockMapInfo}>
+                      <strong>{name.trim() || "Ihr Standort auf der Karte"}</strong>
+                      <span>
+                        {adresse.trim() || stadt.trim()
+                          ? `${adresse}${stadt ? `, ${stadt}` : ""}`
+                          : "Klicken, um Adresse & Koordinaten festzulegen"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* DOLNY PASEK PUBLIKACJI (gdy partner tworzy nowy Pin w trybie new_form / submitting) */}
+      {(mode === "new_form" || mode === "submitting") && (
+        <div className={styles.publishFooter}>
+          <div className={styles.publishFooterInfo}>
+            <strong>Bereit zur Veröffentlichung?</strong>
+            <span>
+              {isPremium
+                ? "Mit Ihrem Partner-Pin wird Ihr Ort sofort auf der Karte veröffentlicht und kann jederzeit weiter bearbeitet werden."
+                : "Ihr kostenloser Pin wird nach dem Absenden von unserer Redaktion geprüft und anschließend freigeschaltet."}
+            </span>
+            {submitError && (
+              <p className={styles.submitErrorText}>{submitError}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            className={styles.publishPrimaryBtn}
+            disabled={mode === "submitting" || !canEditBasic}
+            onClick={handleCreatePin}
+          >
+            {mode === "submitting"
+              ? "Wird gespeichert…"
+              : isPremium
+                ? "★ Partner-Pin jetzt sofort veröffentlichen"
+                : "Kostenlosen Pin zur Prüfung einreichen"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

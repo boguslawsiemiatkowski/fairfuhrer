@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { firstZodError, patchAudiopinSchema } from "@/lib/validations/api";
 import { LINK_TEXT } from "@/app/api/audiopin/route";
+import { isPremiumActiveForDates } from "@/types/auth";
 
 const PIN_ID_REGEX = /^\d+$/;
 
@@ -62,16 +63,24 @@ export async function PATCH(
       );
     }
 
-    // Weryfikacja: użytkownik musi być premium i posiadać ten pin
-    const { data: partnerProfile } = await supabase
-      .from("partner_profiles")
-      .select("pin_id, premium_until")
-      .eq("id", user.id)
-      .single();
+    // Weryfikacja: użytkownik musi być premium (w profiles lub partner_profiles) i posiadać ten pin
+    const [{ data: profile }, { data: partnerProfile }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("premium_until")
+        .eq("id", user.id)
+        .single(),
+      supabase
+        .from("partner_profiles")
+        .select("pin_id, premium_until")
+        .eq("id", user.id)
+        .single(),
+    ]);
 
-    const isPremium = partnerProfile?.premium_until
-      ? new Date(partnerProfile.premium_until) > new Date()
-      : false;
+    const isPremium = isPremiumActiveForDates(
+      profile?.premium_until,
+      partnerProfile?.premium_until,
+    );
 
     if (!isPremium) {
       return NextResponse.json({ error: "Premium erforderlich." }, { status: 403 });
@@ -191,6 +200,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Keine Änderungen." }, { status: 400 });
     }
 
+    // Jeśli partner przeszedł z konta darmowego na Partner-Pin, przy edycji
+    // awansujemy pin do wersji premium i automatycznie go publikujemy.
+    patchData.Pin_Typ = "premium";
+    patchData.Bearbeitungsstatus = "veroeffentlicht";
+
     const response = await fetch(`${directusUrl}/items/Orte/${pinId}`, {
       method: "PATCH",
       headers: {
@@ -252,8 +266,9 @@ export async function GET(
     }
 
     const fields = [
-      "id", "Name", "Adresse", "Stadt", "Land", "Telefon", "Vollbeschreibung",
+      "id", "Name", "slug", "Adresse", "Stadt", "Land", "Telefon", "Vollbeschreibung",
       "Link_URL", "Link_Text", "Titelbild", "Audio",
+      "Pin_Typ", "Bearbeitungsstatus",
       "location",
       "Kategorie.Kategorie_id",
       "Zertifizierungen.Zertifizierungen_id",

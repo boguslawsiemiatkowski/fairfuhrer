@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import type { CompanySize, TaxBucket } from "@/types/auth";
@@ -197,6 +198,11 @@ export function PartnerSubscriptionForm({
             Aktiv bis: <strong>{until}</strong>
           </p>
         )}
+
+        <Link href="/konto/partner/audiopin" className={styles.studioCtaButton}>
+          Zum Partner-Pin Studio (Live-Vorschau &amp; Bearbeitung) →
+        </Link>
+
         <p className={styles.activeHint}>
           Ihre Partnerschaft verlängert sich automatisch jährlich über PayPal.
           Zur Verwaltung oder Kündigung des Abonnements besuchen Sie Ihr{" "}

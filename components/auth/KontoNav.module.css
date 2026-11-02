@@ -26,3 +26,18 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+
+.navBadge {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.1rem 0.45rem;
+  font-family: var(--font-fira);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background-color: #2e7d32;
+  color: #fff;
+  border-radius: 100px;
+  vertical-align: middle;
+}

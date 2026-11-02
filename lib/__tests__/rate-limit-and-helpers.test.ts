@@ -8,6 +8,7 @@ import {
   buildCategoriesQueryParam,
   parseCategoriesFromSearch,
 } from "@/components/MapWithFilters";
+import { isPremiumActiveForDates, resolvePremiumUntil } from "@/types/auth";
 import { parseMapboxSuggestion } from "@/utils/pinFormHelpers";
 
 describe("checkRateLimit", () => {
@@ -136,4 +137,35 @@ describe("URL-Filter für /karte (parseCategoriesFromSearch & buildCategoriesQue
     );
   });
 });
+
+describe("resolvePremiumUntil & isPremiumActiveForDates (Partner-Pin Status)", () => {
+  const now = new Date("2026-11-02T12:00:00Z");
+
+  it("rozpoznaje aktywne Premium niezależnie od tego, w której tabeli zapisano datę", () => {
+    expect(isPremiumActiveForDates("2027-05-01T00:00:00Z", null, now)).toBe(
+      true,
+    );
+    expect(isPremiumActiveForDates(null, "2027-05-01T00:00:00Z", now)).toBe(
+      true,
+    );
+    expect(isPremiumActiveForDates("2025-01-01T00:00:00Z", null, now)).toBe(
+      false,
+    );
+    expect(isPremiumActiveForDates(null, null, now)).toBe(false);
+  });
+
+  it("wybiera późniejszą datę wygaśnięcia, gdy obie tabele mają różne daty", () => {
+    expect(
+      resolvePremiumUntil("2026-01-01T00:00:00Z", "2027-09-15T00:00:00Z"),
+    ).toBe("2027-09-15T00:00:00Z");
+    expect(
+      isPremiumActiveForDates(
+        "2026-01-01T00:00:00Z",
+        "2027-09-15T00:00:00Z",
+        now,
+      ),
+    ).toBe(true);
+  });
+});
+
 

@@ -45,8 +45,53 @@ export interface PartnerProfile {
   tax_id_value: string | null;
   no_eu_vat: boolean;
   cross_border_b2c: boolean;
+  premium_until?: string | null;
+  pin_id?: number | null;
+  paypal_subscription_id?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Zwraca aktywną (najpóźniejszą w przyszłości) datę `premium_until` spośród
+ * tabel `profiles` i `partner_profiles`. Zapobiega rozjazdowi statusu Premium,
+ * gdy tylko jedna z tabel została zaktualizowana (np. ręcznie w bazie lub przez starszy webhook).
+ */
+export function resolvePremiumUntil(
+  profileUntil?: string | null,
+  partnerUntil?: string | null,
+): string | null {
+  const candidates = [profileUntil, partnerUntil].filter(
+    (v): v is string => typeof v === "string" && v.trim().length > 0,
+  );
+  if (candidates.length === 0) return null;
+
+  let bestDate: Date | null = null;
+  let bestIso: string | null = null;
+  for (const iso of candidates) {
+    const parsed = new Date(iso);
+    if (!Number.isNaN(parsed.getTime())) {
+      if (!bestDate || parsed > bestDate) {
+        bestDate = parsed;
+        bestIso = iso;
+      }
+    }
+  }
+  return bestIso;
+}
+
+/**
+ * Sprawdza, czy użytkownik lub partner ma aktywne konto Premium (Partner-Pin)
+ * w którejkolwiek z tabel (`profiles` lub `partner_profiles`).
+ */
+export function isPremiumActiveForDates(
+  profileUntil?: string | null,
+  partnerUntil?: string | null,
+  now: Date = new Date(),
+): boolean {
+  const effective = resolvePremiumUntil(profileUntil, partnerUntil);
+  if (!effective) return false;
+  return new Date(effective) > now;
 }
 
 export interface AuthUser {
