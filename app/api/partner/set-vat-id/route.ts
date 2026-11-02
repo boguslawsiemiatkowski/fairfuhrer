@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { firstZodError, setVatIdSchema } from "@/lib/validations/api";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,12 +13,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const vatId = (body.vat_id as string)?.trim();
-
-    if (!vatId) {
-      return NextResponse.json({ error: "vat_id is required" }, { status: 400 });
+    const parsedBody = setVatIdSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: firstZodError(parsedBody.error, "vat_id is required") },
+        { status: 400 }
+      );
     }
+    const vatId = parsedBody.data.vat_id;
 
     const { data: profile } = await supabase
       .from("profiles")

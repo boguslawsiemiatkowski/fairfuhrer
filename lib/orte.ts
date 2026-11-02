@@ -47,11 +47,16 @@ export {
   mainImageUrl,
   normalizeForSearch,
   pickDiscovery,
+  sanitizeExternalUrl,
   sanitizeWordHtml,
   truncateAtWord,
 } from "./orte-shared";
 
-import { cityToSegment, sanitizeWordHtml } from "./orte-shared";
+import {
+  cityToSegment,
+  sanitizeExternalUrl,
+  sanitizeWordHtml,
+} from "./orte-shared";
 
 export function hasAudio(place: Place): boolean {
   return Boolean(place.Audio || place.Audio_Datei);
@@ -109,7 +114,7 @@ export function transformDirectusOrteToPlace(ort: DirectusOrte): Place | null {
         typeof ort.Titelbild === "string" ? ort.Titelbild.trim() : undefined,
       Audio_Datei: ort.Audio_Datei?.trim(),
       Audio: typeof ort.Audio === "string" ? ort.Audio.trim() : undefined,
-      Link_URL: ort.Link_URL?.trim(),
+      Link_URL: sanitizeExternalUrl(ort.Link_URL),
       Link_Text: ort.Link_Text?.trim(),
       Galerie_Bilder: ort.Galerie_Bilder?.filter((img) => img.trim().length > 0),
       Galerie: Array.isArray(ort.Galerie)

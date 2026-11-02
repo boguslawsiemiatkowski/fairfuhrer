@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { AuthUser } from "@/types/auth";
 
@@ -24,6 +25,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const inFlightRef = useRef<Promise<void> | null>(null);
@@ -58,8 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
     setUser(null);
-    window.location.href = "/login";
-  }, []);
+    router.push("/login");
+    router.refresh();
+  }, [router]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();

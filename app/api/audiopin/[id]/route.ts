@@ -1,8 +1,27 @@
 import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeExternalUrl, sanitizeWordHtml } from "@/lib/orte-shared";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
-import { LINK_TEXT, MAX_BESCHREIBUNG } from "@/app/api/audiopin/route";
+import { firstZodError, patchAudiopinSchema } from "@/lib/validations/api";
+import { LINK_TEXT } from "@/app/api/audiopin/route";
+
+const PIN_ID_REGEX = /^\d+$/;
+
+async function fetchJunctionIds(
+  directusUrl: string,
+  directusToken: string,
+  collection: "Orte_Kategorie" | "Orte_Zertifizierungen" | "Orte_files",
+  pinId: string
+): Promise<number[]> {
+  const res = await fetch(
+    `${directusUrl}/items/${collection}?filter[Orte_id][_eq]=${pinId}&fields=id&limit=50`,
+    { headers: { Authorization: `Bearer ${directusToken}` } }
+  );
+  if (!res.ok) return [];
+  const json = (await res.json()) as { data?: { id: number }[] };
+  return (json.data ?? []).map((row) => row.id);
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -10,6 +29,10 @@ export async function PATCH(
 ) {
   try {
     const { id: pinId } = await params;
+
+    if (!PIN_ID_REGEX.test(pinId)) {
+      return NextResponse.json({ error: "Ungültige Pin-ID." }, { status: 400 });
+    }
 
     const supabase = await getSupabaseServerClient();
     const {
@@ -39,75 +62,110 @@ export async function PATCH(
       return NextResponse.json({ error: "Zugriff verweigert." }, { status: 403 });
     }
 
-    const directusUrl = process.env.DIRECTUS_URL;
+    const directusUrl = process.env.DIRECTUS_URL?.replace(/\/+$/, "");
     const directusToken = process.env.DIRECTUS_TOKEN;
     if (!directusUrl || !directusToken) {
       return NextResponse.json({ error: "Serverkonfigurationsfehler." }, { status: 500 });
     }
 
-    const body = await request.json();
+    const parsedBody = patchAudiopinSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: firstZodError(parsedBody.error) },
+        { status: 400 }
+      );
+    }
+    const body = parsedBody.data;
 
     // Dozwolone pola do edycji przez partnera
     // Link_Text celowo nie jest tu wymieniony — ustawiamy go nizej na stale.
     const allowedFields = [
       "Name", "Adresse", "Stadt", "Land", "Telefon", "Vollbeschreibung",
       "Link_URL", "Titelbild", "Audio", "location",
-    ];
-
-    if (
-      typeof body.Vollbeschreibung === "string" &&
-      body.Vollbeschreibung.length > MAX_BESCHREIBUNG
-    ) {
-      return NextResponse.json(
-        {
-          error: `Die Beschreibung darf höchstens ${MAX_BESCHREIBUNG} Zeichen lang sein.`,
-        },
-        { status: 400 }
-      );
-    }
+    ] as const;
 
     const patchData: Record<string, unknown> = {};
     for (const field of allowedFields) {
-      if (field in body) {
+      if (body[field] !== undefined) {
         patchData[field] = body[field];
       }
     }
 
-    // Link_Text nie jest edytowalny przez partnera — trzymamy go zgodnie
-    // z Link_URL, zeby etykiety pod pinami byly spojne.
-    if ("Link_URL" in body) {
-      patchData.Link_Text = body.Link_URL ? LINK_TEXT : null;
+    if ("Vollbeschreibung" in patchData) {
+      patchData.Vollbeschreibung =
+        typeof patchData.Vollbeschreibung === "string" &&
+        patchData.Vollbeschreibung.trim()
+          ? sanitizeWordHtml(patchData.Vollbeschreibung)
+          : null;
     }
 
-    // Kategorie — zastąp wszystkie (delete + create przez Directus nested mutation)
+    // Link_Text nie jest edytowalny przez partnera — trzymamy go zgodnie
+    // z Link_URL, zeby etykiety pod pinami byly spojne.
+    if (body.Link_URL !== undefined) {
+      const rawUrl =
+        typeof body.Link_URL === "string" ? body.Link_URL.trim() : "";
+      const safeUrl = rawUrl ? sanitizeExternalUrl(rawUrl) : undefined;
+      if (rawUrl && !safeUrl) {
+        return NextResponse.json(
+          { error: "Ungültige Website-URL (nur http:// oder https:// erlaubt)." },
+          { status: 400 }
+        );
+      }
+      patchData.Link_URL = safeUrl ?? null;
+      patchData.Link_Text = safeUrl ? LINK_TEXT : null;
+    }
+
+    // Kategorie — zastąp wszystkie (pobieramy własne ID z tabeli łączącej, by uniknąć IDOR)
     if (Array.isArray(body.Kategorie)) {
+      const existingJunctionIds = await fetchJunctionIds(
+        directusUrl,
+        directusToken,
+        "Orte_Kategorie",
+        pinId
+      );
       patchData.Kategorie = {
-        delete: body.Kategorie_delete ?? [],
-        create: body.Kategorie.map((id: number) => ({ Kategorie_id: id })),
+        delete: existingJunctionIds,
+        create: body.Kategorie.map((id: number) => ({ Kategorie_id: Number(id) })),
       };
     }
 
-    // Zertifizierungen — zastąp wszystkie
+    // Zertifizierungen — zastąp wszystkie (pobieramy własne ID z tabeli łączącej)
     if (Array.isArray(body.Zertifizierungen)) {
+      const existingJunctionIds = await fetchJunctionIds(
+        directusUrl,
+        directusToken,
+        "Orte_Zertifizierungen",
+        pinId
+      );
       patchData.Zertifizierungen = {
-        delete: body.Zertifizierungen_delete ?? [],
-        create: body.Zertifizierungen.map((id: string) => ({ Zertifizierungen_id: id })),
+        delete: existingJunctionIds,
+        create: body.Zertifizierungen.map((id: string) => ({
+          Zertifizierungen_id: String(id),
+        })),
       };
     }
 
     // Galerie — dodaj nowe pliki przez junction
     if (Array.isArray(body.Galerie_add) && body.Galerie_add.length > 0) {
       patchData.Galerie = {
-        create: body.Galerie_add.map((fileId: string) => ({ directus_files_id: fileId })),
+        create: body.Galerie_add.map((fileId: string) => ({ directus_files_id: String(fileId) })),
       };
     }
 
-    // Galerie — usuń wybrane junction rekordy
+    // Galerie — usuń wybrane junction rekordy (tylko należące do tego pina)
     if (Array.isArray(body.Galerie_delete) && body.Galerie_delete.length > 0) {
-      patchData.Galerie = {
-        ...((patchData.Galerie as object) ?? {}),
-        delete: body.Galerie_delete,
-      };
+      const ownGalleryJunctionIds = new Set(
+        await fetchJunctionIds(directusUrl, directusToken, "Orte_files", pinId)
+      );
+      const validDeletes = body.Galerie_delete.map(Number).filter((id: number) =>
+        ownGalleryJunctionIds.has(id)
+      );
+      if (validDeletes.length > 0) {
+        patchData.Galerie = {
+          ...((patchData.Galerie as object) ?? {}),
+          delete: validDeletes,
+        };
+      }
     }
 
     if (Object.keys(patchData).length === 0) {
@@ -144,6 +202,10 @@ export async function GET(
 ) {
   try {
     const { id: pinId } = await params;
+
+    if (!PIN_ID_REGEX.test(pinId)) {
+      return NextResponse.json({ error: "Ungültige Pin-ID." }, { status: 400 });
+    }
 
     const supabase = await getSupabaseServerClient();
     const {

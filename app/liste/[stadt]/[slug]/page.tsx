@@ -25,6 +25,8 @@ import {
   htmlToPlainText,
   galleryUrls,
   mainImageUrl,
+  sanitizeExternalUrl,
+  sanitizeWordHtml,
   truncateAtWord,
 } from "@/lib/orte";
 import { getAudioUrl } from "@/lib/supabase";
@@ -174,6 +176,10 @@ export default async function OrtPage({ params }: RouteParams) {
   const zertifizierungen = place.Zertifizierungen ?? [];
   const firstCategory = place.Kategorie[0];
   const sidebarColor = categoryColorFor(firstCategory);
+  const safeLinkUrl = sanitizeExternalUrl(place.Link_URL);
+  const safeDescription = place.Vollbeschreibung
+    ? sanitizeWordHtml(place.Vollbeschreibung)
+    : undefined;
 
   // „Entdeckung in der Nähe": ein anderer Pin im Ring 400 m .. 12 km, über
   // den eigenen slug ausgewählt. fetchAllPlaces() liegt im Cache, der zweite
@@ -247,10 +253,10 @@ export default async function OrtPage({ params }: RouteParams) {
               </p>
             )}
 
-            {place.Link_URL && (
+            {safeLinkUrl && (
               <p className={styles.contactLine}>
                 <a
-                  href={place.Link_URL}
+                  href={safeLinkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -303,10 +309,10 @@ export default async function OrtPage({ params }: RouteParams) {
               </figure>
             )}
 
-            {place.Vollbeschreibung ? (
+            {safeDescription ? (
               <div
                 className={styles.description}
-                dangerouslySetInnerHTML={{ __html: place.Vollbeschreibung }}
+                dangerouslySetInnerHTML={{ __html: safeDescription }}
               />
             ) : (
               <p className={styles.noText}>

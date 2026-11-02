@@ -2,15 +2,14 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/api-auth";
+import { sanitizeWordHtml } from "@/lib/orte-shared";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createRedaktionSchema, firstZodError } from "@/lib/validations/api";
 
 // Sehenswertes = id 1 w Directus.
 // Wymuszamy po stronie serwera — user nie moze przez modyfikacje body dodac
 // pinu w kategorii komercyjnej przez ten endpoint.
 const SEHENSWERTES_KATEGORIE_ID = 1;
-
-/** Ten sam limit co w formularzu partnera (api/audiopin). */
-const MAX_BESCHREIBUNG = 2000;
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,34 +38,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-
-    if (!body.Name || !body.Adresse || !body.Stadt) {
+    const parsedBody = createRedaktionSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
       return NextResponse.json(
-        { error: "Name, Adresse und Stadt sind erforderlich." },
+        { error: firstZodError(parsedBody.error) },
         { status: 400 },
       );
     }
+    const body = parsedBody.data;
 
-    if (
-      typeof body.Vollbeschreibung === "string" &&
-      body.Vollbeschreibung.length > MAX_BESCHREIBUNG
-    ) {
-      return NextResponse.json(
-        {
-          error: `Die Beschreibung darf höchstens ${MAX_BESCHREIBUNG} Zeichen lang sein.`,
-        },
-        { status: 400 },
-      );
-    }
-
-    const directusUrl = process.env.DIRECTUS_URL;
-    if (!directusUrl) {
+    const directusUrl = process.env.DIRECTUS_URL?.replace(/\/+$/, "");
+    const directusToken = process.env.DIRECTUS_TOKEN;
+    if (!directusUrl || !directusToken) {
       return NextResponse.json(
         { error: "Serverkonfigurationsfehler." },
         { status: 500 },
       );
     }
+
+    const safeBeschreibung =
+      typeof body.Vollbeschreibung === "string" && body.Vollbeschreibung.trim()
+        ? sanitizeWordHtml(body.Vollbeschreibung)
+        : null;
+
+    const authHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${directusToken}`,
+    };
 
     // Buduj obiekt pinu. Kluczowe roznice vs audiopin (Partner):
     //   - Bearbeitungsstatus: ausstehend (zawsze moderacja)
@@ -74,11 +72,11 @@ export async function POST(request: NextRequest) {
     //   - Partner_ID: null
     //   - Unternehmensname: null (Reisender nie ma firmy)
     const pinData: Record<string, unknown> = {
-      Name: body.Name,
-      Adresse: body.Adresse,
-      Stadt: body.Stadt,
+      Name: String(body.Name).trim(),
+      Adresse: String(body.Adresse).trim(),
+      Stadt: String(body.Stadt).trim(),
       Land: body.Land ?? null,
-      Vollbeschreibung: body.Vollbeschreibung ?? null,
+      Vollbeschreibung: safeBeschreibung,
       Kontaktperson:
         [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
         null,
@@ -119,12 +117,7 @@ export async function POST(request: NextRequest) {
     // Tworzymy pin w Directus.
     const response = await fetch(`${directusUrl}/items/Orte`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(process.env.DIRECTUS_TOKEN && {
-          Authorization: `Bearer ${process.env.DIRECTUS_TOKEN}`,
-        }),
-      },
+      headers: authHeaders,
       body: JSON.stringify(pinData),
     });
 
@@ -144,12 +137,7 @@ export async function POST(request: NextRequest) {
     if (pinId) {
       await fetch(`${directusUrl}/items/Orte_Kategorie`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(process.env.DIRECTUS_TOKEN && {
-            Authorization: `Bearer ${process.env.DIRECTUS_TOKEN}`,
-          }),
-        },
+        headers: authHeaders,
         body: JSON.stringify({
           Orte_id: pinId,
           Kategorie_id: SEHENSWERTES_KATEGORIE_ID,

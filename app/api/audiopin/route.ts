@@ -2,7 +2,9 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCountryLabel } from "@/lib/countries";
+import { sanitizeExternalUrl, sanitizeWordHtml } from "@/lib/orte-shared";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { createAudiopinSchema, firstZodError } from "@/lib/validations/api";
 
 // Lista zapasowa — uzywana tylko gdy Directus nie odpowie (patrz
 // api/pin-optionen). Zrodlem prawdy sa kolekcje Kategorie i Zertifizierungen
@@ -82,43 +84,51 @@ export async function POST(request: NextRequest) {
       ? new Date(partnerProfile.premium_until) > new Date()
       : false;
 
-    const body = await request.json();
-
-    if (!body.Name || !body.Adresse || !body.Stadt) {
+    const parsedBody = createAudiopinSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
       return NextResponse.json(
-        { error: "Name, Adresse und Stadt sind erforderlich." },
+        { error: firstZodError(parsedBody.error) },
         { status: 400 }
       );
     }
+    const body = parsedBody.data;
 
-    // Limit opisu — w UI piszemy "ca. 1.300–1.800", ale dopuszczamy do 2.000.
-    if (
-      typeof body.Vollbeschreibung === "string" &&
-      body.Vollbeschreibung.length > MAX_BESCHREIBUNG
-    ) {
-      return NextResponse.json(
-        {
-          error: `Die Beschreibung darf höchstens ${MAX_BESCHREIBUNG} Zeichen lang sein.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    const directusUrl = process.env.DIRECTUS_URL;
-    if (!directusUrl) {
+    const directusUrl = process.env.DIRECTUS_URL?.replace(/\/+$/, "");
+    const directusToken = process.env.DIRECTUS_TOKEN;
+    if (!directusUrl || !directusToken) {
       return NextResponse.json({ error: "Serverkonfigurationsfehler." }, { status: 500 });
     }
 
+    const rawLinkUrl =
+      typeof body.Link_URL === "string" ? body.Link_URL.trim() : "";
+    const safeLinkUrl = rawLinkUrl ? sanitizeExternalUrl(rawLinkUrl) : undefined;
+    if (rawLinkUrl && !safeLinkUrl) {
+      return NextResponse.json(
+        { error: "Ungültige Website-URL (nur http:// oder https:// erlaubt)." },
+        { status: 400 }
+      );
+    }
+
+    const safeBeschreibung =
+      typeof body.Vollbeschreibung === "string" && body.Vollbeschreibung.trim()
+        ? sanitizeWordHtml(body.Vollbeschreibung)
+        : null;
+
+    const authHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${directusToken}`,
+    };
+
     // Buduj obiekt pinu
     const pinData: Record<string, unknown> = {
-      Name: body.Name,
-      Adresse: body.Adresse,
-      Stadt: body.Stadt,
+      Name: String(body.Name).trim(),
+      Adresse: String(body.Adresse).trim(),
+      Stadt: String(body.Stadt).trim(),
       Land: body.Land ?? (partnerProfile?.country ? getCountryLabel(partnerProfile.country) : null),
       Telefon: body.Telefon ?? null,
-      Vollbeschreibung: body.Vollbeschreibung ?? null,
-      Link_URL: body.Link_URL ?? null,
-      Link_Text: body.Link_URL ? LINK_TEXT : null,
+      Vollbeschreibung: safeBeschreibung,
+      Link_URL: safeLinkUrl ?? null,
+      Link_Text: safeLinkUrl ? LINK_TEXT : null,
       Kontaktperson:
         [profile?.first_name, profile?.last_name]
           .filter(Boolean)
@@ -156,10 +166,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Tworzymy pin w Directus
-    console.log("Sending to Directus:", JSON.stringify(pinData, null, 2));
     const response = await fetch(`${directusUrl}/items/Orte`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders,
       body: JSON.stringify(pinData),
     });
 
@@ -180,7 +189,7 @@ export async function POST(request: NextRequest) {
       for (const kategorieId of body.Kategorie) {
         await fetch(`${directusUrl}/items/Orte_Kategorie`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: JSON.stringify({ Orte_id: pinId, Kategorie_id: kategorieId }),
         });
       }
@@ -196,7 +205,7 @@ export async function POST(request: NextRequest) {
       for (const zertId of zertIds) {
         await fetch(`${directusUrl}/items/Orte_Zertifizierungen`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: JSON.stringify({ Orte_id: pinId, Zertifizierungen_id: zertId }),
         });
       }

@@ -3,6 +3,7 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/api-auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { accountContactSchema, firstZodError } from "@/lib/validations/api";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,14 +16,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
     }
 
-    const body = await request.json();
-
-    if (!body.subject?.trim() || !body.message?.trim()) {
+    const parsedBody = accountContactSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
       return NextResponse.json(
-        { error: "Betreff und Nachricht sind erforderlich." },
+        { error: firstZodError(parsedBody.error) },
         { status: 400 },
       );
     }
+    const body = parsedBody.data;
 
     const directusUrl = process.env.DIRECTUS_URL;
     const directusToken = process.env.DIRECTUS_TOKEN;

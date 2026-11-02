@@ -4,26 +4,18 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-
-interface ContactFormData {
-  name: string;
-  email: string;
-  subject: string;
-  message: string;
-  turnstileToken: string;
-}
+import { contactFormSchema, firstZodError } from "@/lib/validations/api";
 
 export async function POST(request: NextRequest) {
   try {
-    const body: ContactFormData = await request.json();
-
-    // Turnstile verification
-    if (!body.turnstileToken) {
+    const parsedBody = contactFormSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
       return NextResponse.json(
-        { error: "Bitte bestätigen Sie, dass Sie kein Roboter sind" },
+        { error: firstZodError(parsedBody.error) },
         { status: 400 }
       );
     }
+    const body = parsedBody.data;
 
     const remoteip =
       request.headers.get("CF-Connecting-IP") ??
@@ -37,23 +29,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Walidacja
-    if (!body.name || !body.email || !body.subject || !body.message) {
-      return NextResponse.json(
-        { error: "Alle Felder sind erforderlich" },
-        { status: 400 }
-      );
-    }
-
-    if (!body.email.includes("@")) {
-      return NextResponse.json(
-        { error: "Ungültige E-Mail-Adresse" },
-        { status: 400 }
-      );
-    }
-
     // Wyślij do Directus z serwera (bez problemów CORS)
-    const directusUrl = process.env.DIRECTUS_URL; // Bez NEXT_PUBLIC_
+    const directusUrl = process.env.DIRECTUS_URL?.replace(/\/+$/, ""); // Bez NEXT_PUBLIC_
+    const directusToken = process.env.DIRECTUS_TOKEN;
 
     if (!directusUrl) {
       console.error("Brak DIRECTUS_URL");
@@ -67,6 +45,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(directusToken && { Authorization: `Bearer ${directusToken}` }),
       },
       body: JSON.stringify({
         name: body.name,

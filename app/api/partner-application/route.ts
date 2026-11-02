@@ -10,7 +10,7 @@ import { verifyTurnstileToken } from "@/lib/turnstile";
 // Environment Variable Validation
 // ========================================
 
-const directusUrl = process.env.DIRECTUS_URL;
+const directusUrl = (process.env.DIRECTUS_URL ?? "").replace(/\/+$/, "");
 if (!directusUrl) {
   throw new Error("❌ Missing required environment variable: DIRECTUS_URL");
 }
@@ -21,13 +21,18 @@ async function saveToDirectus(data: Partial<PartnerSubmissionData>) {
   try {
     console.log("Sending to Directus:", JSON.stringify(data, null, 2));
 
-    const response = await fetch(`${directusUrl}/items/partner_applications`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const directusToken = process.env.DIRECTUS_TOKEN;
+    const response = await fetch(
+      `${directusUrl}/items/partner_applications`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(directusToken && { Authorization: `Bearer ${directusToken}` }),
+        },
+        body: JSON.stringify(data),
       },
-      body: JSON.stringify(data),
-    });
+    );
 
     console.log("Directus response status:", response.status);
 
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (!turnstileToken) {
       return NextResponse.json(
         { error: "Bitte bestätigen Sie, dass Sie kein Roboter sind" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -70,8 +75,11 @@ export async function POST(request: NextRequest) {
     const isHuman = await verifyTurnstileToken(turnstileToken, remoteip);
     if (!isHuman) {
       return NextResponse.json(
-        { error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut." },
-        { status: 403 }
+        {
+          error:
+            "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+        },
+        { status: 403 },
       );
     }
 
@@ -86,7 +94,7 @@ export async function POST(request: NextRequest) {
         const parsed = JSON.parse(sustainabilityGoalsRaw as string);
         if (Array.isArray(parsed)) {
           sustainabilityGoals = parsed.filter(
-            (id) => typeof id === "number" && id > 0
+            (id) => typeof id === "number" && id > 0,
           );
         }
       } catch (error) {
@@ -99,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Walidacja i typowanie pól radio
     const certificationStatusRaw = formData.get(
-      "certificationStatus"
+      "certificationStatus",
     ) as string;
     const companySizeRaw = formData.get("companySize") as string;
     const kategorieRaw = formData.get("kategorie") as string;
@@ -121,7 +129,7 @@ export async function POST(request: NextRequest) {
       } else {
         return NextResponse.json(
           { error: "Nieprawidłowy status certyfikacji" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -133,7 +141,7 @@ export async function POST(request: NextRequest) {
       } else {
         return NextResponse.json(
           { error: "Nieprawidłowa wielkość firmy" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -204,7 +212,7 @@ export async function POST(request: NextRequest) {
           error:
             "Brakuje wymaganych podstawowych danych (imię, nazwisko, email, nazwa pinu, adres, kategoria)",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -215,7 +223,7 @@ export async function POST(request: NextRequest) {
 
     // Zapisz do Directus (bez URL-i do plików)
     const savedData = await saveToDirectus(
-      submissionData as PartnerSubmissionData
+      submissionData as PartnerSubmissionData,
     );
 
     return NextResponse.json(
@@ -224,16 +232,15 @@ export async function POST(request: NextRequest) {
         message: "Die Bewerbung wurde erfolgreich gesendet",
         data: savedData,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("API Error:", error);
     return NextResponse.json(
       {
         error: "Ein Fehler ist beim Verarbeiten der Bewerbung aufgetreten",
-        details: error instanceof Error ? error.message : "Unbekannter Fehler",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

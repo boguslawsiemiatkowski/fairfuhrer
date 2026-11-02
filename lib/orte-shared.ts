@@ -207,6 +207,34 @@ export function sanitizeWordHtml(html: string): string {
 }
 
 /** Reiner Text aus bereinigtem HTML — für <meta description>, JSON-LD und Teaser. */
+/**
+ * Prüft und normalisiert externe URLs (z. B. `Link_URL`).
+ * Erlaubt ausschließlich `http://` und `https://` (ergänzt `https://`, falls
+ * kein Schema angegeben wurde, z. B. `www.beispiel.de`) und verwirft
+ * unsichere Schemata wie `javascript:` oder `data:`.
+ */
+export function sanitizeExternalUrl(
+  raw: string | null | undefined,
+): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+
+  const candidate = /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return undefined;
+    }
+    return candidate;
+  } catch {
+    return undefined;
+  }
+}
+
 export function htmlToPlainText(html: string | undefined): string {
   if (!html) return "";
   return html

@@ -7,7 +7,7 @@ import type { Place } from "../types";
 import styles from "./PlaceInfoPanel.module.css";
 import { categoryColorFor } from "./CategoryIcon";
 import PlaceGallery from "./PlaceGallery";
-import { galleryUrls } from "../lib/orte-shared";
+import { galleryUrls, sanitizeExternalUrl, sanitizeWordHtml } from "../lib/orte-shared";
 
 interface PlaceInfoPanelProps {
   place: Place | null;
@@ -131,6 +131,10 @@ export default function PlaceInfoPanel({
 
 function PlaceContent({ place }: { place: Place }) {
   const galerie = galleryUrls(place);
+  const safeLinkUrl = sanitizeExternalUrl(place.Link_URL);
+  const safeDescription = place.Vollbeschreibung
+    ? sanitizeWordHtml(place.Vollbeschreibung)
+    : undefined;
 
   return (
     <>
@@ -196,19 +200,19 @@ function PlaceContent({ place }: { place: Place }) {
         )}
       </div>
 
-      {place.Vollbeschreibung && (
+      {safeDescription && (
         <div className={styles.infoSection}>
           <div
             className={styles.description}
-            dangerouslySetInnerHTML={{ __html: place.Vollbeschreibung }}
+            dangerouslySetInnerHTML={{ __html: safeDescription }}
           />
         </div>
       )}
 
-      {place.Link_URL && (
+      {safeLinkUrl && (
         <div className={styles.infoSection}>
           <a
-            href={place.Link_URL}
+            href={safeLinkUrl}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.externalLink}
