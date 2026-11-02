@@ -185,8 +185,6 @@ interface PlaceImageProps {
   alt: string;
   type?: "main" | "gallery";
   className?: string;
-  width?: number;
-  height?: number;
 }
 
 export function PlaceImage({
@@ -195,8 +193,6 @@ export function PlaceImage({
   alt,
   type = "main",
   className = "",
-  width = 400,
-  height = 300,
 }: PlaceImageProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -207,17 +203,15 @@ export function PlaceImage({
     <div className={`${styles.imageContainer} ${className}`}>
       {!imageLoaded && <div className={styles.imagePlaceholder}>Laden...</div>}
       <Image
-        src={getOptimizedImagePath(placeId, filename, type)} // ✅ ZOPTYMALIZOWANE
+        src={getOptimizedImagePath(placeId, filename, type)}
         alt={alt}
         className={`${styles.placeImage} ${imageLoaded ? styles.loaded : ""}`}
-        width={width}
-        height={height}
-              style={{ objectFit: "cover", width: "100%", height: "100%" }}
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
+        fill
+        style={{ objectFit: "cover" }}
+        sizes="(max-width: 860px) 100vw, 450px"
         loading={type === "main" ? "eager" : "lazy"}
         onLoad={() => setImageLoaded(true)}
         onError={() => setImageError(true)}
-        priority={type === "main"} // ✅ Priority dla głównych obrazków
       />
     </div>
   );
@@ -260,62 +254,13 @@ export function DirectusImage({
         src={src}
         alt={alt}
         className={`${styles.placeImage} ${imageLoaded ? styles.loaded : ""}`}
-        width={400}
-        height={300}
-              style={{ objectFit: "cover", width: "100%", height: "100%" }}
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
+        fill
+        style={{ objectFit: "cover" }}
+        sizes="(max-width: 860px) 100vw, 450px"
+        loading="eager"
         onLoad={() => setImageLoaded(true)}
         onError={() => setImageError(true)}
       />
     </div>
   );
 }
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-interface GalleryMixedProps {
-  placeId: number;
-  items: string[];
-  onImageClickAction?: (imagePath: string, index: number) => void;
-}
-
-export function GalleryMixed({ placeId, items, onImageClickAction }: GalleryMixedProps) {
-  if (!items || items.length === 0) return null;
-
-  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
-
-  return (
-    <div className={styles.gallery}>
-      {items.map((item, index) => {
-        const isUuid = UUID_REGEX.test(item);
-        const src = isUuid
-          ? `${directusUrl}/assets/${item}`
-          : getOptimizedImagePath(placeId, item, "gallery");
-
-        return (
-          <div key={index} className={styles.galleryItem}>
-            <button
-              type="button"
-              className={styles.galleryButton}
-              onClick={() => onImageClickAction?.(src, index)}
-              aria-label={`Bild ${index + 1} powiększ`}
-            >
-              <Image
-                src={src}
-                alt={`Bild ${index + 1}`}
-                className={styles.galleryImage}
-                width={300}
-                height={200}
-                style={{ objectFit: "cover", width: "100%", height: "100%" }}
-                sizes="(max-width: 768px) 50vw, 300px"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// EmbeddedMap - usunięte bo nie jest używane

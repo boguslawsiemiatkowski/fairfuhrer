@@ -240,11 +240,11 @@ function PlaceContent({ place }: { place: Place }) {
                     <Image
                       src={`${directusUrl}/assets/${zert.imageUuid}`}
                       alt={zert.name}
-                      width={100}
-                      height={80}
+                      fill
+                      sizes="120px"
                       className={styles.zertifizierungLogo}
                       title={zert.name}
-                      style={{ objectFit: "contain", width: "auto", height: "auto", maxHeight: "80px" }}
+                      style={{ objectFit: "contain" }}
                     />
                   ) : (
                     <span className={styles.zertifizierungName}>{zert.name}</span>

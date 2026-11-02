@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -25,15 +26,28 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const inFlightRef = useRef<Promise<void> | null>(null);
 
   const fetchUser = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/me");
-      const data = await res.json();
-      setUser(data.user ?? null);
-    } catch {
-      setUser(null);
+    // Deduplikacja równoległych żądań /api/auth/me (np. przy StrictMode + onAuthStateChange)
+    if (inFlightRef.current) {
+      return inFlightRef.current;
     }
+
+    const request = (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        setUser(data.user ?? null);
+      } catch {
+        setUser(null);
+      } finally {
+        inFlightRef.current = null;
+      }
+    })();
+
+    inFlightRef.current = request;
+    return request;
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -50,23 +64,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
 
-    // Pobierz początkowy stan sesji
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        fetchUser().finally(() => setIsLoading(false));
-      } else {
-        setIsLoading(false);
-      }
-    });
-
-    // Nasłuchuj zmian stanu auth
+    // `onAuthStateChange` w @supabase/supabase-js v2 emituje od razu `INITIAL_SESSION`
+    // przy subskrypcji, dzięki czemu nie musimy dublować go osobnym `getSession()`.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-        fetchUser();
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        event === "INITIAL_SESSION" ||
+        event === "SIGNED_IN" ||
+        event === "USER_UPDATED"
+      ) {
+        if (session) {
+          fetchUser().finally(() => setIsLoading(false));
+        } else {
+          setUser(null);
+          setIsLoading(false);
+        }
       } else if (event === "SIGNED_OUT") {
         setUser(null);
+        setIsLoading(false);
       }
     });
 
@@ -86,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       refreshUser,
     }),
-    [user, isLoading, logout, refreshUser]
+    [user, isLoading, logout, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

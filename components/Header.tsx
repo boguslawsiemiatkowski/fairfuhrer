@@ -34,6 +34,7 @@ export default function Header() {
           <Image
             src={logoFairfuehrer}
             alt="Fair Guide Logo"
+            priority
             unoptimized
             style={{
               width: "232px",

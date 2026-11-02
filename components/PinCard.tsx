@@ -28,8 +28,7 @@ export default function PinCard({ place }: { place: Place }) {
           <Image
             src={imageUrl}
             alt=""
-            width={420}
-            height={462}
+            fill
             loading="lazy"
             sizes="(max-width: 700px) 86vw, 420px"
           />
