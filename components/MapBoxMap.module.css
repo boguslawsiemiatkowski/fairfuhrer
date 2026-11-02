@@ -31,6 +31,65 @@
 }
 
 /* Loading states */
+.skeletonOverlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 35% 40%, rgba(252, 108, 20, 0.06), transparent 55%),
+    radial-gradient(circle at 70% 65%, rgba(46, 125, 50, 0.06), transparent 50%),
+    #eef2ef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.skeletonGrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(24, 34, 47, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(24, 34, 47, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+.skeletonBadge {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.35rem;
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.08);
+}
+
+.skeletonSpinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid #e9ecef;
+  border-top-color: #fc6c14;
+  border-radius: 50%;
+  animation: mapSkeletonSpin 0.8s linear infinite;
+}
+
+.skeletonText {
+  font-family: var(--font-fira);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #18222f;
+}
+
+@keyframes mapSkeletonSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .loadingOverlay {
   position: absolute;
   top: 0;

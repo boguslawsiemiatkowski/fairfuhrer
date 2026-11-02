@@ -4,11 +4,35 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import MapBoxMap from "./MapBoxMap";
+import dynamic from "next/dynamic";
 import CategoryFilter from "./CategoryFilter";
 import { cityToSegment } from "../lib/orte-shared";
 import styles from "./MapWithFilters.module.css";
 import type { Place, Category } from "../types";
+
+export function MapSkeleton({ embedded = false }: { embedded?: boolean }) {
+  return (
+    <div
+      className={`${styles.mapSkeleton} ${embedded ? styles.mapSkeletonEmbedded : ""}`}
+      role="status"
+      aria-live="polite"
+      aria-label="Karte wird geladen"
+    >
+      <div className={styles.mapSkeletonGrid} aria-hidden="true" />
+      <div className={styles.mapSkeletonBadge}>
+        <span className={styles.mapSkeletonSpinner} aria-hidden="true" />
+        <span className={styles.mapSkeletonText}>Karte wird geladen…</span>
+      </div>
+    </div>
+  );
+}
+
+// Dynamiczny import MapBoxMap (wraz z ciężkim silnikiem WebGL mapbox-gl ~280 kB gzip)
+// wyłącza SSR i wydziela bibliotekę do osobnego chunka ładowanego asynchronicznie w przeglądarce.
+const MapBoxMap = dynamic(() => import("./MapBoxMap"), {
+  ssr: false,
+  loading: () => <MapSkeleton />,
+});
 
 interface MapWithFiltersProps {
   places: Place[];

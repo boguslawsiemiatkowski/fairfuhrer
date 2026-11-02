@@ -244,6 +244,21 @@ export default function MapBoxMap({
     <div
       className={`${styles.mapContainerWrapper}${embedded ? ` ${styles.mapContainerWrapperEmbedded}` : ""}`}
     >
+      {mapLoadingState === "loading" && (
+        <div
+          className={styles.skeletonOverlay}
+          role="status"
+          aria-live="polite"
+          aria-label="Karte wird initialisiert"
+        >
+          <div className={styles.skeletonGrid} aria-hidden="true" />
+          <div className={styles.skeletonBadge}>
+            <span className={styles.skeletonSpinner} aria-hidden="true" />
+            <span className={styles.skeletonText}>Karte wird geladen…</span>
+          </div>
+        </div>
+      )}
+
       {mapLoadingState === "error" && (
         <div className={styles.errorOverlay}>
           <div className={styles.errorContainer}>

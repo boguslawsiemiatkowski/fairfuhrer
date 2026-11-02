@@ -1,8 +1,9 @@
-// fairfuhrer/app/components/ConditionalMapbox.tsx
+// fairfuhrer/components/ConditionalMapbox.tsx
 "use client";
 
 import React from "react";
 import { useCookies } from "../context/CookieContext";
+import styles from "./MapWithFilters.module.css";
 
 interface ConditionalMapboxProps {
   children: React.ReactNode;
@@ -11,23 +12,18 @@ interface ConditionalMapboxProps {
 export function ConditionalMapbox({ children }: ConditionalMapboxProps) {
   const { hasConsented } = useCookies();
 
-  // Mapbox is necessary, so we render it once user has given any consent
-  // But we wait for consent to avoid GDPR issues
+  // Mapbox wymaga zgody na pliki cookie — zanim zostanie wyrażona (lub zanim kontekst
+  // zhydratuje się w przeglądarce), wyświetlamy pełnowymiarowy szkielet mapy (CLS = 0).
   if (!hasConsented) {
     return (
-      <div
-        style={{
-          padding: "20px",
-          backgroundColor: "#f5f5f5",
-          borderRadius: "8px",
-          textAlign: "center" as const,
-          color: "#666",
-        }}
-      >
-        <p>
-          Karte wird geladen, nachdem Sie den Cookie-Einstellungen zugestimmt
-          haben.
-        </p>
+      <div className={styles.mapSkeleton} role="status" aria-live="polite">
+        <div className={styles.mapSkeletonGrid} aria-hidden="true" />
+        <div className={styles.mapSkeletonBadge}>
+          <span className={styles.mapSkeletonText}>
+            Karte wird geladen, nachdem Sie den Cookie-Einstellungen zugestimmt
+            haben.
+          </span>
+        </div>
       </div>
     );
   }
