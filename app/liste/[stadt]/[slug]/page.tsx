@@ -11,7 +11,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { MoveLeft, MoveRight } from "lucide-react";
+import { MoveRight } from "lucide-react";
+import BackToListeLink from "@/components/BackToListeLink";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import PlaceGallery from "@/components/PlaceGallery";
@@ -210,14 +211,14 @@ export default async function OrtPage({ params }: RouteParams) {
             Farbe der Kategorie (abgedunkelt, siehe categoryColor), damit schon
             am Farbton erkennbar ist, worum es geht. */}
         <aside className={styles.sidebar} style={{ backgroundColor: sidebarColor }}>
-          {/* Zurück zur Liste. Absolut positioniert, damit der Inhalt der
-              Spalte mittig bleibt; verankert an `.layout`, weil `.sidebar`
-              mit `overflow-y: auto` absolut positionierte Kinder abschneidet
-              — daran scheiterte zuvor schon das Zertifikat. */}
-          <Link href="/liste" className={styles.backTop}>
-            <MoveLeft size={26} aria-hidden="true" />
-            <span className={styles.backTopLabel}>Zurück zur Liste</span>
-          </Link>
+          {/* Zurück zur Liste (mit Wiederherstellung der zuletzt gewählten Filter).
+              Absolut positioniert, damit der Inhalt der Spalte mittig bleibt;
+              verankert an `.layout`, weil `.sidebar` mit `overflow-y: auto`
+              absolut positionierte Kinder abschneidet. */}
+          <BackToListeLink
+            className={styles.backTop}
+            labelClassName={styles.backTopLabel}
+          />
 
           <div className={styles.sidebarInner}>
             {firstCategory && (
@@ -271,9 +272,7 @@ export default async function OrtPage({ params }: RouteParams) {
               </div>
             )}
           </div>
-
         </aside>
-
 
         {/* Rechte Spalte: der Text, hier wird gescrollt. */}
         <div className={styles.main}>

@@ -8,6 +8,7 @@ import {
   buildCategoriesQueryParam,
   parseCategoriesFromSearch,
 } from "@/components/MapWithFilters";
+import { sanitizeSavedListeUrl } from "@/components/BackToListeLink";
 import { isPremiumActiveForDates, resolvePremiumUntil } from "@/types/auth";
 import { parseMapboxSuggestion } from "@/utils/pinFormHelpers";
 
@@ -167,5 +168,23 @@ describe("resolvePremiumUntil & isPremiumActiveForDates (Partner-Pin Status)", (
     ).toBe(true);
   });
 });
+
+describe("sanitizeSavedListeUrl (Powrót ze strony Audiopinu do filtrów /liste)", () => {
+  it("zachowuje parametry filtrów miasta, kategorii i kraju dla /liste", () => {
+    expect(
+      sanitizeSavedListeUrl(
+        "/liste?stadt=konstanz&kategorie=essen-und-uebernachten",
+      ),
+    ).toBe("/liste?stadt=konstanz&kategorie=essen-und-uebernachten");
+    expect(sanitizeSavedListeUrl("/liste")).toBe("/liste");
+  });
+
+  it("odrzuca zewnętrzne lub inne ścieżki i wraca bezpiecznie do /liste", () => {
+    expect(sanitizeSavedListeUrl(null)).toBe("/liste");
+    expect(sanitizeSavedListeUrl("https://evil.example/liste")).toBe("/liste");
+    expect(sanitizeSavedListeUrl("/liste/konstanz/bio-hof")).toBe("/liste");
+  });
+});
+
 
 

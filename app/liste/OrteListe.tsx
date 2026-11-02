@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Category, Place } from "@/types";
+import { LAST_LISTE_URL_KEY } from "@/components/BackToListeLink";
 import PlaceRail from "@/components/PlaceRail";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import StadtSuche, { type CityOption } from "./StadtSuche";
@@ -37,6 +38,21 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
   const landParam = searchParams.get("land") ?? "";
   const kategorieParam = searchParams.get("kategorie") ?? "";
   const stadtParam = searchParams.get("stadt") ?? "";
+
+  // Zapamiętujemy aktualny stan filtrów /liste w sessionStorage, aby strzałka
+  // „Zurück zur Liste" na stronie Audiopinu (/liste/[stadt]/[slug]) wracała
+  // dokładnie do wybranych przez użytkownika wyników (miasto, kategoria, kraj).
+  useEffect(() => {
+    const qs = searchParams.toString();
+    try {
+      sessionStorage.setItem(
+        LAST_LISTE_URL_KEY,
+        qs ? `/liste?${qs}` : "/liste",
+      );
+    } catch {
+      // Ignorujemy brak dostępu do sessionStorage
+    }
+  }, [searchParams]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuClipRef = useRef<HTMLDivElement>(null);

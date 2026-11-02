@@ -694,7 +694,6 @@ export default function AudiopinPage() {
   // - W trybie nowego pina ("new_form"): tak (pola podstawowe dla każdego, pola Premium dla Partner-Pin).
   // - W trybie istniejącego pina ("view"): pełna edycja na żywo z Partner-Pin (`isPremium === true`).
   const canEditBasic = mode === "new_form" || isPremium;
-  const canEditPremium = isPremium;
 
   const publicUrl =
     pinData?.slug && stadt && cityToSegment(stadt)

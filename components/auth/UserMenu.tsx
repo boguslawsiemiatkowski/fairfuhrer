@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import styles from "./UserMenu.module.css";
 
 export default function UserMenu() {
-  const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { user, isLoading, isAuthenticated, isPro, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -58,31 +58,42 @@ export default function UserMenu() {
 
       {isOpen && (
         <div className={styles.dropdown}>
-          <Link
-            href={`${base}/profil`}
-            className={styles.item}
-            scroll={false}
-            onClick={() => setIsOpen(false)}
-          >
-            Profil
-          </Link>
-          <Link
-            href={`${base}/einstellungen`}
-            className={styles.item}
-            scroll={false}
-            onClick={() => setIsOpen(false)}
-          >
-            Einstellungen
-          </Link>
+          <div className={styles.userHeader}>
+            <span className={styles.userName}>{displayName}</span>
+            <span
+              className={
+                isPro ? styles.userBadgePremium : styles.userBadgeStandard
+              }
+            >
+              {isPartner
+                ? isPro
+                  ? "★ Partner-Pin Aktiv"
+                  : "Partner*in (Basis)"
+                : isPro
+                  ? "★ Fairführer+"
+                  : "Reisende*r"}
+            </span>
+          </div>
+          <div className={styles.divider} />
+
           {isPartner ? (
             <>
               <Link
                 href="/konto/partner/audiopin"
+                className={`${styles.item} ${styles.itemHighlight}`}
+                scroll={false}
+                onClick={() => setIsOpen(false)}
+              >
+                <span>{isPro ? "Mein Partner-Pin" : "Mein Audiopin"}</span>
+                {isPro && <span className={styles.itemBadge}>Studio</span>}
+              </Link>
+              <Link
+                href={`${base}/profil`}
                 className={styles.item}
                 scroll={false}
                 onClick={() => setIsOpen(false)}
               >
-                Kostenloser PIN
+                Profil
               </Link>
               <Link
                 href="/konto/partner/premium"
@@ -90,7 +101,15 @@ export default function UserMenu() {
                 scroll={false}
                 onClick={() => setIsOpen(false)}
               >
-                Partner PIN
+                {isPro ? "Partner-Pin Abo" : "Partner-Pin Upgrade"}
+              </Link>
+              <Link
+                href={`${base}/einstellungen`}
+                className={styles.item}
+                scroll={false}
+                onClick={() => setIsOpen(false)}
+              >
+                Einstellungen
               </Link>
               <Link
                 href="/konto/partner/hilfe"
@@ -103,6 +122,22 @@ export default function UserMenu() {
             </>
           ) : (
             <>
+              <Link
+                href={`${base}/profil`}
+                className={styles.item}
+                scroll={false}
+                onClick={() => setIsOpen(false)}
+              >
+                Profil
+              </Link>
+              <Link
+                href={`${base}/einstellungen`}
+                className={styles.item}
+                scroll={false}
+                onClick={() => setIsOpen(false)}
+              >
+                Einstellungen
+              </Link>
               <Link
                 href="/konto/reisender/redaktion"
                 className={styles.item}

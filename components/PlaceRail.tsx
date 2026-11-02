@@ -44,6 +44,7 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
   const [dragging, setDragging] = useState(false);
 
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: 0 });
+  const prevResetKeyRef = useRef<string | undefined>(resetKey);
 
   // Die Kartenmaße stehen im CSS (clamp + aspect-ratio), nicht hier. Vorher
   // starteten sie mit festen 320×400 und wurden erst nach dem Mounten aus
@@ -56,18 +57,50 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
     if (!el) return;
     setAtStart(el.scrollLeft <= 1);
     setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
-  }, []);
+    if (resetKey) {
+      try {
+        sessionStorage.setItem(
+          `fairfuehrer:railScroll:${resetKey}`,
+          String(Math.round(el.scrollLeft)),
+        );
+      } catch {
+        // Ignoruj błędy dostępu do sessionStorage
+      }
+    }
+  }, [resetKey]);
 
   useEffect(() => {
     updateEdges();
   }, [updateEdges, places.length]);
 
-  // Nach einem Filterwechsel zurück zum Anfang. `behavior: "instant"`, damit
-  // es wie ein neues Ergebnis wirkt und nicht wie ein Zurückscrollen.
+  // Nach einem Filterwechsel zurück zum Anfang; beim Zurückkehren von einer
+  // Audiopin-Detailseite zur selben Filterauswahl die letzte Scrollposition wiederherstellen.
   useEffect(() => {
     const el = railRef.current;
     if (!el) return;
-    el.scrollTo({ left: 0, behavior: "instant" });
+    if (prevResetKeyRef.current !== resetKey) {
+      prevResetKeyRef.current = resetKey;
+      el.scrollTo({ left: 0, behavior: "instant" });
+      if (resetKey) {
+        try {
+          sessionStorage.removeItem(`fairfuehrer:railScroll:${resetKey}`);
+        } catch {
+          // Ignoruj błędy sessionStorage
+        }
+      }
+    } else if (resetKey) {
+      try {
+        const saved = sessionStorage.getItem(
+          `fairfuehrer:railScroll:${resetKey}`,
+        );
+        const scrollPos = saved ? Number(saved) : 0;
+        if (Number.isFinite(scrollPos) && scrollPos > 0) {
+          el.scrollTo({ left: scrollPos, behavior: "instant" });
+        }
+      } catch {
+        // Ignoruj błędy sessionStorage
+      }
+    }
     updateEdges();
   }, [resetKey, updateEdges]);
 
