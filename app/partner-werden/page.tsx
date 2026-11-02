@@ -8,42 +8,12 @@ import React from "react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { marked } from "marked";
-import type { PartnerPageContent } from "../../types";
+import { getPartnerPageContent } from "@/lib/directus";
 import styles from "./partner-werden.module.css";
 
 const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
 
 export const revalidate = 0; // bez ISR — strona renderuje się dynamicznie (Flow nie rewaliduje tagu)
-
-interface DirectusResponse<T> {
-  data: T[];
-}
-
-async function getPartnerPageContent(): Promise<PartnerPageContent | null> {
-  try {
-    const baseUrl = process.env.DIRECTUS_URL;
-    if (!baseUrl) {
-      throw new Error("DIRECTUS_URL not configured");
-    }
-
-    const response = await fetch(
-      `${baseUrl}/items/partner_page_content?fields=*&limit=1`,
-      { cache: "no-store" },
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch partner page content: ${response.status}`,
-      );
-    }
-
-    const result: DirectusResponse<PartnerPageContent> = await response.json();
-    return (Array.isArray(result.data) ? result.data[0] : result.data) || null;
-  } catch (error) {
-    console.error("Error fetching partner page content:", error);
-    return null;
-  }
-}
 
 export const metadata: Metadata = {
   title: "Mitmachen",
@@ -52,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 export default async function MitmachenPage() {
-  const pageData = await getPartnerPageContent();
+  const pageData = await getPartnerPageContent({ noStore: true });
 
   if (!pageData) {
     return (

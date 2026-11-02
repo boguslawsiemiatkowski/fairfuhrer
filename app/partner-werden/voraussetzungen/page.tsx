@@ -7,40 +7,10 @@ import { Metadata } from "next";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { marked } from "marked";
-import type { PartnerPageContent } from "../../../types";
+import { getPartnerPageContent } from "@/lib/directus";
 import styles from "./voraussetzungen.module.css";
 
 export const revalidate = 604800;
-
-interface DirectusResponse<T> {
-  data: T[];
-}
-
-async function getPartnerPageContent(): Promise<PartnerPageContent | null> {
-  try {
-    const baseUrl = process.env.DIRECTUS_URL;
-    if (!baseUrl) {
-      throw new Error("DIRECTUS_URL not configured");
-    }
-
-    const response = await fetch(
-      `${baseUrl}/items/partner_page_content?fields=*&limit=1`,
-      { next: { tags: ["partner-werden"] } },
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch partner page content: ${response.status}`,
-      );
-    }
-
-    const result: DirectusResponse<PartnerPageContent> = await response.json();
-    return (Array.isArray(result.data) ? result.data[0] : result.data) || null;
-  } catch (error) {
-    console.error("Error fetching partner page content:", error);
-    return null;
-  }
-}
 
 export const metadata: Metadata = {
   title: "Voraussetzungen für eine Partnerschaft",
@@ -49,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function VoraussetzungenPage() {
-  const pageData = await getPartnerPageContent();
+  const pageData = await getPartnerPageContent({ revalidate: 604800 });
 
   if (!pageData) {
     return (

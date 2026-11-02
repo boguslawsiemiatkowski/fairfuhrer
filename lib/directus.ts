@@ -4,9 +4,7 @@ import "server-only";
 
 import type {
   HomePageContent,
-  FeaturedPin,
-  ImpressumContent,
-  DatenschutzContent,
+  PartnerPageContent,
   ContactFormContent,
   ContactInfoContent,
   SupportSectionContent,
@@ -45,6 +43,8 @@ interface DirectusFetchOptions {
   tag: string;
   /** Czas życia cache w sekundach (domyślnie 3600 = 1h). */
   revalidate?: number;
+  /** Wymusza pominięcie cache (`cache: "no-store"`), również na produkcji. */
+  noStore?: boolean;
   /** Czytelna nazwa zasobu do logowania błędów. */
   label: string;
 }
@@ -63,13 +63,13 @@ function buildHeaders(): HeadersInit {
  */
 async function fetchDirectusSingle<T>(
   path: string,
-  { tag, revalidate = 3600, label }: DirectusFetchOptions,
+  { tag, revalidate = 3600, noStore = false, label }: DirectusFetchOptions,
 ): Promise<T | null> {
   const isDev = process.env.NODE_ENV === "development";
   try {
     const response = await fetch(`${DIRECTUS_URL}${path}`, {
       headers: buildHeaders(),
-      ...(isDev
+      ...(isDev || noStore
         ? { cache: "no-store" as const }
         : { next: { revalidate, tags: [tag] } }),
     });
@@ -96,13 +96,13 @@ async function fetchDirectusSingle<T>(
  */
 async function fetchDirectusList<T>(
   path: string,
-  { tag, revalidate = 3600, label }: DirectusFetchOptions,
+  { tag, revalidate = 3600, noStore = false, label }: DirectusFetchOptions,
 ): Promise<T[]> {
   const isDev = process.env.NODE_ENV === "development";
   try {
     const response = await fetch(`${DIRECTUS_URL}${path}`, {
       headers: buildHeaders(),
-      ...(isDev
+      ...(isDev || noStore
         ? { cache: "no-store" as const }
         : { next: { revalidate, tags: [tag] } }),
     });
@@ -123,7 +123,7 @@ async function fetchDirectusList<T>(
 }
 
 // ========================================
-// STRONA GŁÓWNA & MAPA
+// STRONA GŁÓWNA, MITMACHEN & MAPA
 // ========================================
 
 export async function getHomePageContent(): Promise<HomePageContent | null> {
@@ -137,10 +137,18 @@ export async function getHomePageContent(): Promise<HomePageContent | null> {
   );
 }
 
-export async function getFeaturedPins(): Promise<FeaturedPin[]> {
-  return fetchDirectusList<FeaturedPin>(
-    "/items/featured_pins?filter[status][_eq]=published&sort=sort&fields=*,ort.*,ort.Kategorie.Kategorie_id.*",
-    { tag: "featured-pins", revalidate: 3600, label: "featured pins" },
+export async function getPartnerPageContent(options?: {
+  noStore?: boolean;
+  revalidate?: number;
+}): Promise<PartnerPageContent | null> {
+  return fetchDirectusSingle<PartnerPageContent>(
+    "/items/partner_page_content?fields=*&limit=1",
+    {
+      tag: "partner-werden",
+      revalidate: options?.revalidate ?? 604800,
+      noStore: options?.noStore ?? false,
+      label: "partner page content",
+    },
   );
 }
 
@@ -197,14 +205,6 @@ export async function getImpressumNew(): Promise<ImpressumNew | null> {
   });
 }
 
-/** @deprecated Używaj `getImpressumNew()`. Zachowane dla kompatybilności. */
-export async function getImpressumContent(): Promise<ImpressumContent | null> {
-  return fetchDirectusSingle<ImpressumContent>(
-    "/items/impressum_content?filter[page_slug][_eq]=impressum&fields=id,page_slug,title,address,email,business_info_top,business_info_bottom,legal_content,webseitenerstellung",
-    { tag: "impressum", revalidate: 86400, label: "impressum content" },
-  );
-}
-
 export interface DatenschutzNew {
   id: string;
   date_updated: string | null;
@@ -217,14 +217,6 @@ export async function getDatenschutzNew(): Promise<DatenschutzNew | null> {
     revalidate: 86400,
     label: "datenschutz",
   });
-}
-
-/** @deprecated Używaj `getDatenschutzNew()`. Zachowane dla kompatybilności. */
-export async function getDatenschutzContent(): Promise<DatenschutzContent | null> {
-  return fetchDirectusSingle<DatenschutzContent>(
-    "/items/datenschutz_content?filter[page_slug][_eq]=datenschutz",
-    { tag: "datenschutz", revalidate: 86400, label: "datenschutz content" },
-  );
 }
 
 export interface AgbContent {
@@ -385,31 +377,6 @@ export async function updatePayPalDonationStatus(
 }
 
 /**
- * Pobiera donację PayPal po ID
- */
-export async function getPayPalDonation(
-  donationId: string,
-): Promise<PayPalDonation | null> {
-  try {
-    const response = await fetch(
-      `${DIRECTUS_URL}/items/paypal_donations/${donationId}`,
-      { headers: buildHeaders() },
-    );
-
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      throw new Error(`Failed to fetch PayPal donation: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.data as PayPalDonation;
-  } catch (error) {
-    console.error("Error fetching PayPal donation:", error);
-    return null;
-  }
-}
-
-/**
  * Pobiera donację PayPal po PayPal Order ID
  */
 export async function getPayPalDonationByOrderId(
@@ -457,91 +424,5 @@ export async function logWebhookEvent(
   } catch (error) {
     console.error("Error logging webhook event:", error);
     return null;
-  }
-}
-
-/**
- * Pobiera statystyki donacji
- */
-export async function getDonationStats(
-  startDate?: string,
-  endDate?: string,
-): Promise<{
-  total_amount: number;
-  total_count: number;
-  successful_count: number;
-  failed_count: number;
-  average_amount: number;
-} | null> {
-  try {
-    const dateFilter =
-      (startDate ? `&filter[created_at][_gte]=${encodeURIComponent(startDate)}` : "") +
-      (endDate ? `&filter[created_at][_lte]=${encodeURIComponent(endDate)}` : "");
-
-    const headers = buildHeaders();
-    const [totalRes, successRes, failedRes] = await Promise.all([
-      fetch(
-        `${DIRECTUS_URL}/items/paypal_donations?aggregate[sum]=amount&aggregate[count]=*${dateFilter}`,
-        { headers },
-      ),
-      fetch(
-        `${DIRECTUS_URL}/items/paypal_donations?filter[status][_eq]=completed&aggregate[count]=*${dateFilter}`,
-        { headers },
-      ),
-      fetch(
-        `${DIRECTUS_URL}/items/paypal_donations?filter[status][_in]=failed,cancelled&aggregate[count]=*${dateFilter}`,
-        { headers },
-      ),
-    ]);
-
-    if (!totalRes.ok) {
-      throw new Error(`Failed to fetch donation stats: ${totalRes.statusText}`);
-    }
-
-    const [data, successData, failedData] = await Promise.all([
-      totalRes.json(),
-      successRes.json(),
-      failedRes.json(),
-    ]);
-
-    const totalAmount = Number(data.data?.[0]?.sum?.amount) || 0;
-    const totalCount = Number(data.data?.[0]?.count) || 0;
-    const successfulCount = Number(successData.data?.[0]?.count) || 0;
-    const failedCount = Number(failedData.data?.[0]?.count) || 0;
-
-    return {
-      total_amount: totalAmount,
-      total_count: totalCount,
-      successful_count: successfulCount,
-      failed_count: failedCount,
-      average_amount: totalCount > 0 ? Math.round(totalAmount / totalCount) : 0,
-    };
-  } catch (error) {
-    console.error("Error fetching donation stats:", error);
-    return null;
-  }
-}
-
-/**
- * Pobiera ostatnie donacje (dla admina)
- */
-export async function getRecentDonations(
-  limit: number = 10,
-): Promise<PayPalDonation[]> {
-  try {
-    const response = await fetch(
-      `${DIRECTUS_URL}/items/paypal_donations?sort=-created_at&limit=${limit}`,
-      { headers: buildHeaders() },
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch recent donations: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return (data.data as PayPalDonation[]) ?? [];
-  } catch (error) {
-    console.error("Error fetching recent donations:", error);
-    return [];
   }
 }

@@ -1,5 +1,3 @@
-import type { Place } from "./map";
-
 // Rozwinięty plik z Directusa (obraz) — id + modified_on do cache-bustingu URL.
 export interface DirectusFileRef {
   id: string;
@@ -173,13 +171,6 @@ export interface UeberUnsContent {
   abschluss_background_color?: string;
 }
 
-export interface FeaturedPin {
-  id: number;
-  ort: Place;
-  sort: number;
-  status: "published" | "draft" | "archived";
-}
-
 export interface HomePageContent {
   id: number;
   // Globalny kolor linków (Markdown-Links) dla całej strony głównej
@@ -266,25 +257,6 @@ export interface HomePageContent {
   video_feature_list_background_color?: string;
   video_button_label?: string;
   video_button_url?: string;
-}
-
-export interface ImpressumContent {
-  id: number;
-  page_slug: string;
-  title: string;
-  address: string;
-  email: string;
-  business_info_top: string;
-  business_info_bottom: string;
-  legal_content: string;
-  webseitenerstellung?: string;
-}
-
-export interface DatenschutzContent {
-  id: number;
-  page_slug: string;
-  title: string;
-  content: string;
 }
 
 export interface SupportSectionContent {
