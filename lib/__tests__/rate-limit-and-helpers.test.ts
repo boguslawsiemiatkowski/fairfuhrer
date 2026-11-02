@@ -4,6 +4,10 @@ import {
   getClientIp,
   resetRateLimitStore,
 } from "@/lib/rate-limit";
+import {
+  buildCategoriesQueryParam,
+  parseCategoriesFromSearch,
+} from "@/components/MapWithFilters";
 import { parseMapboxSuggestion } from "@/utils/pinFormHelpers";
 
 describe("checkRateLimit", () => {
@@ -94,6 +98,42 @@ describe("parseMapboxSuggestion", () => {
       land: "Deutschland",
       placeName: "Münsterplatz 1, 88662 Überlingen, Deutschland",
     });
+  });
+});
+
+describe("URL-Filter für /karte (parseCategoriesFromSearch & buildCategoriesQueryParam)", () => {
+  const categories = [
+    { id: 1, name: "Sehenswertes", color: "#2d6a4f" },
+    { id: 2, name: "Essen & Übernachten", color: "#e76f51" },
+    { id: 3, name: "Einkaufen", color: "#2a9d8f" },
+  ];
+
+  it("zwraca wszystkie kategorie, gdy brak parametru ?kategorie=", () => {
+    expect(parseCategoriesFromSearch("", categories)).toEqual([1, 2, 3]);
+    expect(parseCategoriesFromSearch("?foo=bar", categories)).toEqual([
+      1, 2, 3,
+    ]);
+  });
+
+  it("odczytuje wybrane kategorie po slugu lub ID i obsługuje none", () => {
+    expect(
+      parseCategoriesFromSearch(
+        "?kategorie=essen-und-uebernachten,einkaufen",
+        categories,
+      ),
+    ).toEqual([2, 3]);
+    expect(parseCategoriesFromSearch("?kategorie=1", categories)).toEqual([1]);
+    expect(parseCategoriesFromSearch("?kategorie=none", categories)).toEqual(
+      [],
+    );
+  });
+
+  it("buduje czysty parametr URL lub null gdy wybrane są wszystkie kategorie", () => {
+    expect(buildCategoriesQueryParam([1, 2, 3], categories)).toBeNull();
+    expect(buildCategoriesQueryParam([], categories)).toBe("none");
+    expect(buildCategoriesQueryParam([1, 2], categories)).toBe(
+      "sehenswertes,essen-und-uebernachten",
+    );
   });
 });
 

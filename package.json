@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "node e2e/smoke.mjs",
+    "check": "npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
     "@hotjar/browser": "^1.0.9",
