@@ -25,7 +25,11 @@ import {
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
 import { useAuth } from "@/context/AuthContext";
-import { cityToSegment, sanitizeExternalUrl, sanitizeWordHtml } from "@/lib/orte-shared";
+import {
+  cityToSegment,
+  sanitizeExternalUrl,
+  sanitizeWordHtml,
+} from "@/lib/orte-shared";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { isPremiumActiveForDates } from "@/types/auth";
 import {
@@ -110,7 +114,9 @@ export default function AudiopinPage() {
     );
 
   // Opcje kategorii i certyfikatów z Directusa (/api/pin-optionen)
-  const [kategorienOptions, setKategorienOptions] = useState<KategorieOption[]>([]);
+  const [kategorienOptions, setKategorienOptions] = useState<KategorieOption[]>(
+    [],
+  );
   const [zertOptions, setZertOptions] = useState<ZertOption[]>([]);
 
   // Tryby strony: loading | new_form (tworzenie nowego pina na żywo) | view (edycja istniejącego pina na żywo) | submitting
@@ -122,10 +128,14 @@ export default function AudiopinPage() {
 
   // Wybrany widok podglądu oraz aktualnie otwarta sekcja edytora w Studio
   const [previewMode, setPreviewMode] = useState<PreviewViewMode>("split");
-  const [activeSection, setActiveSection] = useState<StudioSection | null>("name");
+  const [activeSection, setActiveSection] = useState<StudioSection | null>(
+    "name",
+  );
 
   // Stan zapisywania pojedynczych sekcji (w trybie istniejącego pina)
-  const [savingSection, setSavingSection] = useState<StudioSection | null>(null);
+  const [savingSection, setSavingSection] = useState<StudioSection | null>(
+    null,
+  );
   const [sectionError, setSectionError] = useState<string | null>(null);
   const [savedBanner, setSavedBanner] = useState<string | null>(null);
 
@@ -134,11 +144,14 @@ export default function AudiopinPage() {
   const [adresse, setAdresse] = useState("");
   const [stadt, setStadt] = useState("");
   const [land, setLand] = useState("");
-  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(
-    null,
-  );
+  const [coordinates, setCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [geoQuery, setGeoQuery] = useState("");
-  const [geoSuggestions, setGeoSuggestions] = useState<GeocodingSuggestion[]>([]);
+  const [geoSuggestions, setGeoSuggestions] = useState<GeocodingSuggestion[]>(
+    [],
+  );
   const [geoLoading, setGeoLoading] = useState(false);
   const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -195,7 +208,8 @@ export default function AudiopinPage() {
         if (data?.premium_until) {
           setDbPremiumUntil(data.premium_until);
         }
-        const effectivePinId = data?.pin_id ?? user.partnerProfile?.pin_id ?? null;
+        const effectivePinId =
+          data?.pin_id ?? user.partnerProfile?.pin_id ?? null;
         if (effectivePinId) {
           setPinId(effectivePinId);
           setPinLoading(true);
@@ -207,10 +221,14 @@ export default function AudiopinPage() {
             setName((prev) => prev || user.partnerProfile?.company_name || "");
           }
           if (user.partnerProfile?.phone_number) {
-            setTelefon((prev) => prev || user.partnerProfile?.phone_number || "");
+            setTelefon(
+              (prev) => prev || user.partnerProfile?.phone_number || "",
+            );
           }
           if (user.partnerProfile?.website_url) {
-            setLinkUrl((prev) => prev || user.partnerProfile?.website_url || "");
+            setLinkUrl(
+              (prev) => prev || user.partnerProfile?.website_url || "",
+            );
           }
           setMode("new_form");
           setActiveSection("name");
@@ -232,7 +250,8 @@ export default function AudiopinPage() {
           setActiveSection("name");
           return null;
         }
-        if (!r.ok) throw new Error(`Pin konnte nicht geladen werden (${r.status})`);
+        if (!r.ok)
+          throw new Error(`Pin konnte nicht geladen werden (${r.status})`);
         return (await r.json()) as PinData;
       })
       .then((data) => {
@@ -460,7 +479,9 @@ export default function AudiopinPage() {
         }
       }
     } catch {
-      setTitelbildError("Fehler beim Hochladen des Bildes (max. 5 MB, JPG/PNG/WebP).");
+      setTitelbildError(
+        "Fehler beim Hochladen des Bildes (max. 5 MB, JPG/PNG/WebP).",
+      );
     } finally {
       setTitelbildUploading(false);
       if (titelbildRef.current) titelbildRef.current.value = "";
@@ -489,7 +510,9 @@ export default function AudiopinPage() {
         }
       }
     } catch {
-      setAudioError("Fehler beim Hochladen der Audiodatei (max. 50 MB, MP3/M4A/WAV).");
+      setAudioError(
+        "Fehler beim Hochladen der Audiodatei (max. 50 MB, MP3/M4A/WAV).",
+      );
     } finally {
       setAudioUploading(false);
       if (audioRef.current) audioRef.current.value = "";
@@ -578,9 +601,11 @@ export default function AudiopinPage() {
     e.preventDefault();
     setSubmitError(null);
     const errors: Record<string, string> = {};
-    if (!name.trim()) errors.name = "Bitte geben Sie den Namen Ihres Ortes ein.";
+    if (!name.trim())
+      errors.name = "Bitte geben Sie den Namen Ihres Ortes ein.";
     if (!adresse.trim() || !stadt.trim()) {
-      errors.adresse = "Bitte wählen Sie eine vollständige Adresse (Straße & Stadt).";
+      errors.adresse =
+        "Bitte wählen Sie eine vollständige Adresse (Straße & Stadt).";
     }
     if (kategorien.length === 0) {
       errors.kategorien = "Bitte wählen Sie mindestens eine Kategorie aus.";
@@ -669,6 +694,7 @@ export default function AudiopinPage() {
   // - W trybie nowego pina ("new_form"): tak (pola podstawowe dla każdego, pola Premium dla Partner-Pin).
   // - W trybie istniejącego pina ("view"): pełna edycja na żywo z Partner-Pin (`isPremium === true`).
   const canEditBasic = mode === "new_form" || isPremium;
+  const canEditPremium = isPremium;
 
   const publicUrl =
     pinData?.slug && stadt && cityToSegment(stadt)
@@ -781,14 +807,16 @@ export default function AudiopinPage() {
             <Pencil size={17} />
             <h4 className={styles.editorDrawerTitle}>
               {activeSection === "name" && "Name des Ortes bearbeiten"}
-              {activeSection === "kategorien" && "Kategorien & Farbschema wählen"}
+              {activeSection === "kategorien" &&
+                "Kategorien & Farbschema wählen"}
               {activeSection === "adresse" && "Adresse & Karten-Standort"}
               {activeSection === "titelbild" && "Hauptbild (Titelbild)"}
               {activeSection === "audio" && "Audioguide / Audiodatei"}
               {activeSection === "beschreibung" && "Vollständige Beschreibung"}
               {activeSection === "kontakt" && "Telefonnummer & Website-Link"}
               {activeSection === "galerie" && "Bildergalerie (bis zu 6 Fotos)"}
-              {activeSection === "zertifizierungen" && "Zertifizierungen & Labels"}
+              {activeSection === "zertifizierungen" &&
+                "Zertifizierungen & Labels"}
             </h4>
           </div>
           <button
@@ -966,9 +994,8 @@ export default function AudiopinPage() {
           {activeSection === "titelbild" && (
             <div className={styles.fieldGroup}>
               <p className={styles.hint}>
-                Das Titelbild erscheint ganz oben im Karten-Panel und als
-                großes Hauptbild auf Ihrer Audiopin-Seite (JPG, PNG, WebP — max.
-                5 MB).
+                Das Titelbild erscheint ganz oben im Karten-Panel und als großes
+                Hauptbild auf Ihrer Audiopin-Seite (JPG, PNG, WebP — max. 5 MB).
               </p>
               <div className={styles.buttonRow}>
                 <button
@@ -1322,7 +1349,11 @@ export default function AudiopinPage() {
         </div>
 
         {/* Przełącznik widoku: Split vs Panel Mapy vs Strona szczegółowa */}
-        <div className={styles.viewModeGroup} role="tablist" aria-label="Vorschau-Ansicht wählen">
+        <div
+          className={styles.viewModeGroup}
+          role="tablist"
+          aria-label="Vorschau-Ansicht wählen"
+        >
           <button
             type="button"
             role="tab"
@@ -1368,10 +1399,13 @@ export default function AudiopinPage() {
           <div className={styles.upsellBannerText}>
             <strong>Mehr Sichtbarkeit mit dem Partner-Pin:</strong> Schalten Sie
             jederzeitige Live-Bearbeitung, sofortige Veröffentlichung ohne
-            Wartezeit, bis zu 6 Galeriebilder, Website-Button, Telefon-Anrufknopf
-            und mehrere Zertifizierungen frei.
+            Wartezeit, bis zu 6 Galeriebilder, Website-Button,
+            Telefon-Anrufknopf und mehrere Zertifizierungen frei.
           </div>
-          <Link href="/konto/partner/premium" className={styles.upsellBannerCta}>
+          <Link
+            href="/konto/partner/premium"
+            className={styles.upsellBannerCta}
+          >
             Partner-Pin ansehen →
           </Link>
         </div>
@@ -1455,7 +1489,9 @@ export default function AudiopinPage() {
                     }
                   }}
                   className={`${styles.editableZone} ${styles.mockPanelHero} ${
-                    activeSection === "titelbild" ? styles.editableZoneActive : ""
+                    activeSection === "titelbild"
+                      ? styles.editableZoneActive
+                      : ""
                   }`}
                 >
                   {titelbildPreview ? (
@@ -1520,7 +1556,9 @@ export default function AudiopinPage() {
                   }
                 }}
                 className={`${styles.editableZone} ${styles.mockPanelCategories} ${
-                  activeSection === "kategorien" ? styles.editableZoneActive : ""
+                  activeSection === "kategorien"
+                    ? styles.editableZoneActive
+                    : ""
                 }`}
               >
                 {selectedCategories.length > 0 ? (
@@ -1615,9 +1653,7 @@ export default function AudiopinPage() {
                   }`}
                 >
                   {telefon.trim() && isPremium ? (
-                    <span className={styles.mockPanelPhone}>
-                      📞 {telefon}
-                    </span>
+                    <span className={styles.mockPanelPhone}>📞 {telefon}</span>
                   ) : (
                     <span className={styles.mockOptionalHint}>
                       <Phone size={13} />
@@ -1641,7 +1677,9 @@ export default function AudiopinPage() {
                   }
                 }}
                 className={`${styles.editableZone} ${styles.mockPanelSection} ${
-                  activeSection === "beschreibung" ? styles.editableZoneActive : ""
+                  activeSection === "beschreibung"
+                    ? styles.editableZoneActive
+                    : ""
                 }`}
               >
                 {safePreviewDescription ? (
@@ -1829,9 +1867,7 @@ export default function AudiopinPage() {
                       strokeColor="#fff"
                       size={32}
                     />
-                    <span>
-                      {primaryCategory?.name ?? "Kategorie wählen"}
-                    </span>
+                    <span>{primaryCategory?.name ?? "Kategorie wählen"}</span>
                   </div>
 
                   {/* Tytuł na pasku bocznym */}
@@ -1968,7 +2004,9 @@ export default function AudiopinPage() {
                     }
                   }}
                   className={`${styles.editableZone} ${styles.mockDetailHeroZone} ${
-                    activeSection === "titelbild" ? styles.editableZoneActive : ""
+                    activeSection === "titelbild"
+                      ? styles.editableZoneActive
+                      : ""
                   }`}
                 >
                   {titelbildPreview ? (
@@ -2054,7 +2092,10 @@ export default function AudiopinPage() {
                             className={styles.mockDetailZertBadge}
                           />
                         ) : (
-                          <span key={z.id} className={styles.mockDetailZertPill}>
+                          <span
+                            key={z.id}
+                            className={styles.mockDetailZertPill}
+                          >
                             {z.name}
                           </span>
                         ),
@@ -2063,7 +2104,9 @@ export default function AudiopinPage() {
                   ) : (
                     <div className={styles.mockGalleryPlaceholder}>
                       <Award size={16} />
-                      <span>+ Zertifizierungen &amp; Labels unter dem Text anzeigen</span>
+                      <span>
+                        + Zertifizierungen &amp; Labels unter dem Text anzeigen
+                      </span>
                     </div>
                   )}
                 </div>
@@ -2083,7 +2126,9 @@ export default function AudiopinPage() {
                     activeSection === "galerie" ? styles.editableZoneActive : ""
                   }`}
                 >
-                  <h4 className={styles.mockDetailSectionTitle}>Bildergalerie</h4>
+                  <h4 className={styles.mockDetailSectionTitle}>
+                    Bildergalerie
+                  </h4>
                   {galerieItems.length > 0 && isPremium ? (
                     <div className={styles.mockDetailGalleryGrid}>
                       {galerieItems.map((g) => (
@@ -2132,7 +2177,9 @@ export default function AudiopinPage() {
                       <MapPin size={20} color="#fff" />
                     </div>
                     <div className={styles.mockMapInfo}>
-                      <strong>{name.trim() || "Ihr Standort auf der Karte"}</strong>
+                      <strong>
+                        {name.trim() || "Ihr Standort auf der Karte"}
+                      </strong>
                       <span>
                         {adresse.trim() || stadt.trim()
                           ? `${adresse}${stadt ? `, ${stadt}` : ""}`
