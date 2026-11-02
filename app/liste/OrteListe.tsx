@@ -16,8 +16,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Category, Place } from "@/types";
-import { LAST_LISTE_URL_KEY } from "@/components/BackToListeLink";
-import PlaceRail from "@/components/PlaceRail";
+import {
+  LAST_LISTE_URL_KEY,
+  sanitizeSavedListeUrl,
+} from "@/components/BackToListeLink";
+import PlaceRail, { RAIL_SCROLL_PREFIX } from "@/components/PlaceRail";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import StadtSuche, { type CityOption } from "./StadtSuche";
 import { cityToSegment } from "@/lib/orte-shared";
@@ -39,20 +42,27 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
   const kategorieParam = searchParams.get("kategorie") ?? "";
   const stadtParam = searchParams.get("stadt") ?? "";
 
-  // Zapamiętujemy aktualny stan filtrów /liste w sessionStorage, aby strzałka
-  // „Zurück zur Liste" na stronie Audiopinu (/liste/[stadt]/[slug]) wracała
-  // dokładnie do wybranych przez użytkownika wyników (miasto, kategoria, kraj).
+  // Zapamiętujemy oraz przywracamy aktualny stan filtrów /liste w sessionStorage:
+  // - Gdy w URL są parametry (?stadt=...&kategorie=...&land=...), zapisujemy je w sessionStorage.
+  // - Gdy użytkownik wraca na /liste bez parametrów w URL, a w sessionStorage były zapisane
+  //   aktywne filtry, przywracamy je bez nadpisywania ich pustym "/liste".
   useEffect(() => {
     const qs = searchParams.toString();
     try {
-      sessionStorage.setItem(
-        LAST_LISTE_URL_KEY,
-        qs ? `/liste?${qs}` : "/liste",
-      );
+      if (qs) {
+        sessionStorage.setItem(LAST_LISTE_URL_KEY, `/liste?${qs}`);
+      } else {
+        const saved = sanitizeSavedListeUrl(
+          sessionStorage.getItem(LAST_LISTE_URL_KEY),
+        );
+        if (saved.startsWith("/liste?")) {
+          router.replace(saved, { scroll: false });
+        }
+      }
     } catch {
       // Ignorujemy brak dostępu do sessionStorage
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuClipRef = useRef<HTMLDivElement>(null);
@@ -89,7 +99,6 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [menuOpen]);
-
 
   // Sortierung nach Entfernung — wie im Liste-Tab der App, aber per Knopf:
   // der Browser fragt erst nach Erlaubnis, wenn der Nutzer sie anfordert.
@@ -128,9 +137,23 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
       if (value) next.set(key, value);
       else next.delete(key);
       const qs = next.toString();
-      router.replace(qs ? `/liste?${qs}` : "/liste", { scroll: false });
+      const nextUrl = qs ? `/liste?${qs}` : "/liste";
+      const nextStadt = next.get("stadt") ?? "";
+      const nextLand = next.get("land") ?? "";
+      const nextKat = next.get("kategorie") ?? "";
+      const nextResetKey = `${nextStadt}|${nextLand}|${nextKat}|${gps.state}`;
+
+      try {
+        sessionStorage.setItem(LAST_LISTE_URL_KEY, nextUrl);
+        // Ręczna zmiana filtra przez użytkownika zeruje przewinięcie dla nowego widoku
+        sessionStorage.removeItem(`${RAIL_SCROLL_PREFIX}${nextResetKey}`);
+      } catch {
+        // Ignorujemy brak dostępu do sessionStorage
+      }
+
+      router.replace(nextUrl, { scroll: false });
     },
-    [router, searchParams],
+    [router, searchParams, gps.state],
   );
 
   const activeCategory = kategorieParam
@@ -167,7 +190,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
       const dLat = ((lat - gps.lat) * Math.PI) / 180;
       const dLon =
         (((lon - gps.lon) * Math.PI) / 180) *
-        Math.cos(((lat + gps.lat) / 2 * Math.PI) / 180);
+        Math.cos((((lat + gps.lat) / 2) * Math.PI) / 180);
       return { place, d: dLat * dLat + dLon * dLon };
     });
     withDistance.sort((a, b) => a.d - b.d);
@@ -255,7 +278,6 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   return (
     <div className={styles.screen}>
-
       {/* ── Über den Karten: Standort-Sortierung (wie in der App) ─────── */}
       <div className={styles.aboveCards}>
         {gps.state === "on" ? (
@@ -344,56 +366,56 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
           ref={menuClipRef}
           className={`${styles.menuClip} ${menuOpen ? styles.menuClipOpen : ""}`}
         >
-        {/* Kategorie-Menü: bleibt im DOM und wird über eine Klasse animiert,
-            damit es sich auch beim SCHLIESSEN nach unten zurückschiebt. Wäre es
-            bedingt gerendert, verschwände es abrupt. Kein abdunkelnder
-            Hintergrund — der Balken sitzt unten, das Menü direkt darüber. */}
-        <div
-          className={`${styles.menu} ${menuOpen ? styles.menuOpen : ""}`}
-          role="menu"
-          aria-label="Kategorie wählen"
-          aria-hidden={!menuOpen}
-          // Im geschlossenen Zustand nicht per Tab erreichbar.
-          inert={!menuOpen}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            className={`${styles.menuItem} ${!activeCategory ? styles.menuItemActive : ""}`}
-            onClick={() => chooseCategory(null)}
+          {/* Kategorie-Menü: bleibt im DOM und wird über eine Klasse animiert,
+              damit es sich auch beim SCHLIESSEN nach unten zurückschiebt. Wäre es
+              bedingt gerendert, verschwände es abrupt. Kein abdunkelnder
+              Hintergrund — der Balken sitzt unten, das Menü direkt darüber. */}
+          <div
+            className={`${styles.menu} ${menuOpen ? styles.menuOpen : ""}`}
+            role="menu"
+            aria-label="Kategorie wählen"
+            aria-hidden={!menuOpen}
+            // Im geschlossenen Zustand nicht per Tab erreichbar.
+            inert={!menuOpen}
           >
-            <span className={styles.menuIcon}>
-              <CategoryIcon categoryId={null} color="#fff" strokeColor="#000" />
-            </span>
-            <span className={styles.menuText}>Alle</span>
-            <span className={styles.menuCount}>{places.length}</span>
-          </button>
+            <button
+              type="button"
+              role="menuitem"
+              className={`${styles.menuItem} ${!activeCategory ? styles.menuItemActive : ""}`}
+              onClick={() => chooseCategory(null)}
+            >
+              <span className={styles.menuIcon}>
+                <CategoryIcon categoryId={null} color="#fff" strokeColor="#000" />
+              </span>
+              <span className={styles.menuText}>Alle</span>
+              <span className={styles.menuCount}>{places.length}</span>
+            </button>
 
-          {categories.map((cat) => {
-            const active = activeCategory?.id === cat.id;
-            const count = categoryCounts.get(cat.id) ?? 0;
-            if (count === 0) return null;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                role="menuitem"
-                className={`${styles.menuItem} ${active ? styles.menuItemActive : ""}`}
-                onClick={() => chooseCategory(cat)}
-              >
-                <span className={styles.menuIcon}>
-                  <CategoryIcon
-                    categoryId={cat.id}
-                    color={categoryColorFor(cat)}
-                    size={36}
-                  />
-                </span>
-                <span className={styles.menuText}>{cat.name}</span>
-                <span className={styles.menuCount}>{count}</span>
-              </button>
-            );
-          })}
-        </div>
+            {categories.map((cat) => {
+              const active = activeCategory?.id === cat.id;
+              const count = categoryCounts.get(cat.id) ?? 0;
+              if (count === 0) return null;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  role="menuitem"
+                  className={`${styles.menuItem} ${active ? styles.menuItemActive : ""}`}
+                  onClick={() => chooseCategory(cat)}
+                >
+                  <span className={styles.menuIcon}>
+                    <CategoryIcon
+                      categoryId={cat.id}
+                      color={categoryColorFor(cat)}
+                      size={36}
+                    />
+                  </span>
+                  <span className={styles.menuText}>{cat.name}</span>
+                  <span className={styles.menuCount}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <StadtSuche
@@ -452,7 +474,6 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
           </button>
         </div>
       </div>
-
     </div>
   );
 }

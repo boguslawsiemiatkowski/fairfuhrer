@@ -24,7 +24,6 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
   scrollbar-width: none;
 }
 

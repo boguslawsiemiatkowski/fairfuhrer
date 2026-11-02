@@ -2,13 +2,20 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MoveLeft } from "lucide-react";
 
 export const LAST_LISTE_URL_KEY = "fairfuehrer:lastListeUrl";
 
 function subscribeToStorage(callback: () => void) {
   window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+  window.addEventListener("focus", callback);
+  window.addEventListener("pageshow", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("focus", callback);
+    window.removeEventListener("pageshow", callback);
+  };
 }
 
 /**
@@ -49,17 +56,41 @@ export default function BackToListeLink({
   className,
   labelClassName,
 }: BackToListeLinkProps) {
+  const router = useRouter();
   const backHref = useSyncExternalStore(
     subscribeToStorage,
     getClientSnapshot,
     getServerSnapshot,
   );
 
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (
+      e.defaultPrevented ||
+      e.button !== 0 ||
+      e.metaKey ||
+      e.ctrlKey ||
+      e.shiftKey ||
+      e.altKey
+    ) {
+      return;
+    }
+    try {
+      const latestUrl = sanitizeSavedListeUrl(
+        sessionStorage.getItem(LAST_LISTE_URL_KEY),
+      );
+      if (latestUrl !== backHref) {
+        e.preventDefault();
+        router.push(latestUrl);
+      }
+    } catch {
+      // Ignorujemy brak dostępu do sessionStorage
+    }
+  };
+
   return (
-    <Link href={backHref} className={className}>
+    <Link href={backHref} onClick={handleClick} className={className}>
       <MoveLeft size={26} aria-hidden="true" />
       <span className={labelClassName}>Zurück zur Liste</span>
     </Link>
   );
 }
-

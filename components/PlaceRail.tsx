@@ -37,7 +37,7 @@ const CARD_GAP = 12;
 /** Ab welcher Mausbewegung ein Ziehen als Scrollen gilt (statt als Klick). */
 const DRAG_THRESHOLD = 6;
 
-const LAST_RESET_KEY_STORAGE = "fairfuehrer:railLastResetKey";
+export const RAIL_SCROLL_PREFIX = "fairfuehrer:railScroll:";
 
 export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
   const railRef = useRef<HTMLDivElement>(null);
@@ -46,10 +46,10 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
   const [dragging, setDragging] = useState(false);
 
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: 0 });
-  // Flaga blokująca nadpisanie sessionStorage wartością 0 zanim przywrócimy pozycję po zamontowaniu
+  // Flaga blokująca nadpisanie sessionStorage wartością 0 podczas przywracania pozycji lub nawigacji
   const isRestoringRef = useRef(true);
 
-  // Samo sprawdzenie krawędzi (bez zapisu do sessionStorage, żeby mount z scrollLeft=0 nie kasował zapisanej pozycji!)
+  // Samo sprawdzenie krawędzi (bez zapisu do sessionStorage)
   const updateEdges = useCallback(() => {
     const el = railRef.current;
     if (!el) return;
@@ -57,26 +57,52 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
     setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
   }, []);
 
-  // Obsługa zdarzenia scrollowania przez użytkownika — tutaj zapisujemy aktualny scrollLeft w sessionStorage
+  // Obsługa zdarzenia scrollowania przez użytkownika — zapisujemy aktualny scrollLeft w sessionStorage
   const handleScroll = useCallback(() => {
     const el = railRef.current;
     if (!el) return;
     updateEdges();
-    if (!isRestoringRef.current && resetKey) {
-      try {
-        sessionStorage.setItem(
-          `fairfuehrer:railScroll:${resetKey}`,
-          String(Math.round(el.scrollLeft)),
-        );
-        sessionStorage.setItem(LAST_RESET_KEY_STORAGE, resetKey);
-      } catch {
-        // Ignoruj błędy dostępu do sessionStorage
-      }
+    if (isRestoringRef.current || !resetKey) return;
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/liste"
+    ) {
+      return;
+    }
+    if (el.clientWidth === 0) return;
+
+    try {
+      sessionStorage.setItem(
+        `${RAIL_SCROLL_PREFIX}${resetKey}`,
+        String(Math.round(el.scrollLeft)),
+      );
+    } catch {
+      // Ignoruj błędy dostępu do sessionStorage
     }
   }, [resetKey, updateEdges]);
 
-  // Przywracanie pozycji przewinięcia po powrocie ze strony Audiopinu (gdy resetKey jest taki sam)
-  // albo reset do 0 przy zmianie filtrów na /liste.
+  // Zapisujemy dokładny scrollLeft w momencie kliknięcia w kartę (zanim rozpocznie się nawigacja)
+  const onClickCapture = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const el = railRef.current;
+      if (!el || !resetKey) return;
+      const anchor = (e.target as HTMLElement | null)?.closest("a");
+      if (anchor) {
+        try {
+          sessionStorage.setItem(
+            `${RAIL_SCROLL_PREFIX}${resetKey}`,
+            String(Math.round(el.scrollLeft)),
+          );
+        } catch {
+          // Ignoruj błędy dostępu do sessionStorage
+        }
+        isRestoringRef.current = true;
+      }
+    },
+    [resetKey],
+  );
+
+  // Przywracanie pozycji przewinięcia po powrocie ze strony Audiopinu dla danego klucza filtrów
   useEffect(() => {
     const el = railRef.current;
     if (!el) return;
@@ -86,47 +112,56 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
 
     if (resetKey) {
       try {
-        const lastSavedKey = sessionStorage.getItem(LAST_RESET_KEY_STORAGE);
         const savedScroll = sessionStorage.getItem(
-          `fairfuehrer:railScroll:${resetKey}`,
+          `${RAIL_SCROLL_PREFIX}${resetKey}`,
         );
-        if (
-          (!lastSavedKey || lastSavedKey === resetKey) &&
-          savedScroll !== null
-        ) {
+        if (savedScroll !== null) {
           const parsed = Number(savedScroll);
           if (Number.isFinite(parsed) && parsed > 0) {
             targetScroll = parsed;
           }
-        } else if (lastSavedKey && lastSavedKey !== resetKey) {
-          // Użytkownik zmienił filtr — czyścimy poprzednią pozycję i zapisujemy nowy klucz
-          sessionStorage.removeItem(`fairfuehrer:railScroll:${lastSavedKey}`);
         }
-        sessionStorage.setItem(LAST_RESET_KEY_STORAGE, resetKey);
       } catch {
         // Ignoruj błędy sessionStorage
       }
     }
 
-    // Wyłączamy chwilowo scroll-snap i smooth-scroll z CSS, aby ustawić dokładny scrollLeft bez animacji
-    const prevSnap = el.style.scrollSnapType;
-    const prevBehavior = el.style.scrollBehavior;
+    // Wyłączamy chwilowo scroll-snap na czas ustawiania pozycji przez dwie klatki renderowania,
+    // aby przeglądarka nie cofnęła paska do 0 przed ułożeniem kart.
     el.style.scrollSnapType = "none";
     el.style.scrollBehavior = "auto";
     el.scrollLeft = targetScroll;
     updateEdges();
 
-    const rafId = requestAnimationFrame(() => {
+    let raf1 = 0;
+    let raf2 = 0;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    raf1 = requestAnimationFrame(() => {
       if (railRef.current) {
         railRef.current.scrollLeft = targetScroll;
-        railRef.current.style.scrollSnapType = prevSnap;
-        railRef.current.style.scrollBehavior = prevBehavior;
+        updateEdges();
       }
-      updateEdges();
-      isRestoringRef.current = false;
+      raf2 = requestAnimationFrame(() => {
+        if (railRef.current) {
+          railRef.current.scrollLeft = targetScroll;
+          railRef.current.style.scrollSnapType = "";
+          railRef.current.style.scrollBehavior = "";
+          updateEdges();
+        }
+        timerId = setTimeout(() => {
+          isRestoringRef.current = false;
+        }, 80);
+      });
     });
 
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      if (timerId !== null) clearTimeout(timerId);
+      el.style.scrollSnapType = "";
+      el.style.scrollBehavior = "";
+    };
   }, [resetKey, places.length, updateEdges]);
 
   const scrollByCards = useCallback((direction: 1 | -1) => {
@@ -207,6 +242,7 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
         ref={railRef}
         className={`${styles.rail} ${dragging ? styles.dragging : ""}`}
         onScroll={handleScroll}
+        onClickCapture={onClickCapture}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
