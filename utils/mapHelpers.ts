@@ -1,9 +1,15 @@
 import mapboxgl from "mapbox-gl";
+import DOMPurify from "dompurify";
 import type { Place } from "../types";
 import { getCategoryIconPaths, DEFAULT_ICON_PATHS } from "../lib/categoryIcons";
 
 export const PIN_W = 40;
 export const PIN_H = 56;
+
+export function isValidMapboxToken(): boolean {
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  return Boolean(token && token.startsWith("pk."));
+}
 
 export function placesToGeoJSON(places: Place[]) {
   return {
@@ -104,4 +110,243 @@ export function loadCategoryMarkerSDFs(
       done,
     );
   });
+}
+
+/**
+ * Ustawia niemieckie etykiety warstw (`name_de`) oraz ukrywa oznaczenia numerów dróg (`shield` / `road-number`).
+ */
+export function applyGermanMapStyle(map: mapboxgl.Map): void {
+  try {
+    const layers = map.getStyle()?.layers;
+    if (!layers) return;
+
+    layers.forEach((layer) => {
+      if (
+        layer.type === "symbol" &&
+        layer.layout &&
+        "text-field" in layer.layout
+      ) {
+        try {
+          map.setLayoutProperty(layer.id, "text-field", ["get", "name_de"]);
+        } catch {
+          // Ignoruj błędy dla warstw nieobsługujących zmiany text-field
+        }
+      }
+
+      if (layer.id.includes("shield") || layer.id.includes("road-number")) {
+        try {
+          map.setLayoutProperty(layer.id, "visibility", "none");
+        } catch {
+          // Ignoruj błędy ukrywania tarcz drogowych
+        }
+      }
+    });
+  } catch (error) {
+    console.warn("Could not customize map style layers:", error);
+  }
+}
+
+/**
+ * Inicjalizuje źródło GeoJSON z klastrowaniem oraz 4 warstwy pinów/klastrów w Mapbox GL.
+ */
+export function setupPlacesClusterLayers(
+  map: mapboxgl.Map,
+  initialPlaces: Place[],
+): void {
+  map.addSource("places-source", {
+    type: "geojson",
+    data: placesToGeoJSON(initialPlaces),
+    cluster: true,
+    clusterMaxZoom: 14,
+    clusterRadius: 50,
+  });
+
+  // LAYER: klastry (circle)
+  map.addLayer({
+    id: "places-clusters",
+    type: "circle",
+    source: "places-source",
+    filter: ["has", "point_count"],
+    paint: {
+      "circle-color": [
+        "step",
+        ["get", "point_count"],
+        "#51bbd6",
+        10,
+        "#f1f075",
+        30,
+        "#f28cb1",
+      ],
+      "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 30, 40],
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#fff",
+    },
+  });
+
+  // LAYER: liczba w klastrze (symbol)
+  map.addLayer({
+    id: "places-cluster-count",
+    type: "symbol",
+    source: "places-source",
+    filter: ["has", "point_count"],
+    layout: {
+      "text-field": ["get", "point_count_abbreviated"],
+      "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+      "text-size": 12,
+    },
+    paint: {
+      "text-color": "#fff",
+    },
+  });
+
+  // LAYER: pojedynczy pin per kategoria
+  map.addLayer({
+    id: "places-unclustered",
+    type: "symbol",
+    source: "places-source",
+    filter: ["!", ["has", "point_count"]],
+    layout: {
+      "icon-image": [
+        "match",
+        ["get", "categoryId"],
+        1,
+        "pin-1",
+        2,
+        "pin-2",
+        3,
+        "pin-3",
+        5,
+        "pin-5",
+        8,
+        "pin-8",
+        "pin-0",
+      ],
+      "icon-size": 1,
+      "icon-anchor": "bottom",
+      "icon-allow-overlap": true,
+    },
+    paint: {},
+  });
+
+  // LAYER: wybrany pin — powiększony z obramowaniem, renderowany na wierzchu
+  map.addLayer({
+    id: "places-selected",
+    type: "symbol",
+    source: "places-source",
+    filter: ["==", ["get", "placeId"], -1],
+    layout: {
+      "icon-image": [
+        "match",
+        ["get", "categoryId"],
+        1,
+        "pin-1-selected",
+        2,
+        "pin-2-selected",
+        3,
+        "pin-3-selected",
+        5,
+        "pin-5-selected",
+        8,
+        "pin-8-selected",
+        "pin-0-selected",
+      ],
+      "icon-size": 1.45,
+      "icon-anchor": "bottom",
+      "icon-allow-overlap": true,
+    },
+    paint: {},
+  });
+}
+
+/**
+ * Tworzy i dodaje na mapę pulsujący marker lokalizacji użytkownika.
+ */
+export function createUserLocationMarker(
+  map: mapboxgl.Map,
+  location: [number, number],
+  popupClassName: string,
+): mapboxgl.Marker | null {
+  if (!map || !map.loaded()) {
+    console.warn("⚠️ Map not loaded, skipping marker");
+    return null;
+  }
+
+  if (!document.head.querySelector("#user-location-styles")) {
+    const style = document.createElement("style");
+    style.id = "user-location-styles";
+    style.textContent = `
+      .user-location-marker {
+        position: relative;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+      }
+      .user-location-marker .marker-dot {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #4285F4;
+        border: 3px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        z-index: 2;
+      }
+      .user-location-marker .marker-pulse {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: rgba(66, 133, 244, 0.4);
+        transform: translate(-50%, -50%);
+        animation: user-location-pulse 2s infinite;
+        z-index: 1;
+      }
+      @keyframes user-location-pulse {
+        0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+        100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const userMarkerElement = document.createElement("div");
+  userMarkerElement.className = "user-location-marker";
+  userMarkerElement.innerHTML = `
+    <div class="marker-dot"></div>
+    <div class="marker-pulse"></div>
+  `;
+
+  const userPopupHTML = DOMPurify.sanitize(`
+    <div>
+      <h3>Ihre Position</h3>
+      <p>Sie sind hier</p>
+    </div>
+  `);
+
+  const popup = new mapboxgl.Popup({
+    offset: [0, -15],
+    closeButton: false,
+    className: popupClassName,
+  }).setHTML(userPopupHTML);
+
+  const userMarker = new mapboxgl.Marker({ element: userMarkerElement })
+    .setLngLat(location)
+    .setPopup(popup)
+    .addTo(map);
+
+  userMarkerElement.addEventListener("mouseenter", () => {
+    if (userMarker.getPopup()) userMarker.togglePopup();
+  });
+
+  userMarkerElement.addEventListener("mouseleave", () => {
+    setTimeout(() => {
+      if (userMarker.getPopup()?.isOpen()) userMarker.togglePopup();
+    }, 300);
+  });
+
+  return userMarker;
 }

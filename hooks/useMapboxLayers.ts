@@ -1,0 +1,258 @@
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import mapboxgl from "mapbox-gl";
+import type { FeatureCollection, Point } from "geojson";
+import type { Place } from "../types";
+import { placesToGeoJSON, setupPlacesClusterLayers } from "../utils/mapHelpers";
+import { generatePopupHTML } from "../utils/popupGenerator";
+
+interface UseMapboxLayersOptions {
+  mapRef: React.RefObject<mapboxgl.Map | null>;
+  places: Place[];
+  userLocation: [number, number] | null;
+  popupClassName: string;
+  openPanel: (place: Place) => void;
+  closePanel: () => void;
+  isPanelOpenRef: React.RefObject<boolean>;
+  isMapAnimatingRef: React.RefObject<boolean>;
+}
+
+export function useMapboxLayers({
+  mapRef,
+  places,
+  userLocation,
+  popupClassName,
+  openPanel,
+  closePanel,
+  isPanelOpenRef,
+  isMapAnimatingRef,
+}: UseMapboxLayersOptions) {
+  const layersInitializedRef = useRef(false);
+  const lastFittedPlacesRef = useRef<string>("");
+  const hoverPopupRef = useRef<mapboxgl.Popup | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const placesRef = useRef<Place[]>(places);
+  const popupDataMapRef = useRef<Map<number, string>>(new Map());
+  const openPanelRef = useRef(openPanel);
+  const closePanelRef = useRef(closePanel);
+
+  // Pre-computed HTML dla dymków hover na pinach
+  const popupDataMap = useMemo<Map<number, string>>(() => {
+    const dataMap = new Map<number, string>();
+    places.forEach((place) => {
+      dataMap.set(place.id, generatePopupHTML(place));
+    });
+    return dataMap;
+  }, [places]);
+
+  useEffect(() => {
+    placesRef.current = places;
+  }, [places]);
+
+  useEffect(() => {
+    popupDataMapRef.current = popupDataMap;
+  }, [popupDataMap]);
+
+  useEffect(() => {
+    openPanelRef.current = openPanel;
+    closePanelRef.current = closePanel;
+  }, [openPanel, closePanel]);
+
+  const updatePlacesData = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded() || !layersInitializedRef.current) return;
+
+    const source = map.getSource("places-source") as
+      | mapboxgl.GeoJSONSource
+      | undefined;
+    if (!source) return;
+
+    const currentPlaces = placesRef.current;
+    source.setData(placesToGeoJSON(currentPlaces) as FeatureCollection<Point>);
+
+    // fitBounds tylko gdy zmienił się zestaw miejsc
+    const placesKey = currentPlaces
+      .map((p) => p.id)
+      .sort()
+      .join(",");
+
+    if (currentPlaces.length > 0 && placesKey !== lastFittedPlacesRef.current) {
+      lastFittedPlacesRef.current = placesKey;
+
+      const bounds = new mapboxgl.LngLatBounds();
+      currentPlaces
+        .filter((p) => p.location?.coordinates)
+        .forEach((p) => bounds.extend(p.location.coordinates));
+      if (userLocation) bounds.extend(userLocation);
+
+      const padding =
+        window.innerWidth > 768
+          ? { top: 80, bottom: 80, left: 80, right: 80 }
+          : { top: 50, bottom: 50, left: 20, right: 20 };
+
+      map.fitBounds(bounds, { padding, duration: 1000 });
+    }
+  }, [mapRef, userLocation]);
+
+  const initializeLayersAndEvents = useCallback(
+    (map: mapboxgl.Map) => {
+      if (layersInitializedRef.current) return;
+
+      setupPlacesClusterLayers(map, placesRef.current);
+      layersInitializedRef.current = true;
+      updatePlacesData();
+
+      // ---- KURSORY ----
+      map.on("mouseenter", "places-unclustered", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "places-unclustered", () => {
+        map.getCanvas().style.cursor = "";
+      });
+      map.on("mouseenter", "places-clusters", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "places-clusters", () => {
+        map.getCanvas().style.cursor = "";
+      });
+
+      // ---- HOVER TOOLTIP ----
+      map.on("mouseenter", "places-unclustered", (e) => {
+        if (!e.features?.length) return;
+        const feature = e.features[0];
+        const placeId = feature.properties?.placeId as number;
+
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+          hoverTimeoutRef.current = null;
+        }
+
+        if (hoverPopupRef.current) {
+          hoverPopupRef.current.remove();
+          hoverPopupRef.current = null;
+        }
+
+        const geometry = feature.geometry as Point;
+        const coords = geometry.coordinates as [number, number];
+        const html = popupDataMapRef.current.get(placeId);
+        if (!html) return;
+
+        hoverPopupRef.current = new mapboxgl.Popup({
+          offset: [0, -36],
+          closeButton: false,
+          className: popupClassName,
+          maxWidth: "320px",
+        })
+          .setLngLat(coords)
+          .setHTML(html)
+          .addTo(map);
+
+        // Hover-Hold: zatrzymaj timer zamknięcia gdy kursor znajduje się nad popupem
+        const popupEl = hoverPopupRef.current.getElement();
+        if (popupEl) {
+          popupEl.addEventListener("mouseenter", () => {
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
+          });
+          popupEl.addEventListener("mouseleave", () => {
+            hoverTimeoutRef.current = setTimeout(() => {
+              if (hoverPopupRef.current) {
+                hoverPopupRef.current.remove();
+                hoverPopupRef.current = null;
+              }
+              hoverTimeoutRef.current = null;
+            }, 300);
+          });
+        }
+      });
+
+      map.on("mouseleave", "places-unclustered", () => {
+        hoverTimeoutRef.current = setTimeout(() => {
+          if (hoverPopupRef.current) {
+            hoverPopupRef.current.remove();
+            hoverPopupRef.current = null;
+          }
+          hoverTimeoutRef.current = null;
+        }, 300);
+      });
+
+      // ---- KLIK na pin → otwórz panel informacyjny ----
+      map.on("click", "places-unclustered", (e) => {
+        if (!e.features?.length) return;
+        const placeId = e.features[0].properties?.placeId as number;
+        e.originalEvent.stopPropagation();
+
+        if (hoverPopupRef.current) {
+          hoverPopupRef.current.remove();
+          hoverPopupRef.current = null;
+        }
+
+        const place = placesRef.current.find((p) => p.id === placeId);
+        if (place) {
+          openPanelRef.current(place);
+        }
+      });
+
+      // ---- KLIK na klaster → przybliż mapę ----
+      map.on("click", "places-clusters", (e) => {
+        if (!e.features?.length) return;
+        const clusterId = e.features[0].properties?.cluster_id as number;
+        const source = map.getSource("places-source") as mapboxgl.GeoJSONSource;
+        const geometry = e.features[0].geometry as Point;
+        const coords = geometry.coordinates as [number, number];
+
+        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+          if (err || zoom == null) return;
+          map.easeTo({ center: coords, zoom });
+        });
+
+        e.originalEvent.stopPropagation();
+      });
+
+      // ---- KLIK w pustą mapę → zamknij panel ----
+      map.on("click", (e) => {
+        // Ignoruj kliknięcia podczas programowej animacji mapy (easeTo)
+        if (isMapAnimatingRef.current) return;
+        if (!isPanelOpenRef.current) return;
+
+        const features = map.queryRenderedFeatures(e.point, {
+          layers: ["places-unclustered", "places-clusters"],
+        });
+        if (!features.length) {
+          closePanelRef.current();
+        }
+      });
+    },
+    [popupClassName, updatePlacesData, isMapAnimatingRef, isPanelOpenRef],
+  );
+
+  // Aktualizuj dane źródła GeoJSON gdy zmieni się lista miejsc (np. filtry kategorii)
+  useEffect(() => {
+    if (!mapRef.current || !layersInitializedRef.current) return;
+    if (mapRef.current.isStyleLoaded()) {
+      updatePlacesData();
+    }
+  }, [places, updatePlacesData, mapRef]);
+
+  const cleanupLayers = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    if (hoverPopupRef.current) {
+      hoverPopupRef.current.remove();
+      hoverPopupRef.current = null;
+    }
+    layersInitializedRef.current = false;
+  }, []);
+
+  return {
+    placesRef,
+    layersInitializedRef,
+    initializeLayersAndEvents,
+    cleanupLayers,
+  };
+}
+
