@@ -2,11 +2,11 @@
   font-family: var(--font-fira);
   font-size: 0.9rem;
   font-weight: 600;
-  background-color: transparent;
-  color: #fc6c14;
+  background-color: #fc6c14;
+  color: #ffffff;
   text-decoration: none;
   padding: 0.4rem 1rem;
-  border: 1.5px solid #fc6c14;
+  border: 1px solid #000000;
   border-radius: 6px;
   transition:
     background-color 0.2s,
@@ -14,8 +14,8 @@
 }
 
 .loginLink:hover {
-  background-color: #fc6c14;
-  color: #fff;
+  background-color: #fc6d1431;
+  color: #000000;
 }
 @media (max-width: 400px) {
   .loginLink {
@@ -138,7 +138,9 @@
   background-color: transparent;
   border: none;
   cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
   box-sizing: border-box;
 }
 

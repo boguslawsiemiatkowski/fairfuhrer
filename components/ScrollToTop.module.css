@@ -9,12 +9,14 @@
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 50%;
-  border: none;
+  border: 2px solid #000000;
   background-color: #fc6c14;
   color: #ffffff;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .button:hover {

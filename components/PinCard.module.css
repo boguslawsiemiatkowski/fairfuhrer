@@ -14,6 +14,7 @@
   height: 100%;
   overflow: hidden;
   border-radius: 12px;
+  border: 2px solid #000000;
   background-color: #ddd;
   /* Kein Schatten: er lief 12px über die Kartenkante hinaus und verschmolz
      zwischen benachbarten Karten zu einem grauen Streifen auf der

@@ -12,7 +12,7 @@
 
 .page {
   font-family: var(--font-fira);
-  background-color: #fff;
+  background-color: #f8f8ff;
   color: #18222f;
 }
 
@@ -35,7 +35,7 @@
   min-height: 0;
   /* Luft über und unter dem Band, damit der Schatten der Karten nicht an den
      Nachbarelementen klebt. */
-  padding: 12px 0;
+  padding: 8px 0;
 }
 
 .emptyState {
@@ -138,6 +138,8 @@
   align-items: center;
   padding: 0 14px;
   background-color: #fc6c14;
+  border-top: 2px solid #000000;
+  border-bottom: 2px solid #000000;
 }
 
 .searchInput {
@@ -442,9 +444,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 36px;
+  min-height: 46px;
   /* Gleicher Streifen wie beim Kartenband. */
-  padding: 0 14px;
+  padding: 0 24px;
 }
 
 .gpsBtn {
