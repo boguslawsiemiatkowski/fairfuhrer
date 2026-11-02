@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@hotjar/browser": "^1.0.9",
-    "@mapbox/search-js-react": "^1.6.0",
     "@mux/mux-player-react": "^3.14.1",
     "@next/third-parties": "^16.4.3",
     "@paypal/paypal-server-sdk": "^2.5.0",

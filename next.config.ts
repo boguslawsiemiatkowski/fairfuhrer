@@ -1,6 +1,65 @@
 // next.config.ts
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
+// Budujemy politykę Content-Security-Policy (CSP) dostosowaną do wszystkich usług
+// zewnętrznych używanych w FairFührer (Directus, Supabase, Mapbox GL, Mux, PayPal,
+// Cloudflare Turnstile, Google Analytics, Hotjar).
+// Uwaga: 'upgrade-insecure-requests' włączamy wyłącznie na produkcji, aby nie
+// wymuszać HTTPS na http://localhost:10000 podczas lokalnego developmentu.
+const cspDirectives = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self' https://www.paypal.com https://*.paypal.com",
+  "frame-ancestors 'self'",
+  "object-src 'none'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com https://www.google-analytics.com https://static.hotjar.com https://script.hotjar.com https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://www.paypalobjects.com`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://cms.fairfuehrer.guide https://*.supabase.co https://*.mapbox.com https://image.mux.com https://www.google-analytics.com https://www.googletagmanager.com https://*.hotjar.com https://www.paypalobjects.com https://*.paypal.com",
+  "media-src 'self' data: blob: https://cms.fairfuehrer.guide https://*.supabase.co https://stream.mux.com https://*.mux.com https://*.edgemv.mux.com",
+  "font-src 'self' data: https://script.hotjar.com",
+  "connect-src 'self' https://cms.fairfuehrer.guide https://*.supabase.co wss://*.supabase.co https://*.tiles.mapbox.com https://api.mapbox.com https://events.mapbox.com https://*.mux.com https://*.litix.io https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.hotjar.com https://*.hotjar.io wss://*.hotjar.com https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com",
+  "frame-src 'self' https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://vars.hotjar.com",
+  "worker-src 'self' blob:",
+  "child-src 'self' blob:",
+  ...(!isDev ? ["upgrade-insecure-requests"] : []),
+];
+
+// Nagłówki bezpieczeństwa HTTP wymagane przez audyt Mozilla Observatory
+const securityHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: cspDirectives.join("; "),
+  },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+  {
+    key: "X-Frame-Options",
+    value: "SAMEORIGIN",
+  },
+  {
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
+  },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
+  },
+  {
+    // "same-origin-allow-popups" przechodzi test Mozilla Observatory i jednocześnie
+    // pozwala na komunikację z oknem popup płatności PayPal (window.opener).
+    key: "Cross-Origin-Opener-Policy",
+    value: "same-origin-allow-popups",
+  },
+];
+
 const nextConfig: NextConfig = {
   // Warnt bei `next dev` / `next build`, wenn die installierte Next.js-Version
   // eine bekannte Sicherheitslücke hat. Bewusst "security" statt "latest" —
@@ -33,6 +92,11 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        // Globalne nagłówki bezpieczeństwa dla wszystkich tras aplikacji
+        source: "/:path*",
+        headers: securityHeaders,
+      },
       {
         source: "/images/:path*",
         headers: [
