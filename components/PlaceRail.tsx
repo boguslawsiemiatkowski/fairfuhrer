@@ -37,6 +37,8 @@ const CARD_GAP = 12;
 /** Ab welcher Mausbewegung ein Ziehen als Scrollen gilt (statt als Klick). */
 const DRAG_THRESHOLD = 6;
 
+const LAST_RESET_KEY_STORAGE = "fairfuehrer:railLastResetKey";
+
 export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
   const railRef = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
@@ -44,65 +46,88 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
   const [dragging, setDragging] = useState(false);
 
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: 0 });
-  const prevResetKeyRef = useRef<string | undefined>(resetKey);
+  // Flaga blokująca nadpisanie sessionStorage wartością 0 zanim przywrócimy pozycję po zamontowaniu
+  const isRestoringRef = useRef(true);
 
-  // Die Kartenmaße stehen im CSS (clamp + aspect-ratio), nicht hier. Vorher
-  // starteten sie mit festen 320×400 und wurden erst nach dem Mounten aus
-  // window.innerWidth neu berechnet — deshalb erschienen die Kacheln zuerst
-  // schmal und sprangen dann auf ihre endgültige Breite. Im CSS stimmt die
-  // Größe schon im ersten Bild.
-
+  // Samo sprawdzenie krawędzi (bez zapisu do sessionStorage, żeby mount z scrollLeft=0 nie kasował zapisanej pozycji!)
   const updateEdges = useCallback(() => {
     const el = railRef.current;
     if (!el) return;
     setAtStart(el.scrollLeft <= 1);
     setAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 1);
-    if (resetKey) {
+  }, []);
+
+  // Obsługa zdarzenia scrollowania przez użytkownika — tutaj zapisujemy aktualny scrollLeft w sessionStorage
+  const handleScroll = useCallback(() => {
+    const el = railRef.current;
+    if (!el) return;
+    updateEdges();
+    if (!isRestoringRef.current && resetKey) {
       try {
         sessionStorage.setItem(
           `fairfuehrer:railScroll:${resetKey}`,
           String(Math.round(el.scrollLeft)),
         );
+        sessionStorage.setItem(LAST_RESET_KEY_STORAGE, resetKey);
       } catch {
         // Ignoruj błędy dostępu do sessionStorage
       }
     }
-  }, [resetKey]);
+  }, [resetKey, updateEdges]);
 
-  useEffect(() => {
-    updateEdges();
-  }, [updateEdges, places.length]);
-
-  // Nach einem Filterwechsel zurück zum Anfang; beim Zurückkehren von einer
-  // Audiopin-Detailseite zur selben Filterauswahl die letzte Scrollposition wiederherstellen.
+  // Przywracanie pozycji przewinięcia po powrocie ze strony Audiopinu (gdy resetKey jest taki sam)
+  // albo reset do 0 przy zmianie filtrów na /liste.
   useEffect(() => {
     const el = railRef.current;
     if (!el) return;
-    if (prevResetKeyRef.current !== resetKey) {
-      prevResetKeyRef.current = resetKey;
-      el.scrollTo({ left: 0, behavior: "instant" });
-      if (resetKey) {
-        try {
-          sessionStorage.removeItem(`fairfuehrer:railScroll:${resetKey}`);
-        } catch {
-          // Ignoruj błędy sessionStorage
-        }
-      }
-    } else if (resetKey) {
+
+    isRestoringRef.current = true;
+    let targetScroll = 0;
+
+    if (resetKey) {
       try {
-        const saved = sessionStorage.getItem(
+        const lastSavedKey = sessionStorage.getItem(LAST_RESET_KEY_STORAGE);
+        const savedScroll = sessionStorage.getItem(
           `fairfuehrer:railScroll:${resetKey}`,
         );
-        const scrollPos = saved ? Number(saved) : 0;
-        if (Number.isFinite(scrollPos) && scrollPos > 0) {
-          el.scrollTo({ left: scrollPos, behavior: "instant" });
+        if (
+          (!lastSavedKey || lastSavedKey === resetKey) &&
+          savedScroll !== null
+        ) {
+          const parsed = Number(savedScroll);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            targetScroll = parsed;
+          }
+        } else if (lastSavedKey && lastSavedKey !== resetKey) {
+          // Użytkownik zmienił filtr — czyścimy poprzednią pozycję i zapisujemy nowy klucz
+          sessionStorage.removeItem(`fairfuehrer:railScroll:${lastSavedKey}`);
         }
+        sessionStorage.setItem(LAST_RESET_KEY_STORAGE, resetKey);
       } catch {
         // Ignoruj błędy sessionStorage
       }
     }
+
+    // Wyłączamy chwilowo scroll-snap i smooth-scroll z CSS, aby ustawić dokładny scrollLeft bez animacji
+    const prevSnap = el.style.scrollSnapType;
+    const prevBehavior = el.style.scrollBehavior;
+    el.style.scrollSnapType = "none";
+    el.style.scrollBehavior = "auto";
+    el.scrollLeft = targetScroll;
     updateEdges();
-  }, [resetKey, updateEdges]);
+
+    const rafId = requestAnimationFrame(() => {
+      if (railRef.current) {
+        railRef.current.scrollLeft = targetScroll;
+        railRef.current.style.scrollSnapType = prevSnap;
+        railRef.current.style.scrollBehavior = prevBehavior;
+      }
+      updateEdges();
+      isRestoringRef.current = false;
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [resetKey, places.length, updateEdges]);
 
   const scrollByCards = useCallback((direction: 1 | -1) => {
     const el = railRef.current;
@@ -148,8 +173,8 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
     if (!drag.current.active) return;
     drag.current.active = false;
     setDragging(false);
-    updateEdges();
-  }, [updateEdges]);
+    handleScroll();
+  }, [handleScroll]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -181,7 +206,7 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
       <div
         ref={railRef}
         className={`${styles.rail} ${dragging ? styles.dragging : ""}`}
-        onScroll={updateEdges}
+        onScroll={handleScroll}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}

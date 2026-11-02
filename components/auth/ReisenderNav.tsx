@@ -4,16 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./KontoNav.module.css";
 
-const links = [
-  { href: "/konto/reisender/profil", label: "Profil" },
-  { href: "/konto/reisender/einstellungen", label: "Einstellungen" },
-  { href: "/konto/reisender/redaktion", label: "PIN erstellen" },
-  { href: "/konto/reisender/premium", label: "Fairführer+" },
-  { href: "/konto/reisender/hilfe", label: "Hilfe" },
-];
+interface Props {
+  isPremium?: boolean;
+}
 
-export default function ReisenderNav() {
+export default function ReisenderNav({ isPremium = false }: Props) {
   const pathname = usePathname();
+
+  const links = [
+    { href: "/konto/reisender/profil", label: "Profil" },
+    { href: "/konto/reisender/einstellungen", label: "Einstellungen" },
+    { href: "/konto/reisender/redaktion", label: "PIN erstellen" },
+    {
+      href: "/konto/reisender/premium",
+      label: "Fairführer+",
+      badge: isPremium ? "Aktiv" : undefined,
+    },
+    { href: "/konto/reisender/hilfe", label: "Hilfe" },
+  ];
 
   return (
     <nav className={styles.nav}>
@@ -25,6 +33,7 @@ export default function ReisenderNav() {
           className={`${styles.navItem} ${pathname === link.href ? styles.navItemActive : ""}`}
         >
           {link.label}
+          {link.badge && <span className={styles.navBadge}>{link.badge}</span>}
         </Link>
       ))}
     </nav>

@@ -1,17 +1,16 @@
-/* Redaktion — style zunifikowane z Partner audiopin (audiopin.module.css).
-   Zachowujemy dokladnie te same reguly (kolory, spacing, fonty), zeby
-   formularz Reisendera nie odstawa wizualnie od formularza Partnera. */
+/* Redaktion — style zunifikowane z Partner Audiopin Studio (audiopin.module.css). */
 
 .wrapper {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 640px;
+  width: 100%;
+  max-width: 860px;
 }
 
 .intro {
   font-family: var(--font-fira);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 500;
   text-align: center;
   color: #18222f;
@@ -19,10 +18,10 @@
   margin: 0;
 }
 
-/* Tytul strony — Anton, jak reszta H1 w konto. */
+/* Tytul strony — Anton, w karcie naglowkowej */
 .title {
   font-family: var(--font-anton);
-  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
   font-weight: 400;
   color: #18222f;
   margin: 0;
@@ -30,14 +29,18 @@
   text-align: center;
 }
 
-/* Podtytul — Fira, wyszrodkowany, jak intro w Partner audiopin. */
+/* Podtytul — Fira, w karcie informacyjnej */
 .subtitle {
   font-family: var(--font-fira);
-  font-size: 1rem;
+  font-size: 0.96rem;
   font-weight: 500;
   color: #18222f;
-  line-height: 1.6;
+  line-height: 1.65;
   margin: 0;
+  padding: 1.35rem 1.75rem;
+  background-color: #f8faf8;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
   text-align: center;
 }
 
@@ -56,7 +59,11 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
+  padding: 1.65rem 1.75rem;
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
 }
 
 .field {
@@ -72,7 +79,7 @@
   gap: 1rem;
 }
 
-@media (max-width: 500px) {
+@media (max-width: 560px) {
   .fieldRow {
     grid-template-columns: 1fr;
   }
@@ -80,22 +87,25 @@
 
 .label {
   font-family: var(--font-fira);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: #18222f;
 }
 
 .input {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1.5px solid #000;
+  border: 1.5px solid #18222f;
   font-family: var(--font-fira);
-  font-size: 1rem;
+  font-size: 0.96rem;
   color: #18222f;
-  background-color: #f0fff4;
+  background-color: #f9fffb;
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background-color 0.15s;
   box-sizing: border-box;
 }
 
@@ -109,15 +119,16 @@
 .textarea {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1.5px solid #000;
+  border: 1.5px solid #18222f;
   font-family: var(--font-fira);
-  font-size: 1rem;
+  font-size: 0.96rem;
   color: #18222f;
-  background-color: #f0fff4;
+  background-color: #f9fffb;
   resize: vertical;
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background-color 0.15s;
   box-sizing: border-box;
 }
 
@@ -131,25 +142,26 @@
 .fieldError {
   font-family: var(--font-fira);
   font-size: 0.8rem;
-  color: #7e1206;
+  font-weight: 600;
+  color: #c0392b;
 }
 
 .hint {
   font-family: var(--font-fira);
   font-size: 0.8rem;
-  color: #18222f;
+  color: #5c6672;
   margin: 0;
   line-height: 1.5;
 }
 
-/* Grupa Beschreibung + Audiodatei — wizualnie powiazane, bo opis powinien
-   odpowiadac tresci nagrania. */
+/* Grupa Beschreibung + Audiodatei — wizualnie powiazane */
 .group {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  border: 1.5px solid #000;
-  padding: 1.25rem;
+  border: 1.5px solid #18222f;
+  background-color: #f8faf8;
+  padding: 1.35rem;
 }
 
 .groupHint {
@@ -172,14 +184,14 @@
 .charCounter {
   font-family: var(--font-fira);
   font-size: 0.8rem;
-  color: #666;
+  color: #5c6672;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .charCounterMax {
   color: #b22222;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* Info techniczne + link do wytycznych pod uploadem audio */
@@ -196,8 +208,8 @@
   align-items: center;
   gap: 0.4rem;
   font-family: var(--font-fira);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
   color: #18222f;
   text-decoration: underline;
   flex-shrink: 0;
@@ -207,11 +219,11 @@
   color: #fc6c14;
 }
 
-/* Hint pod przyciskiem submit — informacja o moderacji, wyszrodkowana. */
+/* Hint pod przyciskiem submit — informacja o moderacji */
 .hintCentered {
   font-family: var(--font-fira);
   font-size: 0.85rem;
-  color: #18222f;
+  color: #495057;
   margin: 0;
   line-height: 1.6;
   text-align: center;
@@ -219,27 +231,29 @@
 
 .errorMessage {
   background: #fff0f0;
-  color: #b22222;
-  border: 1px solid #f5c6c6;
+  color: #c0392b;
+  border: 1.5px solid #e6b0aa;
   padding: 0.75rem 1rem;
   font-family: var(--font-fira);
   font-size: 0.875rem;
+  font-weight: 600;
 }
 
-/* Mapbox suggestions — analogicznie do geoDropdown z Partner audiopin. */
+/* Mapbox suggestions */
 .suggestions {
   position: absolute;
   top: calc(100% + 2px);
   left: 0;
   right: 0;
   background-color: #fff;
-  border: 1.5px solid #000;
+  border: 1.5px solid #18222f;
   list-style: none;
   margin: 0;
   padding: 0;
   z-index: 100;
   max-height: 220px;
   overflow-y: auto;
+  box-shadow: 0 8px 20px rgba(24, 34, 47, 0.12);
 }
 
 .suggestionBtn {
@@ -252,7 +266,7 @@
   font-size: 0.875rem;
   color: #18222f;
   cursor: pointer;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #e9ecef;
 }
 
 .suggestionBtn:hover {
@@ -263,7 +277,7 @@
   border-bottom: none;
 }
 
-/* Upload — plik input jak w Partner audiopin. */
+/* Upload */
 .fileInput {
   font-family: var(--font-fira);
   font-size: 0.85rem;
@@ -274,7 +288,7 @@
   width: 200px;
   height: 140px;
   object-fit: cover;
-  border: 1.5px solid #000;
+  border: 1.5px solid #18222f;
   display: block;
   margin-bottom: 0.5rem;
 }
@@ -285,7 +299,7 @@
   margin-bottom: 0.5rem;
 }
 
-/* Galerie — grid 3-col, analogicznie do Partner. */
+/* Galerie — grid 3-col */
 .galleryGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -307,7 +321,7 @@
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
-  border: 1.5px solid #000;
+  border: 1.5px solid #18222f;
   display: block;
 }
 
@@ -317,7 +331,7 @@
   right: 4px;
   width: 24px;
   height: 24px;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(24, 34, 47, 0.8);
   color: #fff;
   border: none;
   border-radius: 50%;
@@ -331,26 +345,27 @@
 }
 
 .removeBtn:hover {
-  background: #8d1306;
+  background: #b22222;
 }
 
-/* Submit — dokladnie taki sam jak submitButton w Partner audiopin. */
+/* Submit */
 .button {
-  padding: 0.875rem 2rem;
-  background-color: #b22222;
+  padding: 0.85rem 2rem;
+  background-color: #2e7d32;
   color: #fff;
-  border: none;
-  border-radius: 8px;
+  border: 1.5px solid #1b5e20;
   font-family: var(--font-fira);
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: pointer;
   align-self: flex-start;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s;
 }
 
 .button:hover:not(:disabled) {
-  background-color: #000;
+  background-color: #1b5e20;
 }
 
 .button:disabled {
@@ -360,17 +375,17 @@
 
 /* Success */
 .successBox {
-  background: #f0fff4;
-  color: #27ae60;
-  border: 1px solid #b7e5c8;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
+  background: #f3fbf5;
+  color: #1b5e20;
+  border: 2px solid #2e7d32;
+  padding: 1.5rem 1.75rem;
   font-family: var(--font-fira);
   font-size: 0.95rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   align-items: flex-start;
+  box-shadow: 0 6px 20px rgba(46, 125, 50, 0.08);
 }
 
 .successText {
@@ -385,11 +400,12 @@
   color: #fff;
   border: none;
   font-family: var(--font-fira);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: background-color 0.15s;
-  letter-spacing: 0.02em;
 }
 
 .newPinBtn:hover {

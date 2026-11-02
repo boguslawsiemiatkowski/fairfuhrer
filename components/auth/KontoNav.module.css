@@ -3,41 +3,63 @@
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.25rem 2rem;
-  margin-bottom: 0;
+  gap: 0.45rem;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0.5rem;
+  background-color: #ff6815;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
 }
 
 .navItem {
-  font-family: var(--font-anton);
-  font-weight: 400;
-  font-size: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-fira);
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: #18222f;
   text-decoration: none;
-  padding: 0.25rem 0;
-  transition: color 0.2s;
+  padding: 0.6rem 1.05rem;
+  border: 1.5px solid transparent;
+  background-color: transparent;
+  transition:
+    color 0.15s,
+    background-color 0.15s,
+    border-color 0.15s;
 }
 
 .navItem:hover {
   color: #fc6c14;
+  background-color: #ffffff;
+  border-color: #d6dcd8;
 }
 
 .navItemActive {
-  color: #fc6c14;
-  text-decoration: underline;
-  text-underline-offset: 4px;
+  color: #ffffff;
+  background-color: #18222f;
+  border-color: #18222f;
+}
+
+.navItemActive:hover {
+  color: #ffffff;
+  background-color: #18222f;
+  border-color: #18222f;
 }
 
 .navBadge {
   display: inline-block;
-  margin-left: 0.45rem;
-  padding: 0.1rem 0.45rem;
+  padding: 0.2rem 0.5rem 0.1rem;
   font-family: var(--font-fira);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   background-color: #2e7d32;
   color: #fff;
   border-radius: 100px;
-  vertical-align: middle;
+  line-height: 1.2;
 }

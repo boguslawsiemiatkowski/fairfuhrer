@@ -1,55 +1,58 @@
 .wrapper {
-  max-width: 600px;
+  width: 100%;
+  max-width: 860px;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .introRow {
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 1rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid black;
+  padding: 1.35rem 1.75rem;
+  background-color: #f8faf8;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
 }
 
 .intro {
-  font-family: var(--font-fira);
-  font-size: 1.4rem;
-  font-weight: 500;
+  font-family: var(--font-anton);
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 400;
   color: #18222f;
-  line-height: 1.6;
+  line-height: 1.2;
   margin: 0;
-  text-align: center;
 }
 
 .contactLink {
-  background: none;
-  border: none;
-  padding: 0;
+  background: #ffffff;
+  border: 1.5px solid #18222f;
+  padding: 0.55rem 1rem;
   cursor: pointer;
   font-family: var(--font-fira);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #fc6c14;
+  color: #18222f;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
   line-height: 1;
-  margin-bottom: 0.2rem;
-  transition: color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 }
 
 .contactLink:hover {
-  color: #e05a08;
+  background-color: #18222f;
+  color: #ffffff;
 }
 
 .faqEndLine {
-  border-top: 2px solid black;
-  margin-top: 0;
+  display: none;
 }
-
 
 .list {
   list-style: none;
@@ -57,20 +60,17 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1rem;
 }
 
 .item {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding-bottom: 1.75rem;
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+  gap: 0.65rem;
+  padding: 1.35rem 1.65rem;
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
 }
 
 .frage {
@@ -85,9 +85,9 @@
 
 .antwort {
   font-family: var(--font-fira);
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   color: #18222f;
-  line-height: 1.6;
+  line-height: 1.65;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

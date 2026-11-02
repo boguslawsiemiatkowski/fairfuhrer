@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/app/actions/auth";
 import KontoHeader from "@/components/auth/KontoHeader";
 import ReisenderNav from "@/components/auth/ReisenderNav";
+import { isPremiumActiveForDates } from "@/types/auth";
 import styles from "../konto.module.css";
 
 export default async function ReisenderLayout({
@@ -20,13 +21,19 @@ export default async function ReisenderLayout({
     user.email ||
     "Benutzer";
 
+  const isPremium = isPremiumActiveForDates(profile?.premium_until);
+
   return (
     <div className={styles.main}>
-      <KontoHeader isPartner={false} displayName={displayName} />
+      <KontoHeader
+        isPartner={false}
+        displayName={displayName}
+        isPremium={isPremium}
+      />
 
       <div className={styles.divider} />
 
-      <ReisenderNav />
+      <ReisenderNav isPremium={isPremium} />
 
       <div className={styles.content}>{children}</div>
     </div>

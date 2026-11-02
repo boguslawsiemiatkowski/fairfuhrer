@@ -1,8 +1,69 @@
 .wrapper {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  max-width: 900px;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 860px;
+}
+
+/* Studio Header Card na stronach profilu */
+.headerCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.35rem 1.75rem;
+  background-color: #f8faf8;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
+}
+
+.headerCardLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.headerCardKicker {
+  font-family: var(--font-fira);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #2e7d32;
+}
+
+.headerCardTitle {
+  font-family: var(--font-anton);
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 400;
+  color: #18222f;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.headerCardAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.15rem;
+  background-color: #ffffff;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.headerCardAction:hover {
+  background-color: #18222f;
+  color: #ffffff;
 }
 
 /* Wird noch von CommunityProfilSection genutzt. */
@@ -15,20 +76,19 @@
 }
 
 .uploadButton {
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1.1rem;
   background-color: #18222f;
   color: #fff;
   border: none;
-  border-radius: 6px;
   font-family: var(--font-fira);
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background-color 0.15s;
 }
 
 .uploadButton:hover:not(:disabled) {
-  opacity: 0.8;
+  background-color: #fc6c14;
 }
 
 .uploadButton:disabled {
@@ -43,28 +103,126 @@
   margin: 0;
 }
 
+/* Karta sekcji pol (Unternehmensdaten, Social Media, Kontaktdaten, Zugangsdaten) */
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
+}
+
+@media (max-width: 640px) {
+  .fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sectionLabel {
+  grid-column: 1 / -1;
+  font-family: var(--font-fira);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #18222f;
+  background-color: #f8faf8;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 2px solid #18222f;
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  border-right: 1px solid #e9ecef;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+  border-right: none;
+}
+
+@media (max-width: 640px) {
+  .field {
+    border-right: none;
+  }
+}
+
+.label {
+  font-family: var(--font-fira);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5c6672;
+}
+
+.value {
+  font-family: var(--font-fira);
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #18222f;
+  word-break: break-word;
+}
+
+/* Hinweis zur mobilen App (Reisender-Profil). */
+.infoSection {
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
+}
+
+.infoText {
+  font-family: var(--font-fira);
+  font-size: 0.95rem;
+  color: #18222f;
+  line-height: 1.65;
+  margin: 1.25rem 1.5rem;
+  padding: 0.5rem 0 0.5rem 1rem;
+  border-left: 3px solid #fc6c14;
+}
+
 .signOutSection {
-  border-top: 2px solid #000;
-  padding-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background-color: #f8faf8;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
+}
+
+.signOutHint {
+  font-family: var(--font-fira);
+  font-size: 0.88rem;
+  color: #495057;
+  margin: 0;
 }
 
 .signOutButton {
-  padding: 0.75rem 2rem;
-  background: transparent;
-  color: #18222f;
-  border: 1.5px solid #18222f;
-  border-radius: 6px;
+  padding: 0.65rem 1.5rem;
+  background: #ffffff;
+  color: #b22222;
+  border: 1.5px solid #b22222;
   font-family: var(--font-fira);
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition:
-    background 0.15s,
+    background-color 0.15s,
     color 0.15s;
 }
 
 .signOutButton:hover:not(:disabled) {
-  background: #18222f;
+  background: #b22222;
   color: #fff;
 }
 
@@ -73,73 +231,14 @@
   cursor: not-allowed;
 }
 
-/* Pola */
-.sectionLabel {
-  font-family: var(--font-fira);
-  font-size: 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #18222f;
-  padding: 0.5rem 0;
-  border-bottom: 2px solid #18222f;
-  margin-bottom: 0;
-}
-
-.fields {
-  display: flex;
-  flex-direction: column;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.875rem 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-.field:first-child {
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-}
-
-.label {
-  font-family: var(--font-fira);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #2d2c2d;
-}
-
-.value {
-  font-family: var(--font-fira);
-  font-size: 1rem;
-  color: #18222f;
-}
-
-/* Hinweis zur mobilen App (Reisender-Profil). */
-.infoSection {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.infoText {
-  font-family: var(--font-fira);
-  font-size: 0.9rem;
-  color: #18222f;
-  line-height: 1.6;
-  margin: 0;
-  padding: 0.25rem 0 0.25rem 0.875rem;
-  border-left: 3px solid #fc6c14;
-}
-
 /* Community-Profil */
 .communitySection {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border: 2px solid #18222f;
 }
 
 .bioBlock {
@@ -163,16 +262,16 @@
   color: #18222f;
   line-height: 1.5;
   padding: 0.75rem;
-  border: 1.5px solid rgba(0, 0, 0, 0.15);
-  border-radius: 6px;
+  border: 1.5px solid #18222f;
   resize: vertical;
   min-height: 5.5rem;
-  background: #fff;
+  background: #f9fffb;
 }
 
 .bioInput:focus {
   outline: none;
-  border-color: #18222f;
+  border-color: #fc6c14;
+  background: #ffffff;
 }
 
 .bioFooter {

@@ -1,52 +1,69 @@
 .wrapper {
-  max-width: 600px;
+  width: 100%;
+  max-width: 860px;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .intro {
   font-family: var(--font-fira);
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 500;
   color: #18222f;
-  line-height: 1.6;
+  line-height: 1.65;
   margin: 0;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid black;
+  padding: 1.35rem 1.75rem;
+  background-color: #f8faf8;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
   text-align: center;
 }
 
 .featureList {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.9rem;
+  padding: 1.5rem 1.75rem;
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
 }
 
 .featureTitle {
   font-family: var(--font-fira);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: #18222f;
-  margin: 0;
+  margin: -1.5rem -1.75rem 0.5rem;
+  padding: 0.9rem 1.75rem;
+  background-color: #f8faf8;
+  border-bottom: 2px solid #18222f;
 }
 
 .features {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .features {
+    grid-template-columns: 1fr;
+  }
 }
 
 .features li {
   font-family: var(--font-fira);
-  font-size: 0.95rem;
+  font-size: 0.94rem;
+  font-weight: 500;
   color: #18222f;
-  padding-left: 1.25rem;
+  padding-left: 1.5rem;
   position: relative;
   line-height: 1.5;
 }
@@ -55,30 +72,32 @@
   content: "✓";
   position: absolute;
   left: 0;
-  color: gold;
+  color: #2e7d32;
   font-weight: 700;
 }
 
 .divider {
-  height: 1px;
-  background: #e5e5e5;
-  margin: 0;
+  display: none;
 }
 
 .legalNote {
   font-family: var(--font-fira);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 400;
-  color: #010101;
+  color: #495057;
   line-height: 1.6;
   margin: 0;
+  padding: 1rem 1.25rem;
+  background-color: #f8faf8;
+  border: 1px solid #d5dbe0;
 }
 
 .legalLink {
-  color: #000;
+  color: #18222f;
+  font-weight: 600;
   text-decoration: underline;
 }
 
 .legalLink:hover {
-  color: #18222f;
+  color: #fc6c14;
 }

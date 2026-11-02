@@ -20,15 +20,19 @@ export default function KontoHeader({
           <span className={styles.role}>
             {isPartner ? "Partner*in" : "Reisende*r"}
           </span>
-          {isPartner && (
-            <span
-              className={
-                isPremium ? styles.roleBadgePremium : styles.roleBadgeStandard
-              }
-            >
-              {isPremium ? "★ Partner-Pin Aktiv" : "Basis-Konto"}
-            </span>
-          )}
+          <span
+            className={
+              isPremium ? styles.roleBadgePremium : styles.roleBadgeStandard
+            }
+          >
+            {isPartner
+              ? isPremium
+                ? "★ Partner-Pin Aktiv"
+                : "Basis-Konto"
+              : isPremium
+                ? "★ Fairführer+ Aktiv"
+                : "Basis-Konto"}
+          </span>
         </div>
         <h1 className={styles.greeting}>Willkommen {displayName}!</h1>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { getCountryLabel } from "@/lib/countries";
 // Community-Feature auf Eis gelegt (2026-07-04): Frank hat entschieden, das
@@ -29,6 +30,19 @@ export default function PartnerProfilPage() {
 
   return (
     <div className={styles.wrapper}>
+      <div className={styles.headerCard}>
+        <div className={styles.headerCardLeft}>
+          <span className={styles.headerCardKicker}>Partner-Konto</span>
+          <h2 className={styles.headerCardTitle}>Profil-Übersicht</h2>
+        </div>
+        <Link
+          href="/konto/partner/einstellungen"
+          className={styles.headerCardAction}
+        >
+          Daten bearbeiten →
+        </Link>
+      </div>
+
       {/* Community-Feature auf Eis gelegt (2026-07-04) — s. Import oben. */}
       {/* <CommunityProfilSection /> */}
 
@@ -67,7 +81,7 @@ export default function PartnerProfilPage() {
           <span className={styles.label}>Steuernummer / UID</span>
           <span className={styles.value}>{partner?.tax_id || "—"}</span>
         </div>
-        <div className={styles.field}>
+        <div className={`${styles.field} ${styles.fieldFull}`}>
           <span className={styles.label}>USt-IdNr. / VAT-EU</span>
           <span className={styles.value}>{partner?.vat_eu || "—"}</span>
         </div>
@@ -118,13 +132,16 @@ export default function PartnerProfilPage() {
       {/* Zugangsdaten */}
       <div className={styles.fields}>
         <div className={styles.sectionLabel}>Zugangsdaten</div>
-        <div className={styles.field}>
+        <div className={`${styles.field} ${styles.fieldFull}`}>
           <span className={styles.label}>Anmelde-E-Mail</span>
           <span className={styles.value}>{user?.email || "—"}</span>
         </div>
       </div>
 
       <div className={styles.signOutSection}>
+        <p className={styles.signOutHint}>
+          Du bist aktuell als Partner*in angemeldet.
+        </p>
         <button
           type="button"
           className={styles.signOutButton}
