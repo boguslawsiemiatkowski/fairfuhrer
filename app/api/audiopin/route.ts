@@ -3,6 +3,7 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { getCountryLabel } from "@/lib/countries";
 import { sanitizeExternalUrl, sanitizeWordHtml } from "@/lib/orte-shared";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { createAudiopinSchema, firstZodError } from "@/lib/validations/api";
 
@@ -62,6 +63,24 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
+    }
+
+    // Rate limiting: maksymalnie 5 operacji tworzenia pina na 15 minut
+    const rate = checkRateLimit(`audiopin-create:${user.id}`, {
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Zu viele Anfragen in kurzer Zeit. Bitte versuchen Sie es später erneut.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rate.retryAfterSeconds) },
+        }
+      );
     }
 
     const { data: profile } = await supabase

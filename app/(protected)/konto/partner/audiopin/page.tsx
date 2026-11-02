@@ -4,37 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import {
+  AUDIO_GUIDE_PDF,
+  fetchMapboxGeoSuggestions,
+  MAX_BESCHREIBUNG,
+  parseMapboxSuggestion,
+  uploadToDirectus,
+  type GeocodingSuggestion,
+} from "@/utils/pinFormHelpers";
 import styles from "./audiopin.module.css";
-
-async function uploadToDirectus(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await fetch("/api/directus-upload", {
-    method: "POST",
-    body: formData,
-  });
-  if (!res.ok) throw new Error("Upload fehlgeschlagen.");
-  const data = await res.json();
-  return data.id as string;
-}
-
-/** Twardy limit opisu; w podpowiedzi sugerujemy 1.300–1.800 znakow. */
-const MAX_BESCHREIBUNG = 2000;
-
-/** Wytyczne do nagran — plik statyczny w /public. */
-const AUDIO_GUIDE_PDF = "/tipps-fur-die-audiodatei.pdf";
 
 interface Option<T> {
   id: T;
   name: string;
-}
-
-interface GeocodingSuggestion {
-  place_name: string;
-  center: [number, number];
-  context?: { id: string; text: string }[];
-  text: string;
-  address?: string;
 }
 
 interface GalerieItem {
@@ -365,62 +347,30 @@ export default function AudiopinPage() {
     }
   }
 
-  // ======== Geocoding ========
-
-  async function fetchGeo(
-    query: string,
-    setSuggestions: (s: GeocodingSuggestion[]) => void,
-    setLoading: (b: boolean) => void,
-  ) {
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!token || query.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-    setLoading(true);
-    try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&language=de&types=address,place&limit=5`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setSuggestions(data.features ?? []);
-    } catch {
-      setSuggestions([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // ======== Geocoding (wspólne helpery z utils/pinFormHelpers.ts) ========
 
   function handleGeoQueryChange(value: string) {
     setGeoQuery(value);
     if (geoDebounceNewRef.current) clearTimeout(geoDebounceNewRef.current);
     geoDebounceNewRef.current = setTimeout(
-      () => fetchGeo(value, setGeoSuggestionsNew, setGeoLoadingNew),
+      () =>
+        fetchMapboxGeoSuggestions(
+          value,
+          setGeoSuggestionsNew,
+          setGeoLoadingNew,
+          "address,place",
+        ),
       300,
     );
   }
 
   function selectGeoSuggestion(suggestion: GeocodingSuggestion) {
-    const [lng, lat] = suggestion.center;
-    setCoordinates({ lat, lng });
-    const plzContext = suggestion.context?.find((c) =>
-      c.id.startsWith("postcode."),
-    );
-    const cityContext = suggestion.context?.find((c) =>
-      c.id.startsWith("place."),
-    );
-    const countryContext = suggestion.context?.find((c) =>
-      c.id.startsWith("country."),
-    );
-    const streetPart = suggestion.address
-      ? `${suggestion.text} ${suggestion.address}`
-      : suggestion.text;
-    const adressPart = plzContext
-      ? `${streetPart}, ${plzContext.text}`
-      : streetPart;
-    setAdresse(adressPart);
-    if (cityContext) setStadt(cityContext.text);
-    if (countryContext) setLand(countryContext.text);
-    setGeoQuery(suggestion.place_name);
+    const parsed = parseMapboxSuggestion(suggestion);
+    setCoordinates({ lat: parsed.lat, lng: parsed.lng });
+    setAdresse(parsed.adresse);
+    if (parsed.stadt) setStadt(parsed.stadt);
+    if (parsed.land) setLand(parsed.land);
+    setGeoQuery(parsed.placeName);
     setGeoSuggestionsNew([]);
   }
 
@@ -429,35 +379,26 @@ export default function AudiopinPage() {
     setEditValues((prev) => ({ ...prev, geoQuery: value, Adresse: value }));
     if (geoDebounceRef.current) clearTimeout(geoDebounceRef.current);
     geoDebounceRef.current = setTimeout(
-      () => fetchGeo(value, setGeoSuggestions, setGeoLoading),
+      () =>
+        fetchMapboxGeoSuggestions(
+          value,
+          setGeoSuggestions,
+          setGeoLoading,
+          "address,place",
+        ),
       300,
     );
   }
 
   function selectEditGeoSuggestion(suggestion: GeocodingSuggestion) {
-    const [lng, lat] = suggestion.center;
-    const plzContext = suggestion.context?.find((c) =>
-      c.id.startsWith("postcode."),
-    );
-    const cityContext = suggestion.context?.find((c) =>
-      c.id.startsWith("place."),
-    );
-    const countryContext = suggestion.context?.find((c) =>
-      c.id.startsWith("country."),
-    );
-    const streetPart = suggestion.address
-      ? `${suggestion.text} ${suggestion.address}`
-      : suggestion.text;
-    const adressPart = plzContext
-      ? `${streetPart}, ${plzContext.text}`
-      : streetPart;
+    const parsed = parseMapboxSuggestion(suggestion);
     setEditValues((prev) => ({
       ...prev,
-      geoQuery: suggestion.place_name,
-      Adresse: adressPart,
-      Stadt: cityContext?.text ?? prev.Stadt,
-      Land: countryContext?.text ?? prev.Land,
-      location: { type: "Point", coordinates: [lng, lat] },
+      geoQuery: parsed.placeName,
+      Adresse: parsed.adresse,
+      Stadt: parsed.stadt ?? prev.Stadt,
+      Land: parsed.land ?? prev.Land,
+      location: { type: "Point", coordinates: [parsed.lng, parsed.lat] },
     }));
     setGeoSuggestions([]);
   }

@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -38,6 +39,24 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
+    }
+
+    // Rate limiting: maksymalnie 20 uploadów na 10 minut dla jednego użytkownika
+    const rate = checkRateLimit(`upload:${user.id}`, {
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Zu viele Uploads in kurzer Zeit. Bitte warten Sie einen Moment.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rate.retryAfterSeconds) },
+        }
+      );
     }
 
     const directusUrl = process.env.DIRECTUS_URL?.replace(/\/+$/, "");

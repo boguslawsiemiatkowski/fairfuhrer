@@ -3,11 +3,31 @@
 import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { contactFormSchema, firstZodError } from "@/lib/validations/api";
 
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request);
+    // Rate limiting po IP (dodatkowa warstwa obok Cloudflare Turnstile)
+    const rate = checkRateLimit(`contact:${clientIp}`, {
+      limit: 5,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Zu viele Nachrichten in kurzer Zeit. Bitte versuchen Sie es später erneut.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rate.retryAfterSeconds) },
+        }
+      );
+    }
+
     const parsedBody = contactFormSchema.safeParse(await request.json());
     if (!parsedBody.success) {
       return NextResponse.json(

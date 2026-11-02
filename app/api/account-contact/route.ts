@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { accountContactSchema, firstZodError } from "@/lib/validations/api";
 
@@ -14,6 +15,24 @@ export async function POST(request: NextRequest) {
     const user = await getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
+    }
+
+    // Rate limiting: maksymalnie 5 wiadomości z konta na 10 minut
+    const rate = checkRateLimit(`account-contact:${user.id}`, {
+      limit: 5,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Zu viele Nachrichten in kurzer Zeit. Bitte versuchen Sie es später erneut.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rate.retryAfterSeconds) },
+        },
+      );
     }
 
     const parsedBody = accountContactSchema.safeParse(await request.json());

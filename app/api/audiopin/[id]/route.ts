@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { sanitizeExternalUrl, sanitizeWordHtml } from "@/lib/orte-shared";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { firstZodError, patchAudiopinSchema } from "@/lib/validations/api";
 import { LINK_TEXT } from "@/app/api/audiopin/route";
@@ -41,6 +42,24 @@ export async function PATCH(
 
     if (!user) {
       return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
+    }
+
+    // Rate limiting: maksymalnie 30 edycji pól pina na 5 minut
+    const rate = checkRateLimit(`audiopin-patch:${user.id}`, {
+      limit: 30,
+      windowMs: 5 * 60 * 1000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Zu viele Änderungen in kurzer Zeit. Bitte warten Sie einen Moment.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rate.retryAfterSeconds) },
+        }
+      );
     }
 
     // Weryfikacja: użytkownik musi być premium i posiadać ten pin

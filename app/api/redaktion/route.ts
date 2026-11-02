@@ -3,6 +3,7 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/api-auth";
 import { sanitizeWordHtml } from "@/lib/orte-shared";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createRedaktionSchema, firstZodError } from "@/lib/validations/api";
 
@@ -18,6 +19,24 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: "Nicht autorisiert." }, { status: 401 });
+    }
+
+    // Rate limiting: maksymalnie 10 zgłoszeń pinów Redaktion na 15 minut
+    const rate = checkRateLimit(`redaktion:${user.id}`, {
+      limit: 10,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Zu viele Einreichungen in kurzer Zeit. Bitte versuchen Sie es später erneut.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rate.retryAfterSeconds) },
+        },
+      );
     }
 
     // Profile query — supabaseAdmin (service role) omija RLS, sprawdza rolę.

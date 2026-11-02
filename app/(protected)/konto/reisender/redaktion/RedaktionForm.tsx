@@ -3,62 +3,16 @@
 import { useRef, useState } from "react";
 import { Download } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import {
+  AUDIO_GUIDE_PDF,
+  fetchMapboxGeoSuggestions,
+  MAX_BESCHREIBUNG,
+  parseMapboxSuggestion,
+  uploadToDirectus,
+  type GeocodingSuggestion,
+} from "@/utils/pinFormHelpers";
 import type { RedaktionPageContent } from "@/types";
 import styles from "./redaktion.module.css";
-
-/** Ten sam limit co w formularzu partnera. */
-const MAX_BESCHREIBUNG = 2000;
-
-/** Wytyczne do nagran — ten sam plik co po stronie partnera. */
-const AUDIO_GUIDE_PDF = "/tipps-fur-die-audiodatei.pdf";
-
-// Upload pliku przez /api/directus-upload (server-side, uses DIRECTUS_TOKEN).
-async function uploadToDirectus(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await fetch("/api/directus-upload", {
-    method: "POST",
-    body: formData,
-  });
-  if (!res.ok) throw new Error("Upload fehlgeschlagen.");
-  const data = await res.json();
-  return data.id as string;
-}
-
-// Mapbox geocoding — reuse tego samego wzorca co Partner audiopin.
-interface GeocodingSuggestion {
-  place_name: string;
-  center: [number, number];
-  context?: { id: string; text: string }[];
-  text: string;
-  address?: string;
-}
-
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
-
-async function fetchGeo(
-  q: string,
-  setSuggestions: (s: GeocodingSuggestion[]) => void,
-  setLoading: (b: boolean) => void,
-) {
-  if (q.trim().length < 3 || !MAPBOX_TOKEN) {
-    setSuggestions([]);
-    return;
-  }
-  setLoading(true);
-  try {
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-      q,
-    )}.json?language=de&limit=5&types=address,poi&access_token=${MAPBOX_TOKEN}`;
-    const res = await fetch(url);
-    const json = await res.json();
-    setSuggestions(json.features ?? []);
-  } catch {
-    setSuggestions([]);
-  } finally {
-    setLoading(false);
-  }
-}
 
 // Fallback-Texte, jesli Directus nie zwraca contentu.
 const DEFAULTS = {
@@ -162,25 +116,24 @@ export default function RedaktionForm({
     setAdresse(value);
     if (geoDebounceRef.current) clearTimeout(geoDebounceRef.current);
     geoDebounceRef.current = setTimeout(
-      () => fetchGeo(value, setGeoSuggestions, setGeoLoading),
+      () =>
+        fetchMapboxGeoSuggestions(
+          value,
+          setGeoSuggestions,
+          setGeoLoading,
+          "address,poi",
+        ),
       300,
     );
   }
 
   function selectGeoSuggestion(s: GeocodingSuggestion) {
-    const [lng, lat] = s.center;
-    const plzContext = s.context?.find((c) => c.id.startsWith("postcode."));
-    const cityContext = s.context?.find((c) => c.id.startsWith("place."));
-    const countryContext = s.context?.find((c) => c.id.startsWith("country."));
-    const streetPart = s.address ? `${s.text} ${s.address}` : s.text;
-    const adressPart = plzContext
-      ? `${streetPart}, ${plzContext.text}`
-      : streetPart;
-    setAdresse(adressPart);
-    setGeoQuery(s.place_name);
-    setCoordinates({ lat, lng });
-    if (cityContext) setStadt(cityContext.text);
-    if (countryContext) setLand(countryContext.text);
+    const parsed = parseMapboxSuggestion(s);
+    setAdresse(parsed.adresse);
+    setGeoQuery(parsed.placeName);
+    setCoordinates({ lat: parsed.lat, lng: parsed.lng });
+    if (parsed.stadt) setStadt(parsed.stadt);
+    if (parsed.land) setLand(parsed.land);
     setGeoSuggestions([]);
   }
 

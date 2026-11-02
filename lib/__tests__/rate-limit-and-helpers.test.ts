@@ -1,0 +1,99 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  checkRateLimit,
+  getClientIp,
+  resetRateLimitStore,
+} from "@/lib/rate-limit";
+import { parseMapboxSuggestion } from "@/utils/pinFormHelpers";
+
+describe("checkRateLimit", () => {
+  beforeEach(() => {
+    resetRateLimitStore();
+  });
+
+  it("zezwala na wywołania w ramach limitu i blokuje po jego przekroczeniu", () => {
+    const now = 1_000_000;
+    const opts = { limit: 3, windowMs: 60_000 };
+
+    expect(checkRateLimit("upload:user-1", opts, now)).toEqual({
+      allowed: true,
+      remaining: 2,
+      retryAfterSeconds: 0,
+    });
+    expect(checkRateLimit("upload:user-1", opts, now + 1000)).toEqual({
+      allowed: true,
+      remaining: 1,
+      retryAfterSeconds: 0,
+    });
+    expect(checkRateLimit("upload:user-1", opts, now + 2000)).toEqual({
+      allowed: true,
+      remaining: 0,
+      retryAfterSeconds: 0,
+    });
+
+    // 4. próba w tym samym oknie 60 s -> zablokowana
+    const blocked = checkRateLimit("upload:user-1", opts, now + 5000);
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.remaining).toBe(0);
+    expect(blocked.retryAfterSeconds).toBe(55);
+  });
+
+  it("odblokowuje klucz po przesunięciu okna czasowego (sliding window)", () => {
+    const now = 1_000_000;
+    const opts = { limit: 2, windowMs: 10_000 };
+
+    expect(checkRateLimit("contact:1.2.3.4", opts, now).allowed).toBe(true);
+    expect(checkRateLimit("contact:1.2.3.4", opts, now + 5000).allowed).toBe(
+      true,
+    );
+    expect(checkRateLimit("contact:1.2.3.4", opts, now + 6000).allowed).toBe(
+      false,
+    );
+
+    // Po 10 001 ms pierwsze żądanie wypada z okna, więc kolejne jest dozwolone
+    expect(checkRateLimit("contact:1.2.3.4", opts, now + 10_001).allowed).toBe(
+      true,
+    );
+  });
+
+  it("odczytuje IP klienta z nagłówków CF-Connecting-IP oraz X-Forwarded-For", () => {
+    const reqCf = new Request("https://fairfuehrer.guide/api/contact", {
+      headers: {
+        "CF-Connecting-IP": "203.0.113.7",
+        "X-Forwarded-For": "198.51.100.1, 10.0.0.1",
+      },
+    });
+    expect(getClientIp(reqCf)).toBe("203.0.113.7");
+
+    const reqXff = new Request("https://fairfuehrer.guide/api/contact", {
+      headers: { "X-Forwarded-For": "198.51.100.1, 10.0.0.1" },
+    });
+    expect(getClientIp(reqXff)).toBe("198.51.100.1");
+  });
+});
+
+describe("parseMapboxSuggestion", () => {
+  it("poprawnie wyciąga ulicę, kod pocztowy, miasto, kraj i współrzędne", () => {
+    const parsed = parseMapboxSuggestion({
+      place_name: "Münsterplatz 1, 88662 Überlingen, Deutschland",
+      text: "Münsterplatz",
+      address: "1",
+      center: [9.1605, 47.7668],
+      context: [
+        { id: "postcode.123", text: "88662" },
+        { id: "place.456", text: "Überlingen" },
+        { id: "country.789", text: "Deutschland" },
+      ],
+    });
+
+    expect(parsed).toEqual({
+      lat: 47.7668,
+      lng: 9.1605,
+      adresse: "Münsterplatz 1, 88662",
+      stadt: "Überlingen",
+      land: "Deutschland",
+      placeName: "Münsterplatz 1, 88662 Überlingen, Deutschland",
+    });
+  });
+});
+
