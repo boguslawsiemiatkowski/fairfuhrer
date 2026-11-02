@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         certificationStatus = certificationStatusRaw as "A" | "B" | "C";
       } else {
         return NextResponse.json(
-          { error: "Nieprawidłowy status certyfikacji" },
+          { error: "Ungültiger Zertifizierungsstatus." },
           { status: 400 },
         );
       }
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         companySize = companySizeRaw as "micro" | "small" | "medium" | "ngo";
       } else {
         return NextResponse.json(
-          { error: "Nieprawidłowa wielkość firmy" },
+          { error: "Ungültige Unternehmensgröße." },
           { status: 400 },
         );
       }
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Brakuje wymaganych podstawowych danych (imię, nazwisko, email, nazwa pinu, adres, kategoria)",
+            "Pflichtfelder fehlen (Vorname, Nachname, E-Mail, Name des Ortes, Adresse, Kategorie).",
         },
         { status: 400 },
       );

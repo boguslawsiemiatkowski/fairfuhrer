@@ -170,11 +170,11 @@ export const accountContactSchema = z.object({
  */
 export const setVatIdSchema = z.object({
   vat_id: z
-    .string({ error: "vat_id is required" })
+    .string({ error: "USt-IdNr. ist erforderlich." })
     .trim()
-    .min(4, "vat_id is required")
-    .max(20, "Ungültiges USt-IdNr.-Format")
-    .regex(/^[A-Z]{2}[A-Z0-9+\-*.\s]{2,18}$/i, "Ungültiges USt-IdNr.-Format"),
+    .min(4, "USt-IdNr. ist erforderlich.")
+    .max(20, "Ungültiges USt-IdNr.-Format.")
+    .regex(/^[A-Z]{2}[A-Z0-9+\-*.\s]{2,18}$/i, "Ungültiges USt-IdNr.-Format."),
 });
 
 /**
