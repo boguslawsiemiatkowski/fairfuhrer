@@ -180,19 +180,60 @@ function pointsBackTo(
   return ring[seed % ring.length].slug === origin.slug;
 }
 
-/** Reiner Text aus bereinigtem HTML — für <meta description> und Teaser. */
+/**
+ * Räumt HTML auf, das aus Word, Teams oder einem anderen WYSIWYG-Editor
+ * eingefügt wurde. Erlaubt nur eine strikte Whitelist an Tags, entfernt alle
+ * Attribute (außer sicheren href-Links bei <a>), Word-Kommentare, &nbsp;-Ketten
+ * und leere Elemente.
+ */
+export function sanitizeWordHtml(html: string): string {
+  return html
+    .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<(?!\/?(?:p|br|strong|b|em|i|a|ul|ol|li)(?:\s|\/?>))[^>]+>/gi, "")
+    .replace(/<(p|br|strong|b|em|i|ul|ol|li)\b[^>]*>/gi, "<$1>")
+    .replace(/<a\b[^>]*>/gi, (match) => {
+      const hrefMatch = match.match(/\bhref\s*=\s*["']((?:https?:|mailto:|tel:)[^"']+)["']/i);
+      if (!hrefMatch) return "<a>";
+      const safeHref = hrefMatch[1].replace(/"/g, "&quot;");
+      return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">`;
+    })
+    .replace(/&nbsp;(\s*&nbsp;)+/gi, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/<(p|li|a)>\s*<\/\1>/gi, "")
+    .replace(/(<br\s*\/?>\s*){3,}/gi, "<br><br>")
+    .replace(/^\s*(<br\s*\/?>\s*)+/gi, "")
+    .trim();
+}
+
+/** Reiner Text aus bereinigtem HTML — für <meta description>, JSON-LD und Teaser. */
 export function htmlToPlainText(html: string | undefined): string {
   if (!html) return "";
   return html
     .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<\/(p|li|ul|ol)>/gi, " ")
-    .replace(/<[^>]+>/g, "")
+    .replace(/<\/(p|li|ul|ol|div)>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
+    .replace(/&#39;|&apos;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
+    .replace(/&auml;/g, "ä")
+    .replace(/&ouml;/g, "ö")
+    .replace(/&uuml;/g, "ü")
+    .replace(/&Auml;/g, "Ä")
+    .replace(/&Ouml;/g, "Ö")
+    .replace(/&Uuml;/g, "Ü")
+    .replace(/&szlig;/gi, "ß")
+    .replace(/&ndash;/gi, "–")
+    .replace(/&mdash;/gi, "—")
+    .replace(/&bdquo;/gi, "„")
+    .replace(/&ldquo;|&rdquo;/gi, "“")
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCodePoint(parseInt(hex, 16)),
+    )
     .replace(/\s+/g, " ")
     .trim();
 }

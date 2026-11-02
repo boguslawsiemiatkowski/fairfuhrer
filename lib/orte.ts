@@ -35,24 +35,6 @@ function isValidCoordinate(lat: number, lng: number): boolean {
   );
 }
 
-/**
- * Räumt HTML auf, das aus Word oder einem anderen WYSIWYG-Editor
- * eingefügt wurde. Erlaubt nur eine kleine Whitelist an Tags und entfernt
- * Word-Kommentare, style=/class=, &nbsp;-Ketten und leere Tags.
- */
-export function sanitizeWordHtml(html: string): string {
-  return html
-    .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, "")
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<(?!\/?(?:p|br|strong|b|em|i|a|ul|ol|li)(?:\s|\/?>))[^>]+>/gi, "")
-    .replace(/\s(?:style|class|id|lang|xml:\w+)="[^"]*"/gi, "")
-    .replace(/&nbsp;(\s*&nbsp;)+/gi, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/<(p|li)>\s*<\/\1>/gi, "")
-    .replace(/(<br\s*\/?>\s*){3,}/gi, "<br><br>")
-    .trim();
-}
-
 // Reine Hilfsfunktionen liegen in lib/orte-shared.ts (ohne `server-only`),
 // damit die Filter auf /liste sie im Browser nutzen können. Hier
 // re-exportiert, damit Server-Code nur eine Importstelle braucht.
@@ -65,10 +47,11 @@ export {
   mainImageUrl,
   normalizeForSearch,
   pickDiscovery,
+  sanitizeWordHtml,
   truncateAtWord,
 } from "./orte-shared";
 
-import { cityToSegment } from "./orte-shared";
+import { cityToSegment, sanitizeWordHtml } from "./orte-shared";
 
 export function hasAudio(place: Place): boolean {
   return Boolean(place.Audio || place.Audio_Datei);
