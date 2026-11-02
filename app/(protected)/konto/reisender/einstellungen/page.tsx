@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { updateEmail, updatePassword, deleteAccount } from "@/app/actions/auth";
 import type { FormErrors } from "@/types/auth";
@@ -22,7 +23,8 @@ function validatePassword(password: string): string | null {
 }
 
 export default function ReisenderEinstellungenPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, refreshUser } = useAuth();
 
   const [newEmail, setNewEmail] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
@@ -89,7 +91,10 @@ export default function ReisenderEinstellungenPage() {
       setDeleteError(result.error ?? "Konto konnte nicht gelöscht werden.");
       return;
     }
-    window.location.href = "/";
+    // Nawigacja przez router Next.js zamiast window.location.href (zgodnie z regułą @next/next/no-location-assign-relative-destination)
+    await refreshUser();
+    router.push("/");
+    router.refresh();
   }
 
   return (

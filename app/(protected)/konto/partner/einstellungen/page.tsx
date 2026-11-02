@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   updateEmail,
@@ -29,6 +30,7 @@ function validatePassword(password: string): string | null {
 }
 
 export default function PartnerEinstellungenPage() {
+  const router = useRouter();
   const { user, refreshUser } = useAuth();
   const profile = user?.profile;
   const partner = user?.partnerProfile;
@@ -208,7 +210,10 @@ export default function PartnerEinstellungenPage() {
       setDeleteError(result.error ?? "Konto konnte nicht gelöscht werden.");
       return;
     }
-    window.location.href = "/";
+    // Nawigacja przez router Next.js zamiast window.location.href (zgodnie z regułą @next/next/no-location-assign-relative-destination)
+    await refreshUser();
+    router.push("/");
+    router.refresh();
   }
 
   return (

@@ -6,7 +6,7 @@
 // auskommentiert). Nicht löschen — dient als fertiger Baustein, falls das
 // Feature zurückkommt. DB-Felder profiles.bio / profiles.is_public bleiben.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import styles from "@/app/(protected)/konto/profil/profil.module.css";
@@ -21,17 +21,16 @@ export default function CommunityProfilSection() {
   const { user, refreshUser } = useAuth();
   const profile = user?.profile;
 
-  const [bio, setBio] = useState(profile?.bio ?? "");
-  const [isPublic, setIsPublic] = useState(profile?.is_public ?? false);
+  // Przechowujemy jedynie lokalną wersję roboczą (draft) oraz optymistyczny stan przełącznika.
+  // Dzięki temu unikamy synchronizowania stanu przez useEffect (reguła react-hooks/set-state-in-effect).
+  const [bioDraft, setBioDraft] = useState<string | null>(null);
+  const [optimisticIsPublic, setOptimisticIsPublic] = useState<boolean | null>(null);
   const [savingBio, setSavingBio] = useState(false);
   const [bioSaved, setBioSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setBio(profile?.bio ?? "");
-    setIsPublic(profile?.is_public ?? false);
-  }, [profile?.bio, profile?.is_public]);
-
+  const bio = bioDraft ?? profile?.bio ?? "";
+  const isPublic = optimisticIsPublic ?? profile?.is_public ?? false;
   const bioDirty = bio.trim() !== (profile?.bio ?? "").trim();
 
   async function handleSaveBio() {
@@ -47,6 +46,7 @@ export default function CommunityProfilSection() {
         .eq("id", user.id);
       if (err) throw err;
       await refreshUser();
+      setBioDraft(null);
       setBioSaved(true);
     } catch (err) {
       console.error(err);
@@ -59,7 +59,7 @@ export default function CommunityProfilSection() {
   async function handleToggleVisibility() {
     if (!user) return;
     const next = !isPublic;
-    setIsPublic(next); // optimistisch
+    setOptimisticIsPublic(next); // optymistyczna zmiana w UI
     setError(null);
     try {
       const supabase = getSupabaseBrowserClient();
@@ -69,9 +69,10 @@ export default function CommunityProfilSection() {
         .eq("id", user.id);
       if (err) throw err;
       await refreshUser();
+      setOptimisticIsPublic(null);
     } catch (err) {
       console.error(err);
-      setIsPublic(!next);
+      setOptimisticIsPublic(null);
       setError("Die Sichtbarkeit konnte nicht geändert werden.");
     }
   }
@@ -97,7 +98,7 @@ export default function CommunityProfilSection() {
           rows={4}
           placeholder="Erzähle etwas über dich…"
           onChange={(e) => {
-            setBio(e.target.value);
+            setBioDraft(e.target.value);
             setBioSaved(false);
           }}
         />

@@ -68,11 +68,18 @@ export function PartnerSubscriptionForm({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Wykrywamy powrót z PayPal już podczas inicjalizacji stanu, aby uniknąć
+  // synchronicznego wywołania setStep("activating") wewnątrz useEffect.
+  const isReturningFromPayPal =
+    !isPremiumActive &&
+    searchParams.get("success") === "true" &&
+    Boolean(searchParams.get("subscription_id"));
+
   // Zawsze startujemy od kroku 1, nawet gdy company_size jest już zapisane w
   // profilu — inaczej po powrocie na stronę (AGB, przełączenie zakładki)
   // użytkownik ląduje od razu w "Schritt 2 von 2" i nie wie, skąd się tam wziął.
   const [step, setStep] = useState<"size" | "payment" | "active" | "activating">(
-    isPremiumActive ? "active" : "size"
+    isPremiumActive ? "active" : isReturningFromPayPal ? "activating" : "size"
   );
   const [companySize, setCompanySize] = useState<CompanySize | null>(initialCompanySize);
   const [savingSize, setSavingSize] = useState(false);
@@ -85,8 +92,6 @@ export function PartnerSubscriptionForm({
     const isSuccess = searchParams.get("success") === "true";
     const subscriptionId = searchParams.get("subscription_id");
     if (!isSuccess || !subscriptionId || isPremiumActive) return;
-
-    setStep("activating");
 
     fetch(`/api/paypal/activate-subscription?subscription_id=${subscriptionId}`)
       .then((res) => res.json())

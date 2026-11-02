@@ -177,6 +177,9 @@ export default function AudiopinPage() {
         setIsPremium(premium);
         if (data?.pin_id) {
           setPinId(data.pin_id);
+          // Ustawiamy stan ładowania już przy przejściu w tryb "view",
+          // aby uniknąć synchronicznego setState wewnątrz useEffect.
+          setPinLoading(true);
           setMode("view");
         } else {
           setMode("new_form");
@@ -188,7 +191,6 @@ export default function AudiopinPage() {
   // Załaduj dane pina gdy tryb view
   useEffect(() => {
     if (mode !== "view" || !pinId) return;
-    setPinLoading(true);
     fetch(`/api/audiopin/${pinId}`)
       .then(async (r) => {
         // Pin usuniety w Directusie (np. po odrzuceniu zgloszenia), a pin_id
@@ -649,6 +651,7 @@ export default function AudiopinPage() {
         return;
       }
       setPinId(data.id);
+      setPinLoading(true);
       setMode("view");
     } catch {
       setSubmitError("Es ist ein Fehler aufgetreten.");
@@ -672,7 +675,9 @@ export default function AudiopinPage() {
 
     const kategorienIds = (pinData.Kategorie ?? []).map((k) => k.Kategorie_id);
 
-    function FieldRow({
+    // Funkcja pomocnicza renderująca wiersz pola (zamiast zagnieżdżonego komponentu <FieldRow />),
+    // aby React nie tworzył nowego typu komponentu przy każdym renderze i nie gubił fokusu w polach input.
+    function renderFieldRow({
       field,
       label,
       value,
@@ -755,11 +760,11 @@ export default function AudiopinPage() {
         )}
 
         <div className={styles.viewBox}>
-          <FieldRow
-            field="Name"
-            label="Name des PINs"
-            value={pinData.Name}
-            renderEdit={() => (
+          {renderFieldRow({
+            field: "Name",
+            label: "Name des PINs",
+            value: pinData.Name,
+            renderEdit: () => (
               <input
                 type="text"
                 aria-label="Name des PINs"
@@ -770,13 +775,13 @@ export default function AudiopinPage() {
                 }
                 autoFocus
               />
-            )}
-          />
+            ),
+          })}
 
-          <FieldRow
-            field="adresse_group"
-            label="Adresse"
-            value={
+          {renderFieldRow({
+            field: "adresse_group",
+            label: "Adresse",
+            value: (
               <span>
                 {pinData.Adresse || "—"}
                 {pinData.Stadt ? (
@@ -786,8 +791,8 @@ export default function AudiopinPage() {
                 ) : null}
                 {pinData.Land ? <> ({pinData.Land})</> : null}
               </span>
-            }
-            renderEdit={() => (
+            ),
+            renderEdit: () => (
               <div className={styles.geoWrapper}>
                 <input
                   type="text"
@@ -822,14 +827,14 @@ export default function AudiopinPage() {
                   </ul>
                 )}
               </div>
-            )}
-          />
+            ),
+          })}
 
-          <FieldRow
-            field="Telefon"
-            label="Telefonnummer mit Anruffunktion"
-            value={pinData.Telefon}
-            renderEdit={() => (
+          {renderFieldRow({
+            field: "Telefon",
+            label: "Telefonnummer mit Anruffunktion",
+            value: pinData.Telefon,
+            renderEdit: () => (
               <input
                 type="tel"
                 aria-label="Telefonnummer mit Anruffunktion"
@@ -840,20 +845,18 @@ export default function AudiopinPage() {
                 }
                 autoFocus
               />
-            )}
-          />
+            ),
+          })}
 
-          <FieldRow
-            field="Vollbeschreibung"
-            label="Vollständige Beschreibung"
-            value={
-              pinData.Vollbeschreibung ? (
-                <span className={styles.viewFieldLong}>
-                  {pinData.Vollbeschreibung}
-                </span>
-              ) : null
-            }
-            renderEdit={() => {
+          {renderFieldRow({
+            field: "Vollbeschreibung",
+            label: "Vollständige Beschreibung",
+            value: pinData.Vollbeschreibung ? (
+              <span className={styles.viewFieldLong}>
+                {pinData.Vollbeschreibung}
+              </span>
+            ) : null,
+            renderEdit: () => {
               const value = (editValues.Vollbeschreibung as string) ?? "";
               return (
                 <div className={styles.fieldGroup}>
@@ -890,25 +893,23 @@ export default function AudiopinPage() {
                   </div>
                 </div>
               );
-            }}
-          />
+            },
+          })}
 
-          <FieldRow
-            field="Link_URL"
-            label="Website"
-            value={
-              pinData.Link_URL ? (
-                <a
-                  href={pinData.Link_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.viewLink}
-                >
-                  {pinData.Link_URL}
-                </a>
-              ) : null
-            }
-            renderEdit={() => (
+          {renderFieldRow({
+            field: "Link_URL",
+            label: "Website",
+            value: pinData.Link_URL ? (
+              <a
+                href={pinData.Link_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.viewLink}
+              >
+                {pinData.Link_URL}
+              </a>
+            ) : null,
+            renderEdit: () => (
               // Link_Text ustawia serwer na stale ("Website") — partner podaje
               // wylacznie adres.
               <input
@@ -922,23 +923,21 @@ export default function AudiopinPage() {
                 }
                 autoFocus
               />
-            )}
-          />
+            ),
+          })}
 
-          <FieldRow
-            field="Titelbild"
-            label="Titelbild"
-            value={
-              pinData.Titelbild ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={assetUrl(pinData.Titelbild!)}
-                  alt="Titelbild"
-                  className={styles.titelbildImg}
-                />
-              ) : null
-            }
-            renderEdit={() => {
+          {renderFieldRow({
+            field: "Titelbild",
+            label: "Titelbild",
+            value: pinData.Titelbild ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={assetUrl(pinData.Titelbild!)}
+                alt="Titelbild"
+                className={styles.titelbildImg}
+              />
+            ) : null,
+            renderEdit: () => {
               const previewUrl = editValues.Titelbild
                 ? typeof editValues._titelbildPreview === "string"
                   ? editValues._titelbildPreview
@@ -995,8 +994,8 @@ export default function AudiopinPage() {
                   )}
                 </div>
               );
-            }}
-          />
+            },
+          })}
 
           {/* Galerie — premium, zawsze widoczna w view, edycja inline */}
           {isPremium && (

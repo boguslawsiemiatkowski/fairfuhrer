@@ -206,6 +206,23 @@ export default function MapSearch({
     }
   }, [disabled, isExpanded, searchQuery]);
 
+  // Delegacja zdarzeń kliknięcia na poziomie listy podpowiedzi — unika tworzenia domknięć
+  // odwołujących się do refów wewnątrz .map() podczas renderowania (reguła react-hooks/refs).
+  const handleSuggestionsClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const itemEl = (e.target as HTMLElement).closest<HTMLElement>(
+        "[data-suggestion-index]",
+      );
+      if (!itemEl) return;
+      const idx = Number(itemEl.dataset.suggestionIndex);
+      const selected = results[idx];
+      if (selected) {
+        handleSelect(selected);
+      }
+    },
+    [results, handleSelect],
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!isExpanded || results.length === 0) return;
@@ -358,7 +375,11 @@ export default function MapSearch({
       </div>
 
       {(showSuggestions || showNoResults) && (
-        <div className={styles.suggestions} ref={suggestionsRef}>
+        <div
+          className={styles.suggestions}
+          ref={suggestionsRef}
+          onClick={handleSuggestionsClick}
+        >
           {showNoResults ? (
             <div className={styles.noResults}>
               <div className={styles.noResultsIcon}>
@@ -383,10 +404,10 @@ export default function MapSearch({
               return (
                 <div
                   key={result.id}
+                  data-suggestion-index={index}
                   className={`${styles.suggestionItem} ${
                     index === selectedIndex ? styles.selected : ""
                   }`}
-                  onClick={() => handleSelect(result)}
                 >
                   <div className={styles.suggestionIcon}>
                     <svg
