@@ -27,11 +27,12 @@ export function useMapboxLayers({
   isMapAnimatingRef,
 }: UseMapboxLayersOptions) {
   const layersInitializedRef = useRef(false);
-  const lastFittedPlacesRef = useRef<string>("");
+  const hasFittedInitialBoundsRef = useRef(false);
   const hoverPopupRef = useRef<mapboxgl.Popup | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const placesRef = useRef<Place[]>(places);
+  const userLocationRef = useRef<[number, number] | null>(userLocation);
   // Indeks O(1) po ID miejsca oraz leniwy cache HTML dymków (generowany on-demand przy hoverze)
   const placeByIdRef = useRef<Map<number, Place>>(
     new Map(places.map((p) => [p.id, p])),
@@ -46,6 +47,10 @@ export function useMapboxLayers({
     placesRef.current = places;
     placeByIdRef.current = new Map(places.map((p) => [p.id, p]));
   }, [places]);
+
+  useEffect(() => {
+    userLocationRef.current = userLocation;
+  }, [userLocation]);
 
   useEffect(() => {
     openPanelRef.current = openPanel;
@@ -64,20 +69,17 @@ export function useMapboxLayers({
     const currentPlaces = placesRef.current;
     source.setData(placesToGeoJSON(currentPlaces) as FeatureCollection<Point>);
 
-    // fitBounds tylko gdy zmienił się zestaw miejsc
-    const placesKey = currentPlaces
-      .map((p) => p.id)
-      .sort()
-      .join(",");
-
-    if (currentPlaces.length > 0 && placesKey !== lastFittedPlacesRef.current) {
-      lastFittedPlacesRef.current = placesKey;
+    // Dopasuj kadr kamery (fitBounds) tylko raz — przy pierwszym załadowaniu mapy.
+    // Przełączanie filtrów kategorii aktualizuje wyłącznie piny w bieżącym widoku,
+    // nie resetując przybliżenia ani pozycji kamery użytkownika.
+    if (currentPlaces.length > 0 && !hasFittedInitialBoundsRef.current) {
+      hasFittedInitialBoundsRef.current = true;
 
       const bounds = new mapboxgl.LngLatBounds();
       currentPlaces
         .filter((p) => p.location?.coordinates)
         .forEach((p) => bounds.extend(p.location.coordinates));
-      if (userLocation) bounds.extend(userLocation);
+      if (userLocationRef.current) bounds.extend(userLocationRef.current);
 
       const padding =
         window.innerWidth > 768
@@ -86,7 +88,7 @@ export function useMapboxLayers({
 
       map.fitBounds(bounds, { padding, duration: 1000 });
     }
-  }, [mapRef, userLocation]);
+  }, [mapRef]);
 
   const initializeLayersAndEvents = useCallback(
     (map: mapboxgl.Map) => {
@@ -251,6 +253,7 @@ export function useMapboxLayers({
       hoverPopupRef.current = null;
     }
     layersInitializedRef.current = false;
+    hasFittedInitialBoundsRef.current = false;
   }, []);
 
   return {
