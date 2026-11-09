@@ -268,6 +268,78 @@
   outline-offset: 2px;
 }
 
+/* Osobny boks w prawym dolnym rogu mapy (nad atrybucją Mapbox, na tej samej wysokości co Legende) */
+.geolocateHintBox {
+  position: absolute;
+  bottom: 2rem;
+  right: 0.5rem;
+  max-width: 280px;
+  z-index: 10;
+}
+
+.geolocateHintBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  background-color: ghostwhite;
+  color: #18222f;
+  border: 2px solid #18222f;
+  box-shadow: 0 8px 22px rgba(24, 34, 47, 0.14);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-fira);
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.geolocateHintBtn:hover {
+  background-color: #fff7ed;
+  box-shadow: 3px 3px 0 #18222f;
+  transform: translate(-1px, -1px);
+}
+
+.geolocateHintBtn:focus-visible {
+  outline: 2px solid #fc6c14;
+  outline-offset: 2px;
+}
+
+.geolocateHintIconWrap {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #fc6c14;
+  color: #ffffff;
+  border: 1.5px solid #18222f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.geolocateHintText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.geolocateHintText strong {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #18222f;
+  line-height: 1.2;
+}
+
+.geolocateHintText span {
+  font-size: 0.69rem;
+  color: #475569;
+  line-height: 1.25;
+}
+
 .errorMessage {
   padding: 2rem;
   text-align: center;
@@ -298,7 +370,8 @@
   }
 
   .legendHeader,
-  .legendToolbar {
+  .legendToolbar,
+  .geolocateHintBox {
     display: none;
   }
 

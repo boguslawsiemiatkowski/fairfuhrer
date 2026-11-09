@@ -11,12 +11,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { MoveRight } from "lucide-react";
+import {
+  MoveRight,
+  MapPinHouse,
+  Map,
+  Navigation,
+  Footprints,
+  Bike,
+  Car,
+} from "lucide-react";
 import BackToListeLink from "@/components/BackToListeLink";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import PlaceGallery from "@/components/PlaceGallery";
-import PlaceLocationMap from "@/components/PlaceLocationMap";
 import {
   cityToSegment,
   fetchAllPlaces,
@@ -191,6 +198,12 @@ export default async function OrtPage({ params }: RouteParams) {
       ? `/liste/${cityToSegment(discovery.place.Stadt)}/${discovery.place.slug}`
       : null;
 
+  const pinIdentifier = encodeURIComponent(place.slug || String(place.id));
+  const mapPinHref = `/karte?pin=${pinIdentifier}`;
+  const mapRouteWalkingHref = `/karte?pin=${pinIdentifier}&route=walking`;
+  const mapRouteCyclingHref = `/karte?pin=${pinIdentifier}&route=cycling`;
+  const mapRouteDrivingHref = `/karte?pin=${pinIdentifier}&route=driving`;
+
   return (
     <>
       <script
@@ -360,17 +373,85 @@ export default async function OrtPage({ params }: RouteParams) {
               </section>
             )}
 
-            {/* Nur die Lage, keine Suche — dafür ist /karte da. Die Karte
-                baut sich erst beim Heranscrollen auf. */}
+            {/* Zamiast odizolowanej mini-mapy WebGL: bezpośrednie przejście do otwartego
+                panelu tego pinu na głównej mapie /karte oraz szybkie uruchomienie planera trasy */}
             <section className={styles.mapSection} aria-labelledby="lage">
               <h2 id="lage" className={styles.galleryTitle}>
-                Lage
+                Lage &amp; Routenplaner
               </h2>
-              <PlaceLocationMap
-                coordinates={place.location.coordinates}
-                name={place.Name}
-                color={sidebarColor}
-              />
+
+              <div className={styles.locationCard}>
+                <div className={styles.locationCardHeader}>
+                  <span
+                    className={styles.locationIconBadge}
+                    style={{ backgroundColor: sidebarColor }}
+                    aria-hidden="true"
+                  >
+                    <MapPinHouse size={22} />
+                  </span>
+                  <div className={styles.locationAddressBlock}>
+                    <h3 className={styles.locationPlaceName}>{place.Name}</h3>
+                    <p className={styles.locationAddressText}>
+                      {[
+                        place.Adresse,
+                        [place.Stadt, place.Land].filter(Boolean).join(", "),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
+                </div>
+
+                <p className={styles.locationCardHint}>
+                  Öffnen Sie diesen Ort direkt im Informationspanel auf unserer
+                  interaktiven FairFührer-Karte, um benachbarte Pins in der
+                  Umgebung zu entdecken oder Ihre Route direkt auf der Karte zu
+                  berechnen:
+                </p>
+
+                <div className={styles.locationPrimaryAction}>
+                  <Link href={mapPinHref} className={styles.openOnMapButton}>
+                    <span className={styles.openOnMapButtonLabel}>
+                      <Map size={18} aria-hidden="true" />
+                      <span>Pin auf der FairFührer-Karte öffnen</span>
+                    </span>
+                    <MoveRight size={18} aria-hidden="true" />
+                  </Link>
+                </div>
+
+                <div className={styles.routeQuickBlock}>
+                  <span className={styles.routeQuickTitle}>
+                    <Navigation size={14} aria-hidden="true" />
+                    <span>Direkt Route auf der Karte planen:</span>
+                  </span>
+
+                  <div className={styles.routeQuickButtons}>
+                    <Link
+                      href={mapRouteWalkingHref}
+                      className={styles.routeQuickBtn}
+                    >
+                      <Footprints size={16} aria-hidden="true" />
+                      <span>Zu Fuß</span>
+                    </Link>
+
+                    <Link
+                      href={mapRouteCyclingHref}
+                      className={styles.routeQuickBtn}
+                    >
+                      <Bike size={16} aria-hidden="true" />
+                      <span>Fahrrad</span>
+                    </Link>
+
+                    <Link
+                      href={mapRouteDrivingHref}
+                      className={styles.routeQuickBtn}
+                    >
+                      <Car size={16} aria-hidden="true" />
+                      <span>Auto</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </section>
 
             <p className={styles.backLink}>

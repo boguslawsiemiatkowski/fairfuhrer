@@ -5,6 +5,30 @@ import { getCategoryIconPaths, DEFAULT_ICON_PATHS } from "../lib/categoryIcons";
 export const PIN_W = 40;
 export const PIN_H = 56;
 
+// Niemieckie tłumaczenia komunikatów i podpowiedzi (tooltips) dla natywnych kontrolek Mapbox GL JS
+export const GERMAN_MAPBOX_LOCALE: Record<string, string> = {
+  "AttributionControl.ToggleAttribution": "Quellenangabe ein-/ausblenden",
+  "AttributionControl.MapFeedback": "Karten-Feedback",
+  "FullscreenControl.Enter": "Vollbildmodus aktivieren",
+  "FullscreenControl.Exit": "Vollbildmodus beenden",
+  "GeolocateControl.FindMyLocation": "Meinen Standort anzeigen",
+  "GeolocateControl.LocationNotAvailable": "Standort nicht verfügbar",
+  "LogoControl.Title": "Mapbox-Logo",
+  "Map.Title": "Karte",
+  "NavigationControl.ResetBearing": "Ausrichtung nach Norden zurücksetzen",
+  "NavigationControl.ZoomIn": "Vergrößern",
+  "NavigationControl.ZoomOut": "Verkleinern",
+  "ScrollZoomBlocker.CtrlMessage": "Strg + Scrollen zum Zoomen der Karte",
+  "ScrollZoomBlocker.CmdMessage": "⌘ + Scrollen zum Zoomen der Karte",
+  "TouchPanBlocker.Message": "Mit zwei Fingern die Karte bewegen",
+  "CooperativeGesturesHandler.WindowsHelpText":
+    "Strg + Scrollen zum Zoomen der Karte",
+  "CooperativeGesturesHandler.MacHelpText":
+    "⌘ + Scrollen zum Zoomen der Karte",
+  "CooperativeGesturesHandler.MobileHelpText":
+    "Mit zwei Fingern die Karte bewegen",
+};
+
 export function isValidMapboxToken(): boolean {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   return Boolean(token && token.startsWith("pk."));

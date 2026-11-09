@@ -19,10 +19,15 @@ import {
   isValidMapboxToken,
   loadCategoryMarkerSDFs,
   applyGermanMapStyle,
+  GERMAN_MAPBOX_LOCALE,
 } from "../utils/mapHelpers";
 import { usePlaceSelection } from "../hooks/usePlaceSelection";
 import { useMapboxLayers } from "../hooks/useMapboxLayers";
-import { useMapboxRoute, formatDuration } from "../hooks/useMapboxRoute";
+import {
+  useMapboxRoute,
+  formatDuration,
+  type RouteProfile,
+} from "../hooks/useMapboxRoute";
 import { formatDistance } from "../lib/orte-shared";
 
 const PlaceInfoPanel = lazy(() => import("./PlaceInfoPanel"));
@@ -45,6 +50,7 @@ export default function MapBoxMap({
   const searchablePlaces = allPlaces ?? places;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const geolocateControlRef = useRef<mapboxgl.GeolocateControl | null>(null);
 
   const [mapLoadingState, setMapLoadingState] = useState<
     "loading" | "success" | "error"
@@ -127,6 +133,7 @@ export default function MapBoxMap({
         zoom: 6,
         attributionControl: true,
         cooperativeGestures: disableGeolocation,
+        locale: GERMAN_MAPBOX_LOCALE,
       });
 
       map.on("load", () => {
@@ -155,6 +162,7 @@ export default function MapBoxMap({
             showAccuracyCircle: true,
           });
 
+          geolocateControlRef.current = geolocateControl;
           map.addControl(geolocateControl, "top-left");
         }
 
@@ -172,6 +180,22 @@ export default function MapBoxMap({
         loadCategoryMarkerSDFs(map, categories, () => {
           initializeLayersAndEvents(map);
           openInitialPinFromUrl();
+
+          // Jeśli w URL przekazano również ?route=1 lub ?route=walking|cycling|driving (np. ze strony audiopinu),
+          // automatycznie rozwiń sekcję Routenplaner w otwartym panelu
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            const routeParam = url.searchParams.get("route");
+            if (routeParam && url.searchParams.has("pin")) {
+              const initialProfile: RouteProfile | undefined =
+                routeParam === "walking" ||
+                routeParam === "cycling" ||
+                routeParam === "driving"
+                  ? routeParam
+                  : undefined;
+              route.openPlanner(initialProfile);
+            }
+          }
         });
       });
 
@@ -188,11 +212,24 @@ export default function MapBoxMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Mount / Unmount mapy
+  // Mount / Unmount mapy oraz nasłuchiwanie wywołania geolokalizacji z poziomu Legendy
   useEffect(() => {
     initializeMap();
 
+    const handleTriggerGeolocate = () => {
+      geolocateControlRef.current?.trigger();
+    };
+    window.addEventListener(
+      "fairfuehrer:trigger-geolocate",
+      handleTriggerGeolocate,
+    );
+
     return () => {
+      window.removeEventListener(
+        "fairfuehrer:trigger-geolocate",
+        handleTriggerGeolocate,
+      );
+      geolocateControlRef.current = null;
       cleanupLayers();
       if (mapRef.current) {
         mapRef.current.remove();

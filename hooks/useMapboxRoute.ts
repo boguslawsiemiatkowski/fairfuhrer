@@ -596,8 +596,15 @@ export function useMapboxRoute({
     [origin, calculateRoute],
   );
 
-  // Otwarcie planera w panelu
-  const openPlanner = useCallback(() => {
+  // Otwarcie planera w panelu (z opcjonalnym ustawieniem początkowego środka transportu, np. z ?route=cycling)
+  const openPlanner = useCallback((initialProfile?: RouteProfile) => {
+    if (
+      initialProfile === "walking" ||
+      initialProfile === "cycling" ||
+      initialProfile === "driving"
+    ) {
+      setProfile(initialProfile);
+    }
     setIsPlannerOpen(true);
   }, []);
 

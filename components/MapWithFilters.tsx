@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { LocateFixed } from "lucide-react";
 import CategoryFilter from "./CategoryFilter";
 import { cityToSegment } from "../lib/orte-shared";
 import styles from "./MapWithFilters.module.css";
@@ -326,6 +327,33 @@ export default function MapWithFilters({
             />
           </div>
         </aside>
+      )}
+
+      {/* Osobny boks w prawym dolnym rogu mapy (nad atrybucją Mapbox, na wysokości Legendy):
+          informacja i szybki przycisk wycentrowania mapy na lokalizacji GPS użytkownika */}
+      {!embedded && !disableGeolocation && (
+        <div className={styles.geolocateHintBox}>
+          <button
+            type="button"
+            className={styles.geolocateHintBtn}
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("fairfuehrer:trigger-geolocate"),
+              );
+            }}
+            title="Karte auf meinen aktuellen GPS-Standort zentrieren"
+          >
+            <span className={styles.geolocateHintIconWrap} aria-hidden="true">
+              <LocateFixed size={15} />
+            </span>
+            <span className={styles.geolocateHintText}>
+              <strong>Meinen Standort anzeigen</strong>
+              <span>
+                Hier klicken oder das Standortsymbol oben links nutzen
+              </span>
+            </span>
+          </button>
+        </div>
       )}
     </div>
   );
