@@ -172,8 +172,8 @@
   font-family: var(--font-fira);
 }
 
-/* ─── Mobile (<= 768px): Poziomy, przewijany pasek chipów kategorii ─── */
-@media screen and (max-width: 768px) {
+/* ─── Mobile (<= 668px): Poziomy, przewijany pasek chipów kategorii ─── */
+@media screen and (max-width: 668px) {
   .filterContainer {
     flex-direction: row;
     flex-wrap: nowrap;

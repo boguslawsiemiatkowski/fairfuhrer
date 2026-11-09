@@ -664,7 +664,7 @@ export default function MapSearch({
           ref={inputRef}
           type="text"
           className={styles.searchInput}
-          placeholder="Ort, Stadt oder Pin suchen…"
+          placeholder="Ort, Pin oder Zertifizierungen suchen…"
           value={searchQuery}
           onChange={(e) => {
             const val = e.target.value;
@@ -685,7 +685,7 @@ export default function MapSearch({
           disabled={disabled}
           spellCheck={false}
           autoComplete="off"
-          aria-label="Ort, Stadt oder Pin suchen"
+          aria-label="Ort, Pin oder Zertifizierungen suchen"
         />
 
         {isLoading && (
@@ -768,7 +768,9 @@ export default function MapSearch({
                 >
                   <div
                     className={`${styles.suggestionIcon} ${
-                      isPin ? styles.suggestionIconPin : styles.suggestionIconGeo
+                      isPin
+                        ? styles.suggestionIconPin
+                        : styles.suggestionIconGeo
                     }`}
                   >
                     <svg
@@ -797,7 +799,9 @@ export default function MapSearch({
                       >
                         {isPin ? "Audiopin" : "Ort"}
                       </span>
-                      <div className={styles.suggestionTitle}>{result.name}</div>
+                      <div className={styles.suggestionTitle}>
+                        {result.name}
+                      </div>
                     </div>
                     {result.place_formatted && (
                       <div className={styles.suggestionMeta}>

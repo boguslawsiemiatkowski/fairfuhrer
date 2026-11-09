@@ -107,7 +107,7 @@
 .filtersContainer {
   position: absolute;
   bottom: 2rem;
-  left: 0.25rem;
+  left: 0.5rem;
   width: 326px;
   background-color: ghostwhite;
   border: 2px solid #18222f;
@@ -280,7 +280,7 @@
 
 /* ─── Mobile: Pływający poziomy pasek chipów kategorii na dole mapy ─── */
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 668px) {
   .container,
   .mapSkeleton {
     height: calc(var(--vh, 1vh) * 100 - 90px);
