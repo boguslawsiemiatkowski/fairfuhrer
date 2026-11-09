@@ -2,7 +2,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type mapboxgl from "mapbox-gl";
 import type { Place } from "../types";
 
-export function usePlaceSelection(mapRef: React.RefObject<mapboxgl.Map | null>) {
+export function usePlaceSelection(
+  mapRef: React.RefObject<mapboxgl.Map | null>,
+) {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isPanelVisible, setIsPanelVisible] = useState(false);
@@ -13,14 +15,29 @@ export function usePlaceSelection(mapRef: React.RefObject<mapboxgl.Map | null>) 
   const pinSizeAnimFrameRef = useRef<number | null>(null);
 
   const animateToLocation = useCallback(
-    (location: [number, number], zoom: number, duration = 1500) => {
+    (
+      location: [number, number],
+      zoom: number,
+      duration = 1500,
+      withPanelOffset = false,
+    ) => {
       if (!mapRef.current) return;
+
+      const isDesktop =
+        typeof window !== "undefined" && window.innerWidth > 860;
+      const rightOffset =
+        withPanelOffset && isDesktop
+          ? window.innerWidth >= 1200
+            ? 450
+            : 410
+          : 0;
 
       isMapAnimatingRef.current = true;
       mapRef.current.easeTo({
         center: location,
         zoom,
         duration,
+        padding: { top: 0, bottom: 0, left: 0, right: rightOffset },
         easing: (t) => 1 - Math.pow(1 - t, 3),
         essential: true,
       });
@@ -47,7 +64,11 @@ export function usePlaceSelection(mapRef: React.RefObject<mapboxgl.Map | null>) 
         const t = Math.min((now - start) / duration, 1);
         const size = from + (to - from) * easeOutCubic(t);
         if (mapRef.current?.getLayer("places-selected")) {
-          mapRef.current.setLayoutProperty("places-selected", "icon-size", size);
+          mapRef.current.setLayoutProperty(
+            "places-selected",
+            "icon-size",
+            size,
+          );
         }
         if (t < 1) {
           pinSizeAnimFrameRef.current = requestAnimationFrame(tick);
@@ -64,22 +85,17 @@ export function usePlaceSelection(mapRef: React.RefObject<mapboxgl.Map | null>) 
   const openPanel = useCallback(
     (place: Place) => {
       // Anuluj aktywny timeout zamknięcia — zapobiega race condition,
-      // gdy nowa pinezka jest klikana zanim 600ms timeout z closePanel dobiegnie końca
+      // gdy nowa pinezka jest klikana zanim timeout z closePanel dobiegnie końca
       if (closePanelTimeoutRef.current) {
         clearTimeout(closePanelTimeoutRef.current);
         closePanelTimeoutRef.current = null;
       }
 
+      const wasAlreadyOpen = isPanelOpenRef.current;
+
       setSelectedPlace(place);
       setIsPanelOpen(true);
       isPanelOpenRef.current = true;
-
-      // Wyłącz interakcje dotykowe mapy gdy panel jest otwarty
-      if (mapRef.current) {
-        mapRef.current.dragPan.disable();
-        mapRef.current.touchZoomRotate.disable();
-        mapRef.current.touchPitch.disable();
-      }
 
       // Podświetl wybrany pin — płynne powiększenie
       if (mapRef.current?.getLayer("places-selected")) {
@@ -97,9 +113,19 @@ export function usePlaceSelection(mapRef: React.RefObject<mapboxgl.Map | null>) 
           setIsPanelVisible(true);
 
           if (mapRef.current) {
-            setTimeout(() => {
-              animateToLocation(place.location.coordinates, 16, 1200);
-            }, 300);
+            const currentZoom = mapRef.current.getZoom();
+            const targetZoom = Math.max(currentZoom, 15.5);
+            setTimeout(
+              () => {
+                animateToLocation(
+                  place.location.coordinates,
+                  targetZoom,
+                  wasAlreadyOpen ? 850 : 1100,
+                  true,
+                );
+              },
+              wasAlreadyOpen ? 40 : 180,
+            );
           }
         });
       });
@@ -125,17 +151,10 @@ export function usePlaceSelection(mapRef: React.RefObject<mapboxgl.Map | null>) 
       }, 280);
     }
 
-    // Przywróć interakcje dotykowe mapy
-    if (mapRef.current) {
-      mapRef.current.dragPan.enable();
-      mapRef.current.touchZoomRotate.enable();
-      mapRef.current.touchPitch.enable();
-    }
-
     closePanelTimeoutRef.current = setTimeout(() => {
       closePanelTimeoutRef.current = null;
       setIsPanelOpen(false);
-    }, 600);
+    }, 450);
   }, [mapRef, animatePinSize]);
 
   const handleLocationSelect = useCallback(
@@ -154,7 +173,11 @@ export function usePlaceSelection(mapRef: React.RefObject<mapboxgl.Map | null>) 
             [bbox[0], bbox[1]],
             [bbox[2], bbox[3]],
           ],
-          { padding: 60, duration: 800, ...(maxZoom !== undefined && { maxZoom }) },
+          {
+            padding: 60,
+            duration: 800,
+            ...(maxZoom !== undefined && { maxZoom }),
+          },
         );
       } else {
         map.flyTo({ center: coords, zoom, duration: 800 });
@@ -186,4 +209,3 @@ export function usePlaceSelection(mapRef: React.RefObject<mapboxgl.Map | null>) 
     handleLocationSelect,
   };
 }
-

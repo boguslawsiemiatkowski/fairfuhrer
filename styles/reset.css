@@ -23,8 +23,8 @@ body {
   vertical-align: baseline;
   overflow-x: hidden;
 
-  /* Tło body = kolor panelu — eliminuje biały pasek gdy panel scrolluje do końca treści */
-  background-color: #fdf6e3;
+  /* Tło body = kolor panelu — eliminuje pasek przy przewijaniu do końca treści */
+  background-color: #ffffff;
 
   /* iPhone Safari: Prevent overscroll bounce */
   overscroll-behavior: none;

@@ -1,16 +1,46 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import Image from "next/image";
-import { AudioPlayer, DirectusAudioPlayer, DirectusImage, PlaceImage } from "./MediaComponents";
+import { DirectusImage, PlaceImage } from "./MediaComponents";
+import ColumnAudioPlayer from "./ColumnAudioPlayer";
+import CategoryIcon, { categoryColorFor } from "./CategoryIcon";
+import PlaceGallery from "./PlaceGallery";
+import { getAudioUrl } from "../lib/supabase";
+import {
+  cityToSegment,
+  galleryUrls,
+  sanitizeExternalUrl,
+  sanitizeWordHtml,
+} from "../lib/orte-shared";
 import type { Place } from "../types";
 import styles from "./PlaceInfoPanel.module.css";
-import { categoryColorFor } from "./CategoryIcon";
-import PlaceGallery from "./PlaceGallery";
-import { galleryUrls, sanitizeExternalUrl, sanitizeWordHtml } from "../lib/orte-shared";
 
 // Klientowy cache opisów pobranych on-demand po kliknięciu w pin na /karte
 const descriptionCache = new Map<number, string | null>();
+
+function resolveAudioSrc(place: Place): string | null {
+  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
+  if (place.Audio && directusUrl) {
+    return `${directusUrl}/assets/${place.Audio}`;
+  }
+  if (place.Audio_Datei) {
+    return getAudioUrl(place.id, place.Audio_Datei);
+  }
+  return null;
+}
+
+function resolveDetailHref(place: Place): string | null {
+  const segment = cityToSegment(place.Stadt);
+  if (!segment || !place.slug) return null;
+  return `/liste/${segment}/${place.slug}`;
+}
+
+function resolveDirectionsUrl(place: Place): string {
+  const [lng, lat] = place.location.coordinates;
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+}
 
 interface PlaceInfoPanelProps {
   place: Place | null;
@@ -26,7 +56,6 @@ export default function PlaceInfoPanel({
   onCloseAction,
 }: PlaceInfoPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const backdropRef = useRef<HTMLDivElement>(null);
   const [isClosing, setIsClosing] = useState(false);
 
   const handleClose = useCallback(() => {
@@ -34,35 +63,8 @@ export default function PlaceInfoPanel({
     setTimeout(() => {
       onCloseAction();
       setIsClosing(false);
-    }, 500);
+    }, 380);
   }, [onCloseAction]);
-
-  useEffect(() => {
-    if (!isOpen || !isVisible || isClosing) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-
-      if (backdropRef.current && backdropRef.current.contains(target)) {
-        handleClose();
-        return;
-      }
-
-      if (
-        target.closest('[data-gallery-modal="true"]') ||
-        (panelRef.current && panelRef.current.contains(target)) ||
-        target.closest(".mapboxgl-ctrl") ||
-        target.closest(".mapboxgl-popup")
-      ) {
-        return;
-      }
-
-      handleClose();
-    };
-
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [isOpen, isVisible, isClosing, handleClose]);
 
   useEffect(() => {
     if (!isOpen || isClosing) return;
@@ -83,18 +85,21 @@ export default function PlaceInfoPanel({
 
   return (
     <>
+      {/* Backdrop widoczny wyłącznie na ekranach mobilnych (<= 860px).
+          Na desktopie mapa pozostaje w pełni interaktywna i pozwala klikać kolejne piny. */}
       <div
-        ref={backdropRef}
         className={`${styles.panelBackdrop} ${isActuallyOpen ? styles.visible : ""}`}
+        onClick={handleClose}
+        aria-hidden="true"
       />
 
       {/* Panel zawsze istnieje w DOM — <Activity> w MapBoxMap może trzymać go w pamięci.
           Widoczność kontroluje wyłącznie CSS transform (.open) oraz pointer-events. */}
-      <div
+      <aside
         ref={panelRef}
         className={`${styles.infoPanel} ${isActuallyOpen ? styles.open : ""}`}
         role="dialog"
-        aria-modal={isActuallyOpen}
+        aria-modal={false}
         aria-hidden={!isActuallyOpen}
         aria-labelledby={place ? `place-title-${place.id}` : undefined}
         inert={!isActuallyOpen || undefined}
@@ -104,13 +109,14 @@ export default function PlaceInfoPanel({
           className={styles.closeButton}
           onClick={handleClose}
           aria-label="Schließen"
+          title="Schließen"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
@@ -127,7 +133,7 @@ export default function PlaceInfoPanel({
             <EmptyState />
           )}
         </div>
-      </div>
+      </aside>
     </>
   );
 }
@@ -135,6 +141,11 @@ export default function PlaceInfoPanel({
 function PlaceContent({ place }: { place: Place }) {
   const galerie = galleryUrls(place);
   const safeLinkUrl = sanitizeExternalUrl(place.Link_URL);
+  const audioUrl = resolveAudioSrc(place);
+  const detailHref = resolveDetailHref(place);
+  const directionsUrl = resolveDirectionsUrl(place);
+  const firstCategory = place.Kategorie[0];
+  const headerColor = categoryColorFor(firstCategory);
 
   // Jeśli opis przyszedł bezpośrednio w obiekcie Place lub jest już w cache, używamy go od razu
   const initialDescription =
@@ -144,9 +155,9 @@ function PlaceContent({ place }: { place: Place }) {
         : null
       : descriptionCache.get(place.id);
 
-  const [lazyDescription, setLazyDescription] = useState<string | null | undefined>(
-    initialDescription,
-  );
+  const [lazyDescription, setLazyDescription] = useState<
+    string | null | undefined
+  >(initialDescription);
 
   useEffect(() => {
     if (place.Vollbeschreibung !== undefined || descriptionCache.has(place.id)) {
@@ -169,7 +180,10 @@ function PlaceContent({ place }: { place: Place }) {
       })
       .catch((err: unknown) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        console.error(`Nie udało się pobrać opisu dla miejsca ${place.id}:`, err);
+        console.error(
+          `Nie udało się pobrać opisu dla miejsca ${place.id}:`,
+          err,
+        );
         setLazyDescription(null);
       });
 
@@ -182,70 +196,146 @@ function PlaceContent({ place }: { place: Place }) {
 
   return (
     <>
-      <div className={styles.imageAudioContainer}>
-        {(place.Titelbild || place.Hauptbild) && (
-          <div className={styles.mainImageSection}>
-            {place.Titelbild ? (
-              <DirectusImage
-                uuid={place.Titelbild}
-                alt={place.Name}
-                className={styles.mainImage}
-              />
-            ) : (
-              <PlaceImage
-                placeId={place.id}
-                filename={place.Hauptbild!}
-                alt={place.Name}
-                type="main"
-                className={styles.mainImage}
-              />
-            )}
-          </div>
-        )}
-
-        {(place.Audio || place.Audio_Datei) && (
-          <div className={styles.audioSection}>
-            {place.Audio ? (
-              <DirectusAudioPlayer uuid={place.Audio} />
-            ) : (
-              <AudioPlayer placeId={place.id} filename={place.Audio_Datei!} />
-            )}
-          </div>
-        )}
-      </div>
-
-      {place.Kategorie && place.Kategorie.length > 0 && (
-        <div className={styles.categoryBadges}>
-          {place.Kategorie.map((cat) => (
-            <span
-              key={cat.id}
-              className={styles.categoryBadge}
-              style={{ "--badge-color": categoryColorFor(cat) } as React.CSSProperties}
-            >
-              {cat.name}
-            </span>
-          ))}
+      {(place.Titelbild || place.Hauptbild) && (
+        <div className={styles.mainImageSection}>
+          {place.Titelbild ? (
+            <DirectusImage
+              uuid={place.Titelbild}
+              alt={place.Name}
+              className={styles.mainImage}
+            />
+          ) : (
+            <PlaceImage
+              placeId={place.id}
+              filename={place.Hauptbild!}
+              alt={place.Name}
+              type="main"
+              className={styles.mainImage}
+            />
+          )}
         </div>
       )}
 
-      <div className={styles.placeNameSection}>
+      {/* Kolorowy nagłówek w barwie kategorii — spójny z lewą kolumną strony /liste/[stadt]/[slug] */}
+      <header
+        className={styles.placeHeader}
+        style={{ backgroundColor: headerColor }}
+      >
+        {place.Kategorie && place.Kategorie.length > 0 && (
+          <div className={styles.categoryBadges}>
+            {place.Kategorie.map((cat) => (
+              <span key={cat.id} className={styles.categoryBadge}>
+                <CategoryIcon
+                  categoryId={cat.id}
+                  color="rgba(255,255,255,0.22)"
+                  strokeColor="#fff"
+                  size={22}
+                />
+                <span>{cat.name}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
         <h2 id={`place-title-${place.id}`} className={styles.placeName}>
           {place.Name}
         </h2>
+
         <p className={styles.placeAddress}>
           {place.Adresse}
-          {place.Stadt ? ` ${place.Stadt}` : ""}
-          {place.Land ? ` (${place.Land})` : ""}
+          {place.Stadt && (
+            <>
+              <br />
+              {place.Stadt}
+              {place.Land ? `, ${place.Land}` : ""}
+            </>
+          )}
         </p>
+
         {place.Telefon && (
-          <a href={`tel:${place.Telefon.replace(/\s+/g, "")}`} className={styles.placePhone}>
+          <a
+            href={`tel:${place.Telefon.replace(/\s+/g, "")}`}
+            className={styles.placePhone}
+          >
             📞 {place.Telefon}
           </a>
         )}
+
+        {audioUrl && (
+          <div className={styles.audioPlayerWrap}>
+            <ColumnAudioPlayer src={audioUrl} title={place.Name} />
+          </div>
+        )}
+      </header>
+
+      {/* Pasek akcji: przejście do pełnej strony Audiopinu, nawigacja oraz strona www */}
+      <div className={styles.actionsBar}>
+        {detailHref && (
+          <Link href={detailHref} className={styles.primaryCta}>
+            <span>Zur vollständigen Seite</span>
+            <span className={styles.ctaArrow} aria-hidden="true">
+              →
+            </span>
+          </Link>
+        )}
+
+        <div className={styles.secondaryActions}>
+          <a
+            href={directionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.secondaryCta}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polygon points="3 11 22 2 13 21 11 13 3 11" />
+            </svg>
+            <span>Route planen</span>
+          </a>
+
+          {safeLinkUrl && (
+            <a
+              href={safeLinkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.secondaryCta}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+              <span>{place.Link_Text || "Website"}</span>
+            </a>
+          )}
+        </div>
       </div>
 
       {isLoadingDescription ? (
-        <div className={styles.infoSection} aria-busy="true" aria-label="Beschreibung wird geladen">
+        <div
+          className={styles.infoSection}
+          aria-busy="true"
+          aria-label="Beschreibung wird geladen"
+        >
           <div className={styles.descriptionSkeleton}>
             <span className={styles.skeletonLine} />
             <span className={styles.skeletonLine} />
@@ -255,41 +345,25 @@ function PlaceContent({ place }: { place: Place }) {
         </div>
       ) : (
         safeDescription && (
-          <div className={styles.infoSection}>
+          <section className={styles.infoSection}>
             <div
               className={styles.description}
               dangerouslySetInnerHTML={{ __html: safeDescription }}
             />
-          </div>
+          </section>
         )
       )}
 
-      {safeLinkUrl && (
-        <div className={styles.infoSection}>
-          <a
-            href={safeLinkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.externalLink}
-          >
-            {place.Link_Text || "Website besuchen"}
-          </a>
-        </div>
-      )}
-
       {galerie.length > 0 && (
-        <div className={styles.infoSection}>
-          <h4>Bildergalerie</h4>
-          {/* Dieselbe Galerie wie auf der Detailseite. galleryUrls() führt
-            * Directus- und Supabase-Bilder zusammen, statt sich wie vorher
-            * für eine der beiden Quellen zu entscheiden. */}
+        <section className={styles.infoSection}>
+          <h4 className={styles.sectionTitle}>Bildergalerie</h4>
           <PlaceGallery images={galerie} name={place.Name} variant="panel" />
-        </div>
+        </section>
       )}
 
       {place.Zertifizierungen && place.Zertifizierungen.length > 0 && (
-        <div className={styles.infoSection}>
-          <h4>Zertifizierungen &amp; Labels</h4>
+        <section className={styles.infoSection}>
+          <h4 className={styles.sectionTitle}>Zertifizierungen &amp; Labels</h4>
           <div className={styles.zertifizierungenGrid}>
             {place.Zertifizierungen.map((zert) => {
               const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL;
@@ -306,13 +380,15 @@ function PlaceContent({ place }: { place: Place }) {
                       style={{ objectFit: "contain" }}
                     />
                   ) : (
-                    <span className={styles.zertifizierungName}>{zert.name}</span>
+                    <span className={styles.zertifizierungName}>
+                      {zert.name}
+                    </span>
                   )}
                 </div>
               );
             })}
           </div>
-        </div>
+        </section>
       )}
     </>
   );
