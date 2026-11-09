@@ -19,9 +19,7 @@ import {
   isValidMapboxToken,
   loadCategoryMarkerSDFs,
   applyGermanMapStyle,
-  createUserLocationMarker,
 } from "../utils/mapHelpers";
-import { useGeolocation } from "../hooks/useGeolocation";
 import { usePlaceSelection } from "../hooks/usePlaceSelection";
 import { useMapboxLayers } from "../hooks/useMapboxLayers";
 
@@ -40,7 +38,6 @@ export default function MapBoxMap({
 }: MapBoxMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   const [mapLoadingState, setMapLoadingState] = useState<
     "loading" | "success" | "error"
@@ -55,24 +52,8 @@ export default function MapBoxMap({
     isMapAnimatingRef,
     openPanel,
     closePanel,
-    animateToLocation,
     handleLocationSelect,
   } = usePlaceSelection(mapRef);
-
-  // Geolokalizacja użytkownika
-  const handleLocationFound = useCallback(
-    (location: [number, number]) => {
-      animateToLocation(location, 14, 1800);
-    },
-    [animateToLocation],
-  );
-
-  const {
-    userLocation,
-    setUserLocation,
-    userLocationRequestedRef,
-    getUserLocation,
-  } = useGeolocation(handleLocationFound);
 
   // Warstwy GeoJSON, klastry, popupy hover i zdarzenia mapy
   const {
@@ -83,7 +64,6 @@ export default function MapBoxMap({
   } = useMapboxLayers({
     mapRef,
     places,
-    userLocation,
     popupClassName: styles.popup,
     openPanel,
     closePanel,
@@ -103,8 +83,8 @@ export default function MapBoxMap({
       const map = new mapboxgl.Map({
         container: containerRef.current,
         style: "mapbox://styles/mapbox/streets-v12",
-        center: userLocation || [9.0, 47.5],
-        zoom: userLocation ? 12 : 6,
+        center: [9.0, 47.5],
+        zoom: 6,
         attributionControl: true,
         cooperativeGestures: disableGeolocation,
       });
@@ -116,26 +96,26 @@ export default function MapBoxMap({
         map.addControl(new mapboxgl.NavigationControl(), "top-left");
 
         if (!disableGeolocation) {
+          // Natywna kontrolka geolokalizacji na żądanie użytkownika:
+          // - maximumAge: 0 wymusza świeży odczyt (zamiast starej pozycji IP z cache przeglądarki)
+          // - trackUserLocation: true używa watchPosition i na bieżąco doprecyzowuje pozycję Wi-Fi/GPS
+          // - showAccuracyCircle: true pokazuje realny promień dokładności odczytu
           const geolocateControl = new mapboxgl.GeolocateControl({
-            positionOptions: { enableHighAccuracy: true },
+            positionOptions: {
+              enableHighAccuracy: true,
+              timeout: 15000,
+              maximumAge: 0,
+            },
+            fitBoundsOptions: {
+              maxZoom: 15,
+            },
             trackUserLocation: true,
             showUserHeading: true,
             showUserLocation: true,
+            showAccuracyCircle: true,
           });
 
           map.addControl(geolocateControl, "top-left");
-
-          geolocateControl.on("geolocate", (e) => {
-            userLocationRequestedRef.current = true;
-            const location: [number, number] = [
-              e.coords.longitude,
-              e.coords.latitude,
-            ];
-            setUserLocation(location);
-            setTimeout(() => {
-              animateToLocation(location, 14, 1800);
-            }, 150);
-          });
         }
 
         // Załaduj ikony SVG dla każdej kategorii, następnie utwórz warstwy i podepnij zdarzenia
@@ -167,32 +147,12 @@ export default function MapBoxMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pobierz lokalizację użytkownika po załadowaniu mapy
-  useEffect(() => {
-    if (disableGeolocation) return;
-    if (mapLoadingState === "success" && !userLocationRequestedRef.current) {
-      const timer = setTimeout(() => {
-        getUserLocation();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [
-    mapLoadingState,
-    getUserLocation,
-    disableGeolocation,
-    userLocationRequestedRef,
-  ]);
-
   // Mount / Unmount mapy
   useEffect(() => {
     initializeMap();
 
     return () => {
       cleanupLayers();
-      if (userLocationMarkerRef.current) {
-        userLocationMarkerRef.current.remove();
-        userLocationMarkerRef.current = null;
-      }
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -200,34 +160,6 @@ export default function MapBoxMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Aktualizuj pulsujący marker pozycji użytkownika
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !userLocation) return;
-
-    const placeUserMarker = () => {
-      try {
-        if (userLocationMarkerRef.current) {
-          userLocationMarkerRef.current.remove();
-          userLocationMarkerRef.current = null;
-        }
-        userLocationMarkerRef.current = createUserLocationMarker(
-          map,
-          userLocation,
-          styles.popup,
-        );
-      } catch (error) {
-        console.error("❌ Błąd podczas dodawania markera użytkownika:", error);
-      }
-    };
-
-    if (map.isStyleLoaded()) {
-      placeUserMarker();
-    } else {
-      map.once("idle", placeUserMarker);
-    }
-  }, [userLocation]);
 
   if (!isValidMapboxToken()) {
     return (

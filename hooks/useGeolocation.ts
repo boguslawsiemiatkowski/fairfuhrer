@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef } from "react";
 
 export function useGeolocation(
-  onLocationFound?: (location: [number, number]) => void
+  onLocationFound?: (location: [number, number]) => void,
 ) {
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(
+    null,
+  );
   const userLocationRequestedRef = useRef(false);
 
   const getUserLocation = useCallback(() => {
@@ -19,7 +21,7 @@ export function useGeolocation(
         const { latitude, longitude } = position.coords;
         const newLocation: [number, number] = [longitude, latitude];
         setUserLocation(newLocation);
-        
+
         if (onLocationFound) {
           onLocationFound(newLocation);
         }
@@ -27,7 +29,7 @@ export function useGeolocation(
       (error) => {
         console.error("❌ Geolocation-Fehler:", error);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   }, [onLocationFound]);
 

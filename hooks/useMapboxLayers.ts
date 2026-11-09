@@ -8,7 +8,6 @@ import { generatePopupHTML } from "../utils/popupGenerator";
 interface UseMapboxLayersOptions {
   mapRef: React.RefObject<mapboxgl.Map | null>;
   places: Place[];
-  userLocation: [number, number] | null;
   popupClassName: string;
   openPanel: (place: Place) => void;
   closePanel: () => void;
@@ -19,7 +18,6 @@ interface UseMapboxLayersOptions {
 export function useMapboxLayers({
   mapRef,
   places,
-  userLocation,
   popupClassName,
   openPanel,
   closePanel,
@@ -32,7 +30,6 @@ export function useMapboxLayers({
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const placesRef = useRef<Place[]>(places);
-  const userLocationRef = useRef<[number, number] | null>(userLocation);
   // Indeks O(1) po ID miejsca oraz leniwy cache HTML dymków (generowany on-demand przy hoverze)
   const placeByIdRef = useRef<Map<number, Place>>(
     new Map(places.map((p) => [p.id, p])),
@@ -47,10 +44,6 @@ export function useMapboxLayers({
     placesRef.current = places;
     placeByIdRef.current = new Map(places.map((p) => [p.id, p]));
   }, [places]);
-
-  useEffect(() => {
-    userLocationRef.current = userLocation;
-  }, [userLocation]);
 
   useEffect(() => {
     openPanelRef.current = openPanel;
@@ -79,7 +72,6 @@ export function useMapboxLayers({
       currentPlaces
         .filter((p) => p.location?.coordinates)
         .forEach((p) => bounds.extend(p.location.coordinates));
-      if (userLocationRef.current) bounds.extend(userLocationRef.current);
 
       const padding =
         window.innerWidth > 768
