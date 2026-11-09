@@ -22,6 +22,8 @@ import {
 } from "../utils/mapHelpers";
 import { usePlaceSelection } from "../hooks/usePlaceSelection";
 import { useMapboxLayers } from "../hooks/useMapboxLayers";
+import { useMapboxRoute, formatDuration } from "../hooks/useMapboxRoute";
+import { formatDistance } from "../lib/orte-shared";
 
 const PlaceInfoPanel = lazy(() => import("./PlaceInfoPanel"));
 
@@ -47,6 +49,7 @@ export default function MapBoxMap({
   const [mapLoadingState, setMapLoadingState] = useState<
     "loading" | "success" | "error"
   >("loading");
+  const [mobileMapPreview, setMobileMapPreview] = useState(false);
 
   // Stan wybranego miejsca, panelu bocznego, synchronizacji URL (?pin=) oraz animacji kamery/pinów
   const {
@@ -56,7 +59,7 @@ export default function MapBoxMap({
     isPanelOpenRef,
     isMapAnimatingRef,
     openPanel,
-    closePanel,
+    closePanel: baseClosePanel,
     openInitialPinFromUrl,
     handleLocationSelect,
   } = usePlaceSelection(mapRef, {
@@ -64,6 +67,28 @@ export default function MapBoxMap({
     places: searchablePlaces,
     onEnsurePlaceVisible,
   });
+
+  // Wyznaczanie trasy na mapie (Mapbox Directions API v5)
+  const route = useMapboxRoute({
+    mapRef,
+    destination: selectedPlace,
+    isMapAnimatingRef,
+  });
+
+  const closePanel = useCallback(() => {
+    setMobileMapPreview(false);
+    route.closeAndClearRoute();
+    baseClosePanel();
+  }, [route, baseClosePanel]);
+
+  const handleOpenPanel = useCallback(
+    (place: Place) => {
+      setMobileMapPreview(false);
+      route.handleDestinationChange(place);
+      openPanel(place);
+    },
+    [openPanel, route],
+  );
 
   // Warstwy GeoJSON, klastry, popupy hover i zdarzenia mapy
   const {
@@ -75,10 +100,15 @@ export default function MapBoxMap({
     mapRef,
     places,
     popupClassName: styles.popup,
-    openPanel,
+    openPanel: handleOpenPanel,
     closePanel,
     isPanelOpenRef,
     isMapAnimatingRef,
+    isPickingOriginRef: route.isPickingOnMapRef,
+    onMapClickForOrigin: (coords, clickedPlace) => {
+      setMobileMapPreview(false);
+      route.handleMapClickForOrigin(coords, clickedPlace);
+    },
   });
 
   // Inicjalizacja instancji Mapbox GL
@@ -223,6 +253,65 @@ export default function MapBoxMap({
 
       <div ref={containerRef} className={styles.mapContainer} />
 
+      {/* Pływający pasek instrukcji nad mapą podczas wybierania punktu startowego kliknięciem */}
+      {route.status === "picking-on-map" && (
+        <div
+          className={styles.pickingFloatingBanner}
+          role="status"
+          aria-live="polite"
+        >
+          <span>
+            <strong>Startpunkt wählen:</strong> Tippen Sie auf eine Stelle oder
+            einen Pin auf der Karte.
+          </span>
+          <button
+            type="button"
+            className={styles.pickingFloatingCancelBtn}
+            onClick={route.cancelPickingOnMap}
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
+
+      {/* Na ekranach mobilnych (<= 860px) pasek podglądu trasy na mapie, gdy pełnoekranowy panel jest zwinięty */}
+      {mobileMapPreview && route.routeResult && selectedPlace && (
+        <div
+          className={styles.mobileRoutePreviewBar}
+          role="region"
+          aria-label="Aktive Route auf der Karte"
+        >
+          <div className={styles.mobileRoutePreviewInfo}>
+            <span className={styles.mobileRoutePreviewMetrics}>
+              {formatDuration(route.routeResult.durationSeconds)} ·{" "}
+              {formatDistance(route.routeResult.distanceMeters)}
+            </span>
+            <span className={styles.mobileRoutePreviewDest}>
+              Nach {selectedPlace.Name}
+            </span>
+          </div>
+          <div className={styles.mobileRoutePreviewActions}>
+            <button
+              type="button"
+              className={styles.mobileRoutePreviewPrimaryBtn}
+              onClick={() => setMobileMapPreview(false)}
+            >
+              Details &amp; Schritte
+            </button>
+            <button
+              type="button"
+              className={styles.mobileRoutePreviewCloseBtn}
+              onClick={() => {
+                setMobileMapPreview(false);
+                route.closeAndClearRoute();
+              }}
+            >
+              Beenden
+            </button>
+          </div>
+        </div>
+      )}
+
       {!embedded && (
         <MapSearch
           onLocationSelect={handleLocationSelect}
@@ -237,7 +326,7 @@ export default function MapBoxMap({
               zoom: 16,
               duration: 800,
             });
-            openPanel(place);
+            handleOpenPanel(place);
           }}
           places={searchablePlaces}
           disabled={mapLoadingState !== "success"}
@@ -258,6 +347,43 @@ export default function MapBoxMap({
             isOpen={isPanelOpen}
             isVisible={isPanelVisible}
             onCloseAction={closePanel}
+            mobileMapPreview={mobileMapPreview}
+            onExitMobileMapPreview={() => setMobileMapPreview(false)}
+            routePlanner={
+              !embedded
+                ? {
+                    allPlaces: searchablePlaces,
+                    isPlannerOpen: route.isPlannerOpen,
+                    profile: route.profile,
+                    origin: route.origin,
+                    status: route.status,
+                    errorMessage: route.errorMessage,
+                    infoNotice: route.infoNotice,
+                    routeResult: route.routeResult,
+                    isOriginFarForActiveMobility:
+                      route.isOriginFarForActiveMobility,
+                    onOpenPlanner: route.openPlanner,
+                    onCloseRoute: () => {
+                      setMobileMapPreview(false);
+                      route.closeAndClearRoute();
+                    },
+                    onChangeProfile: route.changeProfile,
+                    onSelectGpsOrigin: route.selectGpsOrigin,
+                    onSelectCustomOrigin: route.selectCustomOrigin,
+                    onStartPickingOnMap: route.startPickingOnMap,
+                    onCancelPickingOnMap: route.cancelPickingOnMap,
+                    onFitRouteBounds: () => {
+                      if (
+                        typeof window !== "undefined" &&
+                        window.innerWidth <= 860
+                      ) {
+                        setMobileMapPreview(true);
+                      }
+                      route.fitRouteBounds();
+                    },
+                  }
+                : undefined
+            }
           />
         </Suspense>
       </Activity>

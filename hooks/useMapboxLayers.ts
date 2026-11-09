@@ -13,6 +13,11 @@ interface UseMapboxLayersOptions {
   closePanel: () => void;
   isPanelOpenRef: React.RefObject<boolean>;
   isMapAnimatingRef: React.RefObject<boolean>;
+  isPickingOriginRef?: React.RefObject<boolean>;
+  onMapClickForOrigin?: (
+    coords: [number, number],
+    clickedPlace?: Place,
+  ) => void;
 }
 
 export function useMapboxLayers({
@@ -23,6 +28,8 @@ export function useMapboxLayers({
   closePanel,
   isPanelOpenRef,
   isMapAnimatingRef,
+  isPickingOriginRef,
+  onMapClickForOrigin,
 }: UseMapboxLayersOptions) {
   const layersInitializedRef = useRef(false);
   const hasFittedInitialBoundsRef = useRef(false);
@@ -39,6 +46,7 @@ export function useMapboxLayers({
   );
   const openPanelRef = useRef(openPanel);
   const closePanelRef = useRef(closePanel);
+  const onMapClickForOriginRef = useRef(onMapClickForOrigin);
 
   useEffect(() => {
     placesRef.current = places;
@@ -48,7 +56,8 @@ export function useMapboxLayers({
   useEffect(() => {
     openPanelRef.current = openPanel;
     closePanelRef.current = closePanel;
-  }, [openPanel, closePanel]);
+    onMapClickForOriginRef.current = onMapClickForOrigin;
+  }, [openPanel, closePanel, onMapClickForOrigin]);
 
   const updatePlacesData = useCallback(() => {
     const map = mapRef.current;
@@ -102,13 +111,17 @@ export function useMapboxLayers({
         map.getCanvas().style.cursor = "pointer";
       });
       map.on("mouseleave", "places-unclustered", () => {
-        map.getCanvas().style.cursor = "";
+        map.getCanvas().style.cursor = isPickingOriginRef?.current
+          ? "crosshair"
+          : "";
       });
       map.on("mouseenter", "places-clusters", () => {
         map.getCanvas().style.cursor = "pointer";
       });
       map.on("mouseleave", "places-clusters", () => {
-        map.getCanvas().style.cursor = "";
+        map.getCanvas().style.cursor = isPickingOriginRef?.current
+          ? "crosshair"
+          : "";
       });
 
       // ---- HOVER TOOLTIP ----
@@ -185,7 +198,14 @@ export function useMapboxLayers({
               hoverPopupRef.current.remove();
               hoverPopupRef.current = null;
             }
-            openPanelRef.current(place);
+            if (isPickingOriginRef?.current) {
+              onMapClickForOriginRef.current?.(
+                place.location.coordinates,
+                place,
+              );
+            } else {
+              openPanelRef.current(place);
+            }
           });
         }
       });
@@ -200,7 +220,7 @@ export function useMapboxLayers({
         }, 300);
       });
 
-      // ---- KLIK na pin → otwórz panel informacyjny ----
+      // ---- KLIK na pin → otwórz panel informacyjny (lub ustaw Startpunkt w trybie wyboru na mapie) ----
       map.on("click", "places-unclustered", (e) => {
         if (!e.features?.length) return;
         const placeId = e.features[0].properties?.placeId as number;
@@ -213,7 +233,11 @@ export function useMapboxLayers({
 
         const place = placeByIdRef.current.get(placeId);
         if (place) {
-          openPanelRef.current(place);
+          if (isPickingOriginRef?.current) {
+            onMapClickForOriginRef.current?.(place.location.coordinates, place);
+          } else {
+            openPanelRef.current(place);
+          }
         }
       });
 
@@ -233,21 +257,33 @@ export function useMapboxLayers({
         e.originalEvent.stopPropagation();
       });
 
-      // ---- KLIK w pustą mapę → zamknij panel ----
+      // ---- KLIK w pustą mapę → ustaw Startpunkt trasy lub zamknij panel ----
       map.on("click", (e) => {
         // Ignoruj kliknięcia podczas programowej animacji mapy (easeTo)
         if (isMapAnimatingRef.current) return;
-        if (!isPanelOpenRef.current) return;
 
         const features = map.queryRenderedFeatures(e.point, {
           layers: ["places-unclustered", "places-clusters"],
         });
-        if (!features.length) {
+        if (features.length) return;
+
+        if (isPickingOriginRef?.current) {
+          onMapClickForOriginRef.current?.([e.lngLat.lng, e.lngLat.lat]);
+          return;
+        }
+
+        if (isPanelOpenRef.current) {
           closePanelRef.current();
         }
       });
     },
-    [popupClassName, updatePlacesData, isMapAnimatingRef, isPanelOpenRef],
+    [
+      popupClassName,
+      updatePlacesData,
+      isMapAnimatingRef,
+      isPanelOpenRef,
+      isPickingOriginRef,
+    ],
   );
 
   // Aktualizuj dane źródła GeoJSON gdy zmieni się lista miejsc (np. filtry kategorii)

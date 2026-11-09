@@ -3,11 +3,12 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Phone } from "lucide-react";
+import { Phone, Navigation, ExternalLink } from "lucide-react";
 import { DirectusImage, PlaceImage } from "./MediaComponents";
 import ColumnAudioPlayer from "./ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "./CategoryIcon";
 import PlaceGallery from "./PlaceGallery";
+import RoutePlannerSection from "./RoutePlannerSection";
 import { getAudioUrl } from "../lib/supabase";
 import {
   cityToSegment,
@@ -15,6 +16,12 @@ import {
   sanitizeExternalUrl,
   sanitizeWordHtml,
 } from "../lib/orte-shared";
+import type {
+  RouteOrigin,
+  RouteProfile,
+  RouteResult,
+  RouteStatus,
+} from "../hooks/useMapboxRoute";
 import type { Place } from "../types";
 import styles from "./PlaceInfoPanel.module.css";
 
@@ -38,11 +45,34 @@ function resolveDetailHref(place: Place): string | null {
   return `/liste/${segment}/${place.slug}`;
 }
 
+export interface PlaceRoutePlannerProps {
+  allPlaces: Place[];
+  isPlannerOpen: boolean;
+  profile: RouteProfile;
+  origin: RouteOrigin | null;
+  status: RouteStatus;
+  errorMessage: string | null;
+  infoNotice: string | null;
+  routeResult: RouteResult | null;
+  isOriginFarForActiveMobility: boolean;
+  onOpenPlanner: () => void;
+  onCloseRoute: () => void;
+  onChangeProfile: (profile: RouteProfile) => void;
+  onSelectGpsOrigin: () => void;
+  onSelectCustomOrigin: (origin: RouteOrigin) => void;
+  onStartPickingOnMap: () => void;
+  onCancelPickingOnMap: () => void;
+  onFitRouteBounds: () => void;
+}
+
 interface PlaceInfoPanelProps {
   place: Place | null;
   isOpen: boolean;
   isVisible: boolean;
   onCloseAction: () => void;
+  routePlanner?: PlaceRoutePlannerProps;
+  mobileMapPreview?: boolean;
+  onExitMobileMapPreview?: () => void;
 }
 
 export default function PlaceInfoPanel({
@@ -50,6 +80,8 @@ export default function PlaceInfoPanel({
   isOpen,
   isVisible,
   onCloseAction,
+  routePlanner,
+  mobileMapPreview = false,
 }: PlaceInfoPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [isClosing, setIsClosing] = useState(false);
@@ -65,11 +97,17 @@ export default function PlaceInfoPanel({
   useEffect(() => {
     if (!isOpen || isClosing) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") {
+        if (routePlanner?.status === "picking-on-map") {
+          routePlanner.onCancelPickingOnMap();
+          return;
+        }
+        handleClose();
+      }
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, isClosing, handleClose]);
+  }, [isOpen, isClosing, handleClose, routePlanner]);
 
   useEffect(() => {
     if (panelRef.current) {
@@ -77,6 +115,8 @@ export default function PlaceInfoPanel({
     }
   }, [place?.id]);
 
+  const isPickingOnMap = routePlanner?.status === "picking-on-map";
+  const hideOnMobileForMap = isPickingOnMap || mobileMapPreview;
   const isActuallyOpen = isVisible && !isClosing;
 
   return (
@@ -84,7 +124,9 @@ export default function PlaceInfoPanel({
       {/* Backdrop widoczny wyłącznie na ekranach mobilnych (<= 860px).
           Na desktopie mapa pozostaje w pełni interaktywna i pozwala klikać kolejne piny. */}
       <div
-        className={`${styles.panelBackdrop} ${isActuallyOpen ? styles.visible : ""}`}
+        className={`${styles.panelBackdrop} ${
+          isActuallyOpen && !hideOnMobileForMap ? styles.visible : ""
+        }`}
         onClick={handleClose}
         aria-hidden="true"
       />
@@ -93,7 +135,9 @@ export default function PlaceInfoPanel({
           Widoczność kontroluje wyłącznie CSS transform (.open) oraz pointer-events. */}
       <aside
         ref={panelRef}
-        className={`${styles.infoPanel} ${isActuallyOpen ? styles.open : ""}`}
+        className={`${styles.infoPanel} ${isActuallyOpen ? styles.open : ""} ${
+          hideOnMobileForMap ? styles.hiddenOnMobileForMap : ""
+        }`}
         role="dialog"
         aria-modal={false}
         aria-hidden={!isActuallyOpen}
@@ -124,7 +168,11 @@ export default function PlaceInfoPanel({
 
         <div className={styles.panelContent}>
           {place ? (
-            <PlaceContent key={place.id} place={place} />
+            <PlaceContent
+              key={place.id}
+              place={place}
+              routePlanner={routePlanner}
+            />
           ) : (
             <EmptyState />
           )}
@@ -134,7 +182,13 @@ export default function PlaceInfoPanel({
   );
 }
 
-function PlaceContent({ place }: { place: Place }) {
+function PlaceContent({
+  place,
+  routePlanner,
+}: {
+  place: Place;
+  routePlanner?: PlaceRoutePlannerProps;
+}) {
   const galerie = galleryUrls(place);
   const safeLinkUrl = sanitizeExternalUrl(place.Link_URL);
   const audioUrl = resolveAudioSrc(place);
@@ -264,8 +318,8 @@ function PlaceContent({ place }: { place: Place }) {
         )}
       </header>
 
-      {/* Pasek akcji: przejście do pełnej strony Audiopinu oraz strona www partnera */}
-      {(detailHref || safeLinkUrl) && (
+      {/* Pasek akcji: przejście do pełnej strony Audiopinu, wyznaczenie trasy na mapie oraz strona www partnera */}
+      {(detailHref || safeLinkUrl || routePlanner) && (
         <div className={styles.actionsBar}>
           {detailHref && (
             <Link href={detailHref} className={styles.primaryCta}>
@@ -276,34 +330,68 @@ function PlaceContent({ place }: { place: Place }) {
             </Link>
           )}
 
-          {safeLinkUrl && (
+          {(routePlanner || safeLinkUrl) && (
             <div className={styles.secondaryActions}>
-              <a
-                href={safeLinkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.secondaryCta}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+              {routePlanner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (routePlanner.isPlannerOpen) {
+                      routePlanner.onCloseRoute();
+                    } else {
+                      routePlanner.onOpenPlanner();
+                    }
+                  }}
+                  className={`${styles.secondaryCta} ${
+                    routePlanner.isPlannerOpen ? styles.secondaryCtaActive : ""
+                  }`}
                 >
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-                <span>{place.Link_Text || "Website besuchen"}</span>
-              </a>
+                  <Navigation size={15} aria-hidden="true" />
+                  <span>
+                    {routePlanner.isPlannerOpen
+                      ? "Routenplaner aktiv"
+                      : "Route hierhin"}
+                  </span>
+                </button>
+              )}
+
+              {safeLinkUrl && (
+                <a
+                  href={safeLinkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.secondaryCta}
+                >
+                  <ExternalLink size={15} aria-hidden="true" />
+                  <span>{place.Link_Text || "Website besuchen"}</span>
+                </a>
+              )}
             </div>
           )}
         </div>
+      )}
+
+      {routePlanner?.isPlannerOpen && (
+        <RoutePlannerSection
+          destination={place}
+          allPlaces={routePlanner.allPlaces}
+          profile={routePlanner.profile}
+          origin={routePlanner.origin}
+          status={routePlanner.status}
+          errorMessage={routePlanner.errorMessage}
+          infoNotice={routePlanner.infoNotice}
+          routeResult={routePlanner.routeResult}
+          isOriginFarForActiveMobility={
+            routePlanner.isOriginFarForActiveMobility
+          }
+          onChangeProfile={routePlanner.onChangeProfile}
+          onSelectGpsOrigin={routePlanner.onSelectGpsOrigin}
+          onSelectCustomOrigin={routePlanner.onSelectCustomOrigin}
+          onStartPickingOnMap={routePlanner.onStartPickingOnMap}
+          onCancelPickingOnMap={routePlanner.onCancelPickingOnMap}
+          onFitRouteBounds={routePlanner.onFitRouteBounds}
+          onCloseRoute={routePlanner.onCloseRoute}
+        />
       )}
 
       {isLoadingDescription ? (

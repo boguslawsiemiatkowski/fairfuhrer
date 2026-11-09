@@ -1,0 +1,569 @@
+/* components/RoutePlannerSection.module.css */
+/* Sekcja planera tras (Mapbox Directions API v5) w stylu Studio / Editorial FairFührer */
+
+.plannerContainer {
+  margin: 0;
+  padding: 1.15rem 1.35rem;
+  background-color: #f4f7f5;
+  border-bottom: 2px solid #18222f;
+  font-family: var(--font-fira);
+}
+
+.plannerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.plannerTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #18222f;
+}
+
+.plannerTitle {
+  margin: 0;
+  font-family: var(--font-anton);
+  font-size: 1.08rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #18222f;
+}
+
+.closeRouteBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.6rem;
+  background-color: #ffffff;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.closeRouteBtn:hover {
+  background-color: #18222f;
+  color: #ffffff;
+}
+
+/* Wizualizacja punktów Start (A) -> Ziel (B) */
+.waypointsBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem 0.8rem;
+  background-color: #ffffff;
+  border: 1.5px solid #18222f;
+  margin-bottom: 0.85rem;
+}
+
+.waypointRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.83rem;
+  line-height: 1.35;
+}
+
+.waypointDivider {
+  height: 1px;
+  background-color: #e2e8f0;
+  margin: 0.1rem 0;
+}
+
+.badgeStart {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 0.12rem 0.42rem;
+  background-color: #18222f;
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 0.08rem;
+}
+
+.badgeDest {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 0.12rem 0.48rem;
+  background-color: #fc6c14;
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 0.08rem;
+}
+
+.waypointInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.waypointLabel {
+  font-weight: 700;
+  color: #18222f;
+  word-break: break-word;
+}
+
+.waypointPlaceholder {
+  color: #64748b;
+  font-style: italic;
+}
+
+.waypointSublabel {
+  display: block;
+  font-size: 0.75rem;
+  color: #475569;
+  margin-top: 0.08rem;
+}
+
+/* Przyciski wyboru sposobu wskazania punktu startowego */
+.stepLabel {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #334155;
+  margin-bottom: 0.42rem;
+}
+
+.originButtonsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.originOptionBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  padding: 0.52rem 0.35rem;
+  background-color: #ffffff;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.originOptionBtn:hover {
+  background-color: #eef2f6;
+}
+
+.originOptionBtnActive {
+  background-color: #18222f;
+  color: #ffffff;
+  box-shadow: 2px 2px 0 #fc6c14;
+}
+
+.originOptionBtnActive:hover {
+  background-color: #18222f;
+  color: #ffffff;
+}
+
+/* Wyszukiwarka innego pinu lub miasta jako punktu startowego */
+.originSearchBox {
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  padding: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.originSearchInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.originSearchInput {
+  width: 100%;
+  padding: 0.5rem 2rem 0.5rem 0.65rem;
+  border: 1.5px solid #94a3b8;
+  font-family: var(--font-fira);
+  font-size: 0.84rem;
+  color: #18222f;
+  background-color: #ffffff;
+  outline: none;
+}
+
+.originSearchInput:focus {
+  border-color: #18222f;
+}
+
+.originSearchClear {
+  position: absolute;
+  right: 0.4rem;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.originSearchHint {
+  margin: 0.4rem 0 0;
+  font-size: 0.74rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.originSuggestionsList {
+  margin-top: 0.45rem;
+  max-height: 210px;
+  overflow-y: auto;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.originSuggestionItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.42rem 0.45rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-fira);
+  transition: background-color 0.12s ease;
+}
+
+.originSuggestionItem:hover {
+  background-color: #f1f5f9;
+}
+
+.originSuggestionBadgePin,
+.originSuggestionBadgeGeo {
+  flex-shrink: 0;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.36rem;
+  margin-top: 0.1rem;
+}
+
+.originSuggestionBadgePin {
+  background-color: #fc6c14;
+  color: #ffffff;
+}
+
+.originSuggestionBadgeGeo {
+  background-color: #e2e8f0;
+  color: #18222f;
+}
+
+.originSuggestionText {
+  flex: 1;
+  min-width: 0;
+}
+
+.originSuggestionName {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #18222f;
+  line-height: 1.25;
+}
+
+.originSuggestionMeta {
+  font-size: 0.73rem;
+  color: #64748b;
+  line-height: 1.25;
+  margin-top: 0.08rem;
+}
+
+/* Przełącznik środka transportu (Zu Fuß / Fahrrad / Auto) */
+.profilesRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.profileTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.38rem;
+  padding: 0.5rem 0.4rem;
+  background-color: #ffffff;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.profileTab:hover {
+  background-color: #eef2f6;
+}
+
+.profileTabActive {
+  background-color: #fc6c14;
+  color: #ffffff;
+  box-shadow: 2px 2px 0 #18222f;
+}
+
+.profileTabActive:hover {
+  background-color: #e55c06;
+  color: #ffffff;
+}
+
+.profileTabDisabled {
+  opacity: 0.52;
+  background-color: #e2e8f0;
+  color: #475569;
+  cursor: not-allowed;
+}
+
+/* Komunikaty pomocnicze, ostrzeżenia i błędy */
+.noticeBox,
+.pickingBanner,
+.errorBox,
+.loadingBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.68rem 0.78rem;
+  font-size: 0.8rem;
+  line-height: 1.42;
+  border: 1.5px solid #18222f;
+  margin-bottom: 0.75rem;
+}
+
+.noticeBox {
+  background-color: #fffbeb;
+  color: #78350f;
+  border-color: #d97706;
+}
+
+.pickingBanner {
+  background-color: #eff6ff;
+  color: #1e3a8a;
+  border-color: #2563eb;
+  flex-direction: column;
+}
+
+.pickingBannerRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.pickingBannerActions {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.pickingCancelBtn {
+  padding: 0.28rem 0.65rem;
+  background-color: #ffffff;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.errorBox {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border-color: #dc2626;
+}
+
+.loadingBox {
+  background-color: #ffffff;
+  color: #18222f;
+  align-items: center;
+}
+
+.noticeIcon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2.2px solid rgba(24, 34, 47, 0.2);
+  border-top-color: #fc6c14;
+  border-radius: 50%;
+  animation: routeSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes routeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Podsumowanie wyznaczonej trasy */
+.resultCard {
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 3px 3px 0 #18222f;
+  padding: 0.85rem;
+}
+
+.resultSummaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.metricsGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.durationValue {
+  font-family: var(--font-anton);
+  font-size: 1.45rem;
+  color: #18222f;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.distanceValue {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fc6c14;
+}
+
+.fitBoundsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.34rem 0.62rem;
+  background-color: #f8fafc;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.fitBoundsBtn:hover {
+  background-color: #18222f;
+  color: #ffffff;
+}
+
+/* Rozwijana lista wskazówek krok po kroku */
+.stepsToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 0.7rem;
+  padding: 0.45rem 0 0;
+  background: none;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  font-family: var(--font-fira);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #18222f;
+  cursor: pointer;
+}
+
+.stepsToggleBtn:hover {
+  color: #fc6c14;
+}
+
+.stepsList {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  border-top: 1px solid #f1f5f9;
+}
+
+.stepItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.42rem 0.2rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #1e293b;
+}
+
+.stepItem:last-child {
+  border-bottom: none;
+}
+
+.stepIndex {
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f1f5f9;
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 50%;
+}
+
+.stepInstruction {
+  flex: 1;
+}
+
+.stepDistance {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+}

@@ -34,8 +34,9 @@
 
 /* Przycisk zamknięcia w stylu Studio */
 .closeButton {
-  position: sticky;
-  top: 14px;
+  position: absolute;
+  top: 5px;
+  right: 5px;
   float: right;
   margin: 14px 14px -52px 0;
   width: 38px;
@@ -257,12 +258,14 @@
   font-size: 0.8rem;
   font-weight: 700;
   text-decoration: none;
+  cursor: pointer;
   transition:
     background-color 0.15s ease,
     color 0.15s ease;
 }
 
-.secondaryCta:hover {
+.secondaryCta:hover,
+.secondaryCtaActive {
   background-color: #18222f;
   color: #ffffff;
 }
@@ -460,6 +463,13 @@
 
   .infoPanel.open {
     transform: translateY(0);
+  }
+
+  /* Na mobile tymczasowo chowamy pełnoekranowy panel, gdy użytkownik wybiera punkt na mapie
+     lub ogląda wyznaczoną trasę bezpośrednio na mapie */
+  .infoPanel.open.hiddenOnMobileForMap {
+    transform: translateY(100%);
+    pointer-events: none;
   }
 
   .mainImage {
