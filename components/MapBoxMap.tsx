@@ -27,15 +27,20 @@ const PlaceInfoPanel = lazy(() => import("./PlaceInfoPanel"));
 
 interface MapBoxMapProps {
   places: Place[];
+  allPlaces?: Place[];
+  onEnsurePlaceVisible?: (place: Place) => void;
   disableGeolocation?: boolean;
   embedded?: boolean;
 }
 
 export default function MapBoxMap({
   places,
+  allPlaces,
+  onEnsurePlaceVisible,
   disableGeolocation = false,
   embedded = false,
 }: MapBoxMapProps) {
+  const searchablePlaces = allPlaces ?? places;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
 
@@ -54,7 +59,11 @@ export default function MapBoxMap({
     closePanel,
     openInitialPinFromUrl,
     handleLocationSelect,
-  } = usePlaceSelection(mapRef, { syncUrl: !embedded, places });
+  } = usePlaceSelection(mapRef, {
+    syncUrl: !embedded,
+    places: searchablePlaces,
+    onEnsurePlaceVisible,
+  });
 
   // Warstwy GeoJSON, klastry, popupy hover i zdarzenia mapy
   const {
@@ -119,9 +128,9 @@ export default function MapBoxMap({
           map.addControl(geolocateControl, "top-left");
         }
 
-        // Załaduj ikony SVG dla każdej kategorii, następnie utwórz warstwy i podepnij zdarzenia
+        // Załaduj ikony SVG dla każdej kategorii ze wszystkich miejsc, następnie utwórz warstwy i podepnij zdarzenia
         const categoryMap = new Map<number, string>();
-        placesRef.current.forEach((p) =>
+        searchablePlaces.forEach((p) =>
           p.Kategorie.forEach((cat) =>
             categoryMap.set(cat.id, categoryColorFor(cat)),
           ),
@@ -218,8 +227,11 @@ export default function MapBoxMap({
         <MapSearch
           onLocationSelect={handleLocationSelect}
           onPinSelect={(placeId) => {
-            const place = placesRef.current.find((p) => p.id === placeId);
+            const place =
+              searchablePlaces.find((p) => p.id === placeId) ??
+              placesRef.current.find((p) => p.id === placeId);
             if (!place) return;
+            onEnsurePlaceVisible?.(place);
             mapRef.current?.flyTo({
               center: place.location.coordinates,
               zoom: 16,
@@ -227,7 +239,7 @@ export default function MapBoxMap({
             });
             openPanel(place);
           }}
-          places={places}
+          places={searchablePlaces}
           disabled={mapLoadingState !== "success"}
           panelOpen={isPanelOpen && isPanelVisible}
         />

@@ -5,6 +5,7 @@ import type { Place } from "../types";
 interface UsePlaceSelectionOptions {
   syncUrl?: boolean;
   places?: Place[];
+  onEnsurePlaceVisible?: (place: Place) => void;
 }
 
 function findPlaceByParam(places: Place[], param: string): Place | undefined {
@@ -22,6 +23,10 @@ export function usePlaceSelection(
   options?: UsePlaceSelectionOptions,
 ) {
   const syncUrl = options?.syncUrl ?? false;
+  const onEnsurePlaceVisibleRef = useRef(options?.onEnsurePlaceVisible);
+  useEffect(() => {
+    onEnsurePlaceVisibleRef.current = options?.onEnsurePlaceVisible;
+  }, [options?.onEnsurePlaceVisible]);
   const placesRef = useRef<Place[]>(options?.places ?? []);
   useEffect(() => {
     placesRef.current = options?.places ?? [];
@@ -213,6 +218,7 @@ export function usePlaceSelection(
 
     const place = findPlaceByParam(placesRef.current, pinParam);
     if (place) {
+      onEnsurePlaceVisibleRef.current?.(place);
       openPanel(place, { skipUrlSync: true });
     }
   }, [syncUrl, openPanel]);

@@ -171,6 +171,25 @@ export default function MapWithFilters({
     syncUrlWithCategories(allCategoryIds);
   }, [allCategoryIds, syncUrlWithCategories]);
 
+  // Gdy użytkownik wybierze w wyszukiwarce (lub przez ?pin=...) miejsce,
+  // którego kategoria była wyłączona w Legendzie, automatycznie ją włączamy
+  const handleEnsurePlaceVisible = useCallback(
+    (place: Place) => {
+      if (embedded || place.Kategorie.length === 0) return;
+      setSelectedCategoryIds((prev) => {
+        const isAlreadyVisible = place.Kategorie.some((cat) =>
+          prev.includes(cat.id),
+        );
+        if (isAlreadyVisible) return prev;
+        const primaryCatId = place.Kategorie[0].id;
+        const next = [...prev, primaryCatId];
+        syncUrlWithCategories(next);
+        return next;
+      });
+    },
+    [embedded, syncUrlWithCategories],
+  );
+
   // Liczba miejsc przypisanych do każdej kategorii
   const categoryCounts = useMemo(() => {
     const counts: Record<number, number> = {};
@@ -223,6 +242,8 @@ export default function MapWithFilters({
     <div className={containerClass}>
       <MapBoxMap
         places={embedded ? places : filteredPlaces}
+        allPlaces={places}
+        onEnsurePlaceVisible={handleEnsurePlaceVisible}
         disableGeolocation={disableGeolocation}
         embedded={embedded}
       />
