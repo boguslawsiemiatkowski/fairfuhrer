@@ -3,6 +3,7 @@
 
 import React from "react";
 import { useCookies } from "../context/CookieContext";
+import { MapSkeleton } from "./MapWithFilters";
 import styles from "./MapWithFilters.module.css";
 
 interface ConditionalMapboxProps {
@@ -10,10 +11,18 @@ interface ConditionalMapboxProps {
 }
 
 export function ConditionalMapbox({ children }: ConditionalMapboxProps) {
-  const { hasConsented } = useCookies();
+  const { hasConsented, showBanner } = useCookies();
 
-  // Mapbox wymaga zgody na pliki cookie — zanim zostanie wyrażona (lub zanim kontekst
-  // zhydratuje się w przeglądarce), wyświetlamy pełnowymiarowy szkielet mapy (CLS = 0).
+  // Podczas pierwszej klatki hydratacji (zanim useEffect w CookieContext odczyta
+  // zapisaną zgodę z ciasteczek/localStorage) zarówno hasConsented, jak i showBanner
+  // mają wartość false. Wyświetlamy wtedy identyczny MapSkeleton ze spinnerem,
+  // aby uniknąć mignięcia komunikatu o cookies u użytkowników, którzy już wyrazili zgodę.
+  if (!hasConsented && !showBanner) {
+    return <MapSkeleton />;
+  }
+
+  // Jeśli użytkownik faktycznie nie wyraził jeszcze zgody (baner cookies jest widoczny),
+  // pokazujemy informację o wymaganej zgodzie w tym samym układzie szkieletu (CLS = 0).
   if (!hasConsented) {
     return (
       <div className={styles.mapSkeleton} role="status" aria-live="polite">

@@ -1,6 +1,6 @@
 // components/MapWithFilters.tsx
-// Komponent łączący mapę Mapbox z filtrem kategorii oraz synchronizacją stanu
-// filtrów w parametrze URL (?kategorie=...) na stronie /karte.
+// Komponent łączący mapę Mapbox z nowoczesnym filtrem kategorii oraz synchronizacją
+// stanu filtrów w parametrze URL (?kategorie=...) na stronie /karte.
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
@@ -111,6 +111,8 @@ export default function MapWithFilters({
       : allCategoryIds,
   );
 
+  const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
+
   // Obsługa przycisków Wstecz/Dalej przeglądarki (popstate)
   useEffect(() => {
     if (embedded) return;
@@ -155,6 +157,34 @@ export default function MapWithFilters({
     [syncUrlWithCategories],
   );
 
+  const handleToggleAll = useCallback(() => {
+    setSelectedCategoryIds((prev) => {
+      const allSelected = prev.length === allCategoryIds.length;
+      const next = allSelected ? [] : allCategoryIds;
+      syncUrlWithCategories(next);
+      return next;
+    });
+  }, [allCategoryIds, syncUrlWithCategories]);
+
+  const handleResetAll = useCallback(() => {
+    setSelectedCategoryIds(allCategoryIds);
+    syncUrlWithCategories(allCategoryIds);
+  }, [allCategoryIds, syncUrlWithCategories]);
+
+  // Liczba miejsc przypisanych do każdej kategorii
+  const categoryCounts = useMemo(() => {
+    const counts: Record<number, number> = {};
+    for (const cat of categories) {
+      counts[cat.id] = 0;
+    }
+    for (const place of places) {
+      for (const cat of place.Kategorie) {
+        counts[cat.id] = (counts[cat.id] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [places, categories]);
+
   const filteredPlaces = useMemo(() => {
     if (selectedCategoryIds.length === 0) {
       return [];
@@ -163,6 +193,8 @@ export default function MapWithFilters({
       place.Kategorie.some((cat) => selectedCategoryIds.includes(cat.id)),
     );
   }, [places, selectedCategoryIds]);
+
+  const allSelected = selectedCategoryIds.length === categories.length;
 
   const containerClass = [
     styles.container,
@@ -196,17 +228,83 @@ export default function MapWithFilters({
       />
 
       {!embedded && (
-        <div className={styles.filtersContainer}>
-          <h3 className={styles.legendTitle}>Legende</h3>
-          <p className={styles.legendSubtitle}>
-            Filtern Sie Orte nach Kategorien
-          </p>
-          <CategoryFilter
-            categories={categories}
-            selectedIds={selectedCategoryIds}
-            onToggle={handleToggleCategory}
-          />
-        </div>
+        <aside
+          className={`${styles.filtersContainer} ${
+            isLegendCollapsed ? styles.filtersContainerCollapsed : ""
+          }`}
+          aria-label="Kategorien und Legende"
+        >
+          {/* Nagłówek karty na desktopie (zwijany/rozwijany) */}
+          <div className={styles.legendHeader}>
+            <div className={styles.legendTitleGroup}>
+              <h3 className={styles.legendTitle}>Legende</h3>
+              <span className={styles.placesCounter}>
+                {allSelected
+                  ? `${places.length} Orte`
+                  : `${filteredPlaces.length} / ${places.length} Orte`}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className={styles.collapseButton}
+              onClick={() => setIsLegendCollapsed((prev) => !prev)}
+              aria-expanded={!isLegendCollapsed}
+              aria-label={
+                isLegendCollapsed ? "Legende ausklappen" : "Legende einklappen"
+              }
+              title={
+                isLegendCollapsed ? "Legende ausklappen" : "Legende einklappen"
+              }
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className={
+                  isLegendCollapsed
+                    ? styles.chevronCollapsed
+                    : styles.chevronExpanded
+                }
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </div>
+
+          <div
+            className={`${styles.legendBody} ${
+              isLegendCollapsed ? styles.legendBodyCollapsed : ""
+            }`}
+          >
+            <div className={styles.legendToolbar}>
+              <span className={styles.legendSubtitle}>Nach Kategorie filtern</span>
+              <button
+                type="button"
+                className={styles.resetButton}
+                onClick={handleToggleAll}
+              >
+                {allSelected ? "Alle abwählen" : "Alle auswählen"}
+              </button>
+            </div>
+
+            <CategoryFilter
+              categories={categories}
+              selectedIds={selectedCategoryIds}
+              categoryCounts={categoryCounts}
+              totalPlacesCount={places.length}
+              onToggle={handleToggleCategory}
+              onSelectAll={handleResetAll}
+              onToggleAll={handleToggleAll}
+            />
+          </div>
+        </aside>
       )}
     </div>
   );

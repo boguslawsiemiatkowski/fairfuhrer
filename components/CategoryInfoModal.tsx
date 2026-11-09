@@ -1,9 +1,11 @@
-// components/CategoryInfoModal.tsx - Positioned directly above clicked icon
+// components/CategoryInfoModal.tsx
 "use client";
 
 import React, { useEffect, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { FocusTrap } from "focus-trap-react";
+import CategoryIcon, { categoryColorFor } from "./CategoryIcon";
+import { sanitizeWordHtml } from "../lib/orte-shared";
 import styles from "./CategoryInfoModal.module.css";
 import type { Category } from "../types";
 
@@ -21,22 +23,17 @@ const CategoryInfoModal: React.FC<CategoryInfoModalProps> = ({
   const [mounted, setMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [modalStyle, setModalStyle] = useState<React.CSSProperties>({});
   const [closeTimeoutId, setCloseTimeoutId] = useState<NodeJS.Timeout | null>(
     null,
   );
 
   /* eslint-disable react-hooks/set-state-in-effect */
-  // Intentional mount detection for portal rendering
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Staggered animation: First show modal, then make it visible
-  // Animation state management requires effect-based updates
   useEffect(() => {
     if (isOpen && mounted) {
-      // Small delay for smooth entrance
       requestAnimationFrame(() => {
         setIsVisible(true);
       });
@@ -51,21 +48,18 @@ const CategoryInfoModal: React.FC<CategoryInfoModalProps> = ({
       setIsClosing(true);
       setIsVisible(false);
 
-      // Clear any existing timeout
       if (closeTimeoutId) {
         clearTimeout(closeTimeoutId);
       }
 
-      // Wait for animation to complete (350ms for smoother close)
       const timeoutId = setTimeout(() => {
         setIsClosing(false);
         onClose();
-      }, 350);
+      }, 250);
       setCloseTimeoutId(timeoutId);
     }
   }, [onClose, isClosing, closeTimeoutId]);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (closeTimeoutId) {
@@ -74,10 +68,8 @@ const CategoryInfoModal: React.FC<CategoryInfoModalProps> = ({
     };
   }, [closeTimeoutId]);
 
-  // Handle backdrop click (click outside modal)
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      // Only close if clicking the backdrop itself, not the modal content
       if (e.target === e.currentTarget) {
         handleClose();
       }
@@ -85,37 +77,6 @@ const CategoryInfoModal: React.FC<CategoryInfoModalProps> = ({
     [handleClose],
   );
 
-  /* eslint-disable react-hooks/set-state-in-effect */
-  // Position modal - centered on all viewports
-  // Dynamic positioning based on viewport requires effect-based state updates
-  useEffect(() => {
-    if (isOpen && mounted) {
-      const viewport = {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      };
-
-      // Modal dimensions
-      const modalWidth = Math.min(280, viewport.width - 40);
-      const modalHeight = 200; // Approximate height from CSS
-
-      // Center horizontally and vertically
-      const left = (viewport.width - modalWidth) / 2;
-      const top = (viewport.height - modalHeight) / 2;
-
-      const style: React.CSSProperties = {
-        position: "fixed",
-        left: `${left}px`,
-        top: `${Math.max(20, top)}px`, // Minimum 20px from top
-        zIndex: 9999,
-      };
-
-      setModalStyle(style);
-    }
-  }, [isOpen, mounted]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Lock body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       const scrollbarWidth =
@@ -134,6 +95,10 @@ const CategoryInfoModal: React.FC<CategoryInfoModalProps> = ({
     return null;
   }
 
+  const safeDescription = category.description
+    ? sanitizeWordHtml(category.description)
+    : "";
+
   const modalContent = (
     <div
       className={`${styles.backdrop} ${isVisible ? styles.visible : ""} ${
@@ -150,7 +115,7 @@ const CategoryInfoModal: React.FC<CategoryInfoModalProps> = ({
           escapeDeactivates: (event) => {
             handleClose();
             event.preventDefault();
-            return false; // Don't deactivate automatically, handleClose manages state
+            return false;
           },
           returnFocusOnDeactivate: true,
         }}
@@ -159,38 +124,51 @@ const CategoryInfoModal: React.FC<CategoryInfoModalProps> = ({
           className={`${styles.modal} ${isVisible ? styles.visible : ""} ${
             isClosing ? styles.closing : ""
           }`}
-          style={modalStyle}
           role="dialog"
           aria-modal="true"
           aria-labelledby="category-modal-title"
           aria-describedby="category-modal-description"
         >
-          <button
-            className={styles.closeButton}
-            onClick={handleClose}
-            aria-label="Schliessen"
-            type="button"
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <div className={styles.modalHeader}>
+            <div className={styles.modalTitleGroup}>
+              <CategoryIcon
+                categoryId={category.id}
+                color={categoryColorFor(category)}
+                size={28}
+              />
+              <h3 id="category-modal-title" className={styles.modalTitle}>
+                {category.name}
+              </h3>
+            </div>
+
+            <button
+              className={styles.closeButton}
+              onClick={handleClose}
+              aria-label="Schließen"
+              type="button"
             >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
 
           <div
             id="category-modal-description"
             className={styles.content}
             dangerouslySetInnerHTML={{
-              __html: category.description ?? "",
+              __html: safeDescription,
             }}
           />
         </div>
