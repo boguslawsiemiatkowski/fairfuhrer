@@ -124,7 +124,6 @@ export default function MapSearch({
     abortRef.current = currentAbort;
 
     const fetchSuggestions = async () => {
-      // Unikamy synchronicznego wywołania setState wewnątrz useEffect za pomocą Promise.resolve()
       await Promise.resolve();
       setIsLoading(true);
 
@@ -179,8 +178,6 @@ export default function MapSearch({
     };
   }, [debouncedQuery]);
 
-  // Lokale Pin-Treffer (synchron, vom Parent übergeben) zuerst, dann
-  // geografische Mapbox-Ergebnisse.
   const localPinResults = useMemo(
     () => searchLocalPins(debouncedQuery, places),
     [debouncedQuery, places],
@@ -194,7 +191,6 @@ export default function MapSearch({
     (result: Suggestion) => {
       abortRef.current?.abort();
       if (result.placeId !== undefined) {
-        // Lokaler Pin → Panel öffnen (Map-Zoom übernimmt der Parent).
         onPinSelect?.(result.placeId);
       } else {
         const maxZoom = result.feature_type === "place" ? 13 : undefined;
@@ -219,7 +215,7 @@ export default function MapSearch({
     if (disabled) return;
     if (!isExpanded) {
       setIsExpanded(true);
-      setTimeout(() => inputRef.current?.focus(), 60);
+      inputRef.current?.focus();
     } else if (!searchQuery.trim()) {
       setIsExpanded(false);
       setSelectedIndex(-1);
@@ -229,7 +225,6 @@ export default function MapSearch({
     }
   }, [disabled, isExpanded, searchQuery]);
 
-  // Delegacja zdarzeń kliknięcia na poziomie listy podpowiedzi
   const handleSuggestionsClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const itemEl = (e.target as HTMLElement).closest<HTMLElement>(
@@ -329,7 +324,7 @@ export default function MapSearch({
           className={styles.searchIcon}
           onClick={handleSearchIconClick}
           disabled={disabled}
-          aria-label="Ort oder Pin suchen"
+          aria-label={isExpanded ? "Suche schließen" : "Ort oder Pin suchen"}
           type="button"
         >
           <svg
@@ -375,12 +370,6 @@ export default function MapSearch({
           autoComplete="off"
           aria-label="Ort, Stadt oder Pin suchen"
         />
-
-        {!searchQuery && !isLoading && (
-          <kbd className={styles.shortcutHint} aria-hidden="true">
-            /
-          </kbd>
-        )}
 
         {isLoading && (
           <div className={styles.loadingIndicator} aria-hidden="true">

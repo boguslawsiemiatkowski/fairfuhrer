@@ -385,14 +385,14 @@ html.gallery-open body {
   flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 6px;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .popup-category-badge {
   background-color: #999;
   color: white;
   font-size: 0.65rem;
-  font-weight: 400;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   padding: 3px 9px;

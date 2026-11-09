@@ -2,9 +2,31 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type mapboxgl from "mapbox-gl";
 import type { Place } from "../types";
 
+interface UsePlaceSelectionOptions {
+  syncUrl?: boolean;
+  places?: Place[];
+}
+
+function findPlaceByParam(places: Place[], param: string): Place | undefined {
+  const normalized = param.trim().toLowerCase();
+  if (!normalized) return undefined;
+  return places.find(
+    (p) =>
+      (p.slug && p.slug.toLowerCase() === normalized) ||
+      String(p.id) === normalized,
+  );
+}
+
 export function usePlaceSelection(
   mapRef: React.RefObject<mapboxgl.Map | null>,
+  options?: UsePlaceSelectionOptions,
 ) {
+  const syncUrl = options?.syncUrl ?? false;
+  const placesRef = useRef<Place[]>(options?.places ?? []);
+  useEffect(() => {
+    placesRef.current = options?.places ?? [];
+  }, [options?.places]);
+
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isPanelVisible, setIsPanelVisible] = useState(false);
@@ -83,7 +105,7 @@ export function usePlaceSelection(
   );
 
   const openPanel = useCallback(
-    (place: Place) => {
+    (place: Place, opts?: { skipUrlSync?: boolean }) => {
       // Anuluj aktywny timeout zamknięcia — zapobiega race condition,
       // gdy nowa pinezka jest klikana zanim timeout z closePanel dobiegnie końca
       if (closePanelTimeoutRef.current) {
@@ -96,6 +118,20 @@ export function usePlaceSelection(
       setSelectedPlace(place);
       setIsPanelOpen(true);
       isPanelOpenRef.current = true;
+
+      // Synchronizacja stanu otwartego pinu w URL (?pin=slug lub ?pin=id)
+      if (syncUrl && !opts?.skipUrlSync && typeof window !== "undefined") {
+        const pinIdentifier = place.slug || String(place.id);
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("pin") !== pinIdentifier) {
+          url.searchParams.set("pin", pinIdentifier);
+          if (wasAlreadyOpen) {
+            window.history.replaceState(null, "", url.toString());
+          } else {
+            window.history.pushState(null, "", url.toString());
+          }
+        }
+      }
 
       // Podświetl wybrany pin — płynne powiększenie
       if (mapRef.current?.getLayer("places-selected")) {
@@ -130,32 +166,79 @@ export function usePlaceSelection(
         });
       });
     },
-    [mapRef, animateToLocation, animatePinSize],
+    [mapRef, animateToLocation, animatePinSize, syncUrl],
   );
 
-  const closePanel = useCallback(() => {
-    isPanelOpenRef.current = false;
-    setIsPanelVisible(false);
+  const closePanel = useCallback(
+    (opts?: { skipUrlSync?: boolean }) => {
+      isPanelOpenRef.current = false;
+      setIsPanelVisible(false);
 
-    // Reset podświetlonego pinu — płynne zmniejszenie, potem ukrycie
-    if (mapRef.current?.getLayer("places-selected")) {
-      animatePinSize(1.45, 1);
-      setTimeout(() => {
-        if (mapRef.current?.getLayer("places-selected")) {
-          mapRef.current.setFilter("places-selected", [
-            "==",
-            ["get", "placeId"],
-            -1,
-          ]);
+      // Usunięcie ?pin= z URL po zamknięciu panelu
+      if (syncUrl && !opts?.skipUrlSync && typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("pin")) {
+          url.searchParams.delete("pin");
+          window.history.replaceState(null, "", url.toString());
         }
-      }, 280);
-    }
+      }
 
-    closePanelTimeoutRef.current = setTimeout(() => {
-      closePanelTimeoutRef.current = null;
-      setIsPanelOpen(false);
-    }, 450);
-  }, [mapRef, animatePinSize]);
+      // Reset podświetlonego pinu — płynne zmniejszenie, potem ukrycie
+      if (mapRef.current?.getLayer("places-selected")) {
+        animatePinSize(1.45, 1);
+        setTimeout(() => {
+          if (mapRef.current?.getLayer("places-selected")) {
+            mapRef.current.setFilter("places-selected", [
+              "==",
+              ["get", "placeId"],
+              -1,
+            ]);
+          }
+        }, 280);
+      }
+
+      closePanelTimeoutRef.current = setTimeout(() => {
+        closePanelTimeoutRef.current = null;
+        setIsPanelOpen(false);
+      }, 450);
+    },
+    [mapRef, animatePinSize, syncUrl],
+  );
+
+  // Otwarcie pinu przekazanego w URL (?pin=slug lub ?pin=id) zaraz po załadowaniu warstw mapy
+  const openInitialPinFromUrl = useCallback(() => {
+    if (!syncUrl || typeof window === "undefined") return;
+    const pinParam = new URLSearchParams(window.location.search).get("pin");
+    if (!pinParam) return;
+
+    const place = findPlaceByParam(placesRef.current, pinParam);
+    if (place) {
+      openPanel(place, { skipUrlSync: true });
+    }
+  }, [syncUrl, openPanel]);
+
+  // Obsługa przycisku Wstecz / Dalej w przeglądarce (popstate)
+  useEffect(() => {
+    if (!syncUrl || typeof window === "undefined") return;
+
+    const handlePopState = () => {
+      const pinParam = new URLSearchParams(window.location.search).get("pin");
+      if (!pinParam) {
+        if (isPanelOpenRef.current) {
+          closePanel({ skipUrlSync: true });
+        }
+        return;
+      }
+
+      const place = findPlaceByParam(placesRef.current, pinParam);
+      if (place) {
+        openPanel(place, { skipUrlSync: true });
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [syncUrl, openPanel, closePanel]);
 
   const handleLocationSelect = useCallback(
     (
@@ -205,6 +288,7 @@ export function usePlaceSelection(
     isMapAnimatingRef,
     openPanel,
     closePanel,
+    openInitialPinFromUrl,
     animateToLocation,
     handleLocationSelect,
   };

@@ -43,7 +43,7 @@ export default function MapBoxMap({
     "loading" | "success" | "error"
   >("loading");
 
-  // Stan wybranego miejsca, panelu bocznego oraz animacji kamery/pinów
+  // Stan wybranego miejsca, panelu bocznego, synchronizacji URL (?pin=) oraz animacji kamery/pinów
   const {
     selectedPlace,
     isPanelOpen,
@@ -52,8 +52,9 @@ export default function MapBoxMap({
     isMapAnimatingRef,
     openPanel,
     closePanel,
+    openInitialPinFromUrl,
     handleLocationSelect,
-  } = usePlaceSelection(mapRef);
+  } = usePlaceSelection(mapRef, { syncUrl: !embedded, places });
 
   // Warstwy GeoJSON, klastry, popupy hover i zdarzenia mapy
   const {
@@ -131,6 +132,7 @@ export default function MapBoxMap({
 
         loadCategoryMarkerSDFs(map, categories, () => {
           initializeLayersAndEvents(map);
+          openInitialPinFromUrl();
         });
       });
 

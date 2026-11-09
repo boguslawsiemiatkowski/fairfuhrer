@@ -68,6 +68,13 @@ export function useMapboxLayers({
     if (currentPlaces.length > 0 && !hasFittedInitialBoundsRef.current) {
       hasFittedInitialBoundsRef.current = true;
 
+      // Jeśli w URL jest ?pin=..., pomiń ogólne fitBounds na cały region,
+      // ponieważ kamera od razu poleci bezpośrednio do wskazanego pinu
+      const hasUrlPin =
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).has("pin");
+      if (hasUrlPin) return;
+
       const bounds = new mapboxgl.LngLatBounds();
       currentPlaces
         .filter((p) => p.location?.coordinates)
@@ -146,7 +153,7 @@ export function useMapboxLayers({
           .setHTML(html)
           .addTo(map);
 
-        // Hover-Hold: zatrzymaj timer zamknięcia gdy kursor znajduje się nad popupem
+        // Hover-Hold oraz otwieranie panelu po kliknięciu w dowolne miejsce dymku
         const popupEl = hoverPopupRef.current.getElement();
         if (popupEl) {
           popupEl.addEventListener("mouseenter", () => {
@@ -163,6 +170,22 @@ export function useMapboxLayers({
               }
               hoverTimeoutRef.current = null;
             }, 300);
+          });
+          popupEl.addEventListener("click", (ev) => {
+            const target = ev.target as HTMLElement | null;
+            // Pozwól na normalne działanie kliknięcia w link telefoniczny (tel:...)
+            if (target?.closest("a")) return;
+            ev.stopPropagation();
+
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
+            if (hoverPopupRef.current) {
+              hoverPopupRef.current.remove();
+              hoverPopupRef.current = null;
+            }
+            openPanelRef.current(place);
           });
         }
       });

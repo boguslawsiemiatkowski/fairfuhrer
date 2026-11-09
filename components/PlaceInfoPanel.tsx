@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { Phone } from "lucide-react";
 import { DirectusImage, PlaceImage } from "./MediaComponents";
 import ColumnAudioPlayer from "./ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "./CategoryIcon";
@@ -251,7 +252,8 @@ function PlaceContent({ place }: { place: Place }) {
             href={`tel:${place.Telefon.replace(/\s+/g, "")}`}
             className={styles.placePhone}
           >
-            📞 {place.Telefon}
+            <Phone size={15} aria-hidden="true" />
+            <span>{place.Telefon}</span>
           </a>
         )}
 
