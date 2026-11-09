@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import type { FeatureCollection, Point } from "geojson";
 import type { Place } from "../types";
@@ -32,26 +32,20 @@ export function useMapboxLayers({
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const placesRef = useRef<Place[]>(places);
-  const popupDataMapRef = useRef<Map<number, string>>(new Map());
+  // Indeks O(1) po ID miejsca oraz leniwy cache HTML dymków (generowany on-demand przy hoverze)
+  const placeByIdRef = useRef<Map<number, Place>>(
+    new Map(places.map((p) => [p.id, p])),
+  );
+  const popupCacheRef = useRef<Map<number, { place: Place; html: string }>>(
+    new Map(),
+  );
   const openPanelRef = useRef(openPanel);
   const closePanelRef = useRef(closePanel);
 
-  // Pre-computed HTML dla dymków hover na pinach
-  const popupDataMap = useMemo<Map<number, string>>(() => {
-    const dataMap = new Map<number, string>();
-    places.forEach((place) => {
-      dataMap.set(place.id, generatePopupHTML(place));
-    });
-    return dataMap;
-  }, [places]);
-
   useEffect(() => {
     placesRef.current = places;
+    placeByIdRef.current = new Map(places.map((p) => [p.id, p]));
   }, [places]);
-
-  useEffect(() => {
-    popupDataMapRef.current = popupDataMap;
-  }, [popupDataMap]);
 
   useEffect(() => {
     openPanelRef.current = openPanel;
@@ -134,7 +128,18 @@ export function useMapboxLayers({
 
         const geometry = feature.geometry as Point;
         const coords = geometry.coordinates as [number, number];
-        const html = popupDataMapRef.current.get(placeId);
+        const place = placeByIdRef.current.get(placeId);
+        if (!place) return;
+
+        // Leniwe generowanie i cachowanie HTML dymku (on-demand przy najechaniu)
+        const cached = popupCacheRef.current.get(placeId);
+        let html: string;
+        if (cached && cached.place === place) {
+          html = cached.html;
+        } else {
+          html = generatePopupHTML(place);
+          popupCacheRef.current.set(placeId, { place, html });
+        }
         if (!html) return;
 
         hoverPopupRef.current = new mapboxgl.Popup({
@@ -189,7 +194,7 @@ export function useMapboxLayers({
           hoverPopupRef.current = null;
         }
 
-        const place = placesRef.current.find((p) => p.id === placeId);
+        const place = placeByIdRef.current.get(placeId);
         if (place) {
           openPanelRef.current(place);
         }

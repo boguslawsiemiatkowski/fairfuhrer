@@ -7,7 +7,7 @@ import MapWithFilters from "../../components/MapWithFilters";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { ConditionalMapbox } from "../../components/ConditionalMapbox";
 import MapRealtimeRefresh from "../../components/MapRealtimeRefresh";
-import { fetchAllPlaces, fetchCategories } from "@/lib/orte";
+import { fetchPlacesForMap, fetchCategories } from "@/lib/orte";
 
 // ISR revalidation - dane będą odświeżane co 24 godziny
 // Miejsca turystyczne zmieniają się rzadko, dłuższy cache = lepsza wydajność
@@ -19,7 +19,7 @@ export default async function KartePage() {
   // serwuje ostatnią poprawną wersję strony zamiast zapisywać w cache
   // strony błędu na 24 godziny.
   const [places, categories] = await Promise.all([
-    fetchAllPlaces(),
+    fetchPlacesForMap(),
     fetchCategories(),
   ]);
 

@@ -9,6 +9,9 @@ import { categoryColorFor } from "./CategoryIcon";
 import PlaceGallery from "./PlaceGallery";
 import { galleryUrls, sanitizeExternalUrl, sanitizeWordHtml } from "../lib/orte-shared";
 
+// Klientowy cache opisów pobranych on-demand po kliknięciu w pin na /karte
+const descriptionCache = new Map<number, string | null>();
+
 interface PlaceInfoPanelProps {
   place: Place | null;
   isOpen: boolean;
@@ -132,9 +135,50 @@ export default function PlaceInfoPanel({
 function PlaceContent({ place }: { place: Place }) {
   const galerie = galleryUrls(place);
   const safeLinkUrl = sanitizeExternalUrl(place.Link_URL);
-  const safeDescription = place.Vollbeschreibung
-    ? sanitizeWordHtml(place.Vollbeschreibung)
-    : undefined;
+
+  // Jeśli opis przyszedł bezpośrednio w obiekcie Place lub jest już w cache, używamy go od razu
+  const initialDescription =
+    place.Vollbeschreibung !== undefined
+      ? place.Vollbeschreibung
+        ? sanitizeWordHtml(place.Vollbeschreibung)
+        : null
+      : descriptionCache.get(place.id);
+
+  const [lazyDescription, setLazyDescription] = useState<string | null | undefined>(
+    initialDescription,
+  );
+
+  useEffect(() => {
+    if (place.Vollbeschreibung !== undefined || descriptionCache.has(place.id)) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    fetch(`/api/orte/${place.id}/description`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ description: string | null }>;
+      })
+      .then((data) => {
+        const sanitized = data.description
+          ? sanitizeWordHtml(data.description)
+          : null;
+        descriptionCache.set(place.id, sanitized);
+        setLazyDescription(sanitized);
+      })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        console.error(`Nie udało się pobrać opisu dla miejsca ${place.id}:`, err);
+        setLazyDescription(null);
+      });
+
+    return () => controller.abort();
+  }, [place.id, place.Vollbeschreibung]);
+
+  const safeDescription =
+    initialDescription !== undefined ? initialDescription : lazyDescription;
+  const isLoadingDescription = safeDescription === undefined;
 
   return (
     <>
@@ -200,13 +244,24 @@ function PlaceContent({ place }: { place: Place }) {
         )}
       </div>
 
-      {safeDescription && (
-        <div className={styles.infoSection}>
-          <div
-            className={styles.description}
-            dangerouslySetInnerHTML={{ __html: safeDescription }}
-          />
+      {isLoadingDescription ? (
+        <div className={styles.infoSection} aria-busy="true" aria-label="Beschreibung wird geladen">
+          <div className={styles.descriptionSkeleton}>
+            <span className={styles.skeletonLine} />
+            <span className={styles.skeletonLine} />
+            <span className={styles.skeletonLine} />
+            <span className={styles.skeletonLineShort} />
+          </div>
         </div>
+      ) : (
+        safeDescription && (
+          <div className={styles.infoSection}>
+            <div
+              className={styles.description}
+              dangerouslySetInnerHTML={{ __html: safeDescription }}
+            />
+          </div>
+        )
       )}
 
       {safeLinkUrl && (

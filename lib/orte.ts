@@ -270,6 +270,48 @@ export async function fetchAllPlaces(): Promise<Place[]> {
     .filter((p): p is Place => p !== null);
 }
 
+/**
+ * Schlanke Ortsliste für die interaktive Karte (/karte).
+ *
+ * Lädt ausschließlich `ORTE_BASE_FIELDS` ohne `Vollbeschreibung`. Da die
+ * Beschreibungen rund 75 % des Gesamt-Payloads (~1,8 MB HTML bei ~592 Pins)
+ * ausmachen, reduziert dies den serialisierten RSC-Payload von /karte drastisch.
+ * Klickt ein Nutzer auf einen Pin, lädt `PlaceInfoPanel` die Beschreibung
+ * dieses einzelnen Ortes bei Bedarf über `/api/orte/[id]/description` nach.
+ */
+export async function fetchPlacesForMap(): Promise<Place[]> {
+  const baseData = await fetchFromDirectus<DirectusOrte>(
+    buildOrteUrl(ORTE_BASE_FIELDS),
+    "orte",
+  );
+
+  return baseData.data
+    .map((o) => transformDirectusOrteToPlace(o))
+    .filter((p): p is Place => p !== null);
+}
+
+/**
+ * Lädt und bereinigt `Vollbeschreibung` für einen einzelnen veröffentlichten Ort.
+ * Wird vom Endpunkt `/api/orte/[id]/description` genutzt (mit Data-Cache-Tag "orte").
+ */
+export async function fetchPlaceDescription(id: number): Promise<string | null> {
+  if (!Number.isInteger(id) || id <= 0) return null;
+
+  const data = await fetchFromDirectus<
+    Pick<DirectusOrte, "id" | "Vollbeschreibung">
+  >(
+    buildOrteUrl(["id", "Vollbeschreibung"], {
+      "filter[id][_eq]": String(id),
+      limit: "1",
+    }),
+    "orte",
+  );
+
+  const raw = data.data[0]?.Vollbeschreibung;
+  if (!raw || !raw.trim()) return null;
+  return sanitizeWordHtml(raw);
+}
+
 /** Nur die Felder, die die Sitemap braucht. */
 export interface SitemapPlace {
   slug?: string;
