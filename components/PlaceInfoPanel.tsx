@@ -37,11 +37,6 @@ function resolveDetailHref(place: Place): string | null {
   return `/liste/${segment}/${place.slug}`;
 }
 
-function resolveDirectionsUrl(place: Place): string {
-  const [lng, lat] = place.location.coordinates;
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-}
-
 interface PlaceInfoPanelProps {
   place: Place | null;
   isOpen: boolean;
@@ -143,7 +138,6 @@ function PlaceContent({ place }: { place: Place }) {
   const safeLinkUrl = sanitizeExternalUrl(place.Link_URL);
   const audioUrl = resolveAudioSrc(place);
   const detailHref = resolveDetailHref(place);
-  const directionsUrl = resolveDirectionsUrl(place);
   const firstCategory = place.Kategorie[0];
   const headerColor = categoryColorFor(firstCategory);
 
@@ -268,67 +262,47 @@ function PlaceContent({ place }: { place: Place }) {
         )}
       </header>
 
-      {/* Pasek akcji: przejście do pełnej strony Audiopinu, nawigacja oraz strona www */}
-      <div className={styles.actionsBar}>
-        {detailHref && (
-          <Link href={detailHref} className={styles.primaryCta}>
-            <span>Zur vollständigen Seite</span>
-            <span className={styles.ctaArrow} aria-hidden="true">
-              →
-            </span>
-          </Link>
-        )}
-
-        <div className={styles.secondaryActions}>
-          <a
-            href={directionsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondaryCta}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <polygon points="3 11 22 2 13 21 11 13 3 11" />
-            </svg>
-            <span>Route planen</span>
-          </a>
+      {/* Pasek akcji: przejście do pełnej strony Audiopinu oraz strona www partnera */}
+      {(detailHref || safeLinkUrl) && (
+        <div className={styles.actionsBar}>
+          {detailHref && (
+            <Link href={detailHref} className={styles.primaryCta}>
+              <span>Zur vollständigen Seite</span>
+              <span className={styles.ctaArrow} aria-hidden="true">
+                →
+              </span>
+            </Link>
+          )}
 
           {safeLinkUrl && (
-            <a
-              href={safeLinkUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.secondaryCta}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+            <div className={styles.secondaryActions}>
+              <a
+                href={safeLinkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.secondaryCta}
               >
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
-              <span>{place.Link_Text || "Website"}</span>
-            </a>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                <span>{place.Link_Text || "Website besuchen"}</span>
+              </a>
+            </div>
           )}
         </div>
-      </div>
+      )}
 
       {isLoadingDescription ? (
         <div

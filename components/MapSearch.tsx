@@ -29,6 +29,7 @@ interface MapSearchProps {
   onPinSelect?: (placeId: number) => void;
   places?: Place[];
   disabled?: boolean;
+  panelOpen?: boolean;
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
@@ -71,6 +72,7 @@ export default function MapSearch({
   onPinSelect,
   places = [],
   disabled = false,
+  panelOpen = false,
 }: MapSearchProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,6 +86,28 @@ export default function MapSearch({
   const abortRef = useRef<AbortController | null>(null);
 
   const debouncedQuery = useDebounce(searchQuery.trim(), 300);
+
+  // Skrót klawiszowy "/" aktywuje pole wyszukiwania na mapie
+  useEffect(() => {
+    if (disabled) return;
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      e.preventDefault();
+      setIsExpanded(true);
+      inputRef.current?.focus();
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [disabled]);
 
   // Fetch suggestions from Mapbox Geocoding v6
   useEffect(() => {
@@ -117,7 +141,7 @@ export default function MapSearch({
         const r = await fetch(url, { signal: currentAbort.signal });
         const json = await r.json();
         if (currentAbort.signal.aborted) return;
-        
+
         const features = (json.features ?? []) as Record<string, unknown>[];
         setGeoResults(
           features.map((f) => {
@@ -195,19 +219,17 @@ export default function MapSearch({
     if (disabled) return;
     if (!isExpanded) {
       setIsExpanded(true);
-      setTimeout(() => inputRef.current?.focus(), 200);
+      setTimeout(() => inputRef.current?.focus(), 60);
+    } else if (!searchQuery.trim()) {
+      setIsExpanded(false);
+      setSelectedIndex(-1);
+      inputRef.current?.blur();
     } else {
-      if (!searchQuery.trim()) {
-        setIsExpanded(false);
-        setSelectedIndex(-1);
-      } else {
-        inputRef.current?.focus();
-      }
+      inputRef.current?.focus();
     }
   }, [disabled, isExpanded, searchQuery]);
 
-  // Delegacja zdarzeń kliknięcia na poziomie listy podpowiedzi — unika tworzenia domknięć
-  // odwołujących się do refów wewnątrz .map() podczas renderowania (reguła react-hooks/refs).
+  // Delegacja zdarzeń kliknięcia na poziomie listy podpowiedzi
   const handleSuggestionsClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const itemEl = (e.target as HTMLElement).closest<HTMLElement>(
@@ -225,7 +247,20 @@ export default function MapSearch({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        abortRef.current?.abort();
+        setSearchQuery("");
+        setIsExpanded(false);
+        setGeoResults([]);
+        setIsLoading(false);
+        setSelectedIndex(-1);
+        inputRef.current?.blur();
+        return;
+      }
+
       if (!isExpanded || results.length === 0) return;
+
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
@@ -240,16 +275,6 @@ export default function MapSearch({
           if (selectedIndex >= 0) handleSelect(results[selectedIndex]);
           else if (results.length > 0) handleSelect(results[0]);
           break;
-        case "Escape":
-          e.preventDefault();
-          abortRef.current?.abort();
-          setSearchQuery("");
-          setIsExpanded(false);
-          setGeoResults([]);
-          setIsLoading(false);
-          setSelectedIndex(-1);
-          inputRef.current?.blur();
-          break;
       }
     },
     [isExpanded, results, selectedIndex, handleSelect],
@@ -259,7 +284,10 @@ export default function MapSearch({
   useEffect(() => {
     if (!isExpanded) return;
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsExpanded(false);
         setSelectedIndex(-1);
       }
@@ -276,7 +304,8 @@ export default function MapSearch({
     }
   }, [selectedIndex]);
 
-  const showSuggestions = isExpanded && debouncedQuery.length >= 2 && results.length > 0;
+  const showSuggestions =
+    isExpanded && debouncedQuery.length >= 2 && results.length > 0;
   const showNoResults =
     isExpanded &&
     debouncedQuery.length >= 2 &&
@@ -284,30 +313,35 @@ export default function MapSearch({
     results.length === 0 &&
     geoResults.length === 0;
 
+  const containerClasses = [
+    styles.searchContainer,
+    isExpanded && styles.expanded,
+    panelOpen && styles.panelOpen,
+    disabled && styles.disabled,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div
-      ref={containerRef}
-      className={`${styles.searchContainer} ${isExpanded ? styles.expanded : ""} ${
-        disabled ? styles.disabled : ""
-      }`}
-    >
+    <div ref={containerRef} className={containerClasses}>
       <div className={styles.searchBox}>
         <button
           className={styles.searchIcon}
           onClick={handleSearchIconClick}
           disabled={disabled}
-          aria-label="Suche öffnen"
+          aria-label="Ort oder Pin suchen"
           type="button"
         >
           <svg
-            width="20"
-            height="20"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <circle cx="11" cy="11" r="8" />
             <path d="M21 21l-4.35-4.35" />
@@ -318,11 +352,12 @@ export default function MapSearch({
           ref={inputRef}
           type="text"
           className={styles.searchInput}
-          placeholder="Stadt, Region oder Pin suchen…"
+          placeholder="Ort, Stadt oder Pin suchen…"
           value={searchQuery}
           onChange={(e) => {
             const val = e.target.value;
             setSearchQuery(val);
+            setIsExpanded(true);
             setSelectedIndex(-1);
             if (val.trim().length < 2) {
               abortRef.current?.abort();
@@ -331,19 +366,29 @@ export default function MapSearch({
             }
           }}
           onKeyDown={handleKeyDown}
-          onFocus={(e) => e.target.select()}
+          onFocus={(e) => {
+            setIsExpanded(true);
+            e.target.select();
+          }}
           disabled={disabled}
           spellCheck={false}
           autoComplete="off"
+          aria-label="Ort, Stadt oder Pin suchen"
         />
 
+        {!searchQuery && !isLoading && (
+          <kbd className={styles.shortcutHint} aria-hidden="true">
+            /
+          </kbd>
+        )}
+
         {isLoading && (
-          <div className={styles.loadingIndicator}>
+          <div className={styles.loadingIndicator} aria-hidden="true">
             <div className={styles.spinner} />
           </div>
         )}
 
-        {isExpanded && searchQuery && (
+        {searchQuery && (
           <button
             className={styles.clearButton}
             onClick={() => {
@@ -358,14 +403,15 @@ export default function MapSearch({
             type="button"
           >
             <svg
-              width="16"
-              height="16"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -379,23 +425,26 @@ export default function MapSearch({
           className={styles.suggestions}
           ref={suggestionsRef}
           onClick={handleSuggestionsClick}
+          role="listbox"
+          aria-label="Suchvorschläge"
         >
           {showNoResults ? (
             <div className={styles.noResults}>
               <div className={styles.noResultsIcon}>
                 <svg
-                  width="24"
-                  height="24"
+                  width="22"
+                  height="22"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.5"
+                  strokeWidth="2"
+                  aria-hidden="true"
                 >
                   <circle cx="11" cy="11" r="8" />
                   <path d="M21 21l-4.35-4.35" />
                 </svg>
               </div>
-              <p>Keine Ergebnisse</p>
+              <p>Keine Ergebnisse gefunden</p>
               <span>Versuchen Sie einen anderen Suchbegriff</span>
             </div>
           ) : (
@@ -405,20 +454,27 @@ export default function MapSearch({
                 <div
                   key={result.id}
                   data-suggestion-index={index}
+                  role="option"
+                  aria-selected={index === selectedIndex}
                   className={`${styles.suggestionItem} ${
                     index === selectedIndex ? styles.selected : ""
                   }`}
                 >
-                  <div className={styles.suggestionIcon}>
+                  <div
+                    className={`${styles.suggestionIcon} ${
+                      isPin ? styles.suggestionIconPin : styles.suggestionIconGeo
+                    }`}
+                  >
                     <svg
-                      width="16"
-                      height="16"
+                      width="15"
+                      height="15"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      strokeWidth="2.2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
+                      aria-hidden="true"
                     >
                       <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
                       <circle cx="12" cy="10" r="3" />
@@ -428,15 +484,19 @@ export default function MapSearch({
                     <div className={styles.suggestionTitleRow}>
                       <span
                         className={`${styles.suggestionBadge} ${
-                          isPin ? styles.suggestionBadgePin : styles.suggestionBadgeGeo
+                          isPin
+                            ? styles.suggestionBadgePin
+                            : styles.suggestionBadgeGeo
                         }`}
                       >
-                        {isPin ? "Pin" : "Ort"}
+                        {isPin ? "Audiopin" : "Ort"}
                       </span>
                       <div className={styles.suggestionTitle}>{result.name}</div>
                     </div>
                     {result.place_formatted && (
-                      <div className={styles.suggestionMeta}>{result.place_formatted}</div>
+                      <div className={styles.suggestionMeta}>
+                        {result.place_formatted}
+                      </div>
                     )}
                   </div>
                 </div>

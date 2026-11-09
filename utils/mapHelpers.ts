@@ -160,7 +160,7 @@ export function setupPlacesClusterLayers(
     clusterRadius: 50,
   });
 
-  // LAYER: klastry (circle)
+  // LAYER: klastry (circle) w palecie barw marki FairFührer (#2e7d32, #fc6c14, #18222f)
   map.addLayer({
     id: "places-clusters",
     type: "circle",
@@ -170,15 +170,15 @@ export function setupPlacesClusterLayers(
       "circle-color": [
         "step",
         ["get", "point_count"],
-        "#51bbd6",
+        "#2e7d32",
         10,
-        "#f1f075",
+        "#fc6c14",
         30,
-        "#f28cb1",
+        "#18222f",
       ],
-      "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 30, 40],
-      "circle-stroke-width": 2,
-      "circle-stroke-color": "#fff",
+      "circle-radius": ["step", ["get", "point_count"], 21, 10, 26, 30, 32],
+      "circle-stroke-width": 3,
+      "circle-stroke-color": "#ffffff",
     },
   });
 
@@ -190,11 +190,11 @@ export function setupPlacesClusterLayers(
     filter: ["has", "point_count"],
     layout: {
       "text-field": ["get", "point_count_abbreviated"],
-      "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-      "text-size": 12,
+      "text-font": ["DIN Offc Pro Bold", "Arial Unicode MS Bold"],
+      "text-size": 13,
     },
     paint: {
-      "text-color": "#fff",
+      "text-color": "#ffffff",
     },
   });
 

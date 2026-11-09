@@ -227,6 +227,7 @@ export default function MapBoxMap({
           }}
           places={places}
           disabled={mapLoadingState !== "success"}
+          panelOpen={isPanelOpen && isPanelVisible}
         />
       )}
 

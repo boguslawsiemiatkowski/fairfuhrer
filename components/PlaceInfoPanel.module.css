@@ -23,7 +23,7 @@
   overscroll-behavior: contain;
   transform: translateX(100%);
   transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
-  z-index: 30;
+  z-index: 45;
   pointer-events: none;
 }
 
@@ -444,7 +444,7 @@
 
   .infoPanel {
     position: fixed;
-    top: 6vh;
+    top: 0;
     bottom: 0;
     right: 0;
     left: 0;
@@ -463,7 +463,7 @@
   }
 
   .mainImage {
-    height: 220px;
+    height: 320px;
   }
 
   .closeButton {

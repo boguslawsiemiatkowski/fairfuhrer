@@ -289,7 +289,7 @@
   .filtersContainer {
     left: 0;
     right: 0;
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    bottom: max(2rem, env(safe-area-inset-bottom));
     width: 100%;
     background: transparent;
     border: none;
