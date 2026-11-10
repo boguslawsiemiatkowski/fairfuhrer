@@ -118,7 +118,13 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
         if (savedScroll !== null) {
           const parsed = Number(savedScroll);
           if (Number.isFinite(parsed) && parsed > 0) {
-            targetScroll = parsed;
+            // Auf das Ende der jetzigen Auswahl begrenzen. Eine gespeicherte
+            // Position kann weiter reichen, als die neue Liste lang ist —
+            // etwa wenn jemand 20 Karten weitergeblättert hat und danach
+            // ein Filter nur noch drei Orte übrig lässt. Ohne diese Grenze
+            // stünde das Band ganz rechts, wo keine Karte mehr folgt.
+            const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+            targetScroll = maxScroll > 0 ? Math.min(parsed, maxScroll) : 0;
           }
         }
       } catch {
@@ -137,14 +143,22 @@ export default function PlaceRail({ places, label, resetKey }: PlaceRailProps) {
     let raf2 = 0;
     let timerId: ReturnType<typeof setTimeout> | null = null;
 
+    // In jeder Frame neu begrenzen: beim ersten Setzen oben steht
+    // `scrollWidth` noch auf der ALTEN Liste, weil die neuen Karten erst
+    // danach gelegt werden. Erst hier kennt der Browser die wirkliche Breite.
+    const clampToEnd = (el: HTMLDivElement) => {
+      const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+      return maxScroll > 0 ? Math.min(targetScroll, maxScroll) : 0;
+    };
+
     raf1 = requestAnimationFrame(() => {
       if (railRef.current) {
-        railRef.current.scrollLeft = targetScroll;
+        railRef.current.scrollLeft = clampToEnd(railRef.current);
         updateEdges();
       }
       raf2 = requestAnimationFrame(() => {
         if (railRef.current) {
-          railRef.current.scrollLeft = targetScroll;
+          railRef.current.scrollLeft = clampToEnd(railRef.current);
           railRef.current.style.scrollSnapType = "";
           railRef.current.style.scrollBehavior = "";
           updateEdges();

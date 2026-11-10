@@ -523,7 +523,6 @@
      Karten ab — siehe .aboveCards und .belowCards. */
 
   .aboveCards {
-    min-height: 26px;
     padding: 0 14px;
   }
 

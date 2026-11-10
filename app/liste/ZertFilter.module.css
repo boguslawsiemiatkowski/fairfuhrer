@@ -1,0 +1,350 @@
+/* app/liste/ZertFilter.module.css
+ *
+ * Maße und Farben aus der Legende auf /karte (MapWithFilters.module.css) und
+ * aus CategoryFilter.module.css, damit /liste und /karte dieselbe Sprache
+ * sprechen:
+ *
+ *   ghostwhite Fläche, Rahmen 2px #18222f
+ *   Kopfzeile #fc6c14, Anton, uppercase
+ *   Zähler in der Pille #faebd7
+ *   Zeilen: Logo links, Name, Zähler rechts; aktive Zeile mit farbiger Kante
+ *   handgezogene Radien (15px 255px …) wie am Titelbild der Detailseite
+ */
+
+/* Im Fluss des Streifens — NICHT absolut gegen `.screen`: die hat
+ * `overflow: hidden` und würde das Menü abschneiden. Nur das Menü darunter
+ * liegt absolut gegen diesen Rahmen und legt sich über die Karten, ohne das
+ * Band zu verschieben. */
+.wrap {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  /* Rechts im Streifen, der GPS-Knopf bleibt links. */
+  margin-left: auto;
+}
+
+/* ─── Knopf ─────────────────────────────────────────────────────────────── */
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: min(60vw, 260px);
+  padding: 0.22rem 0.5rem;
+  border: 1px solid #18222f;
+  background-color: #fff2e8e6;
+  font-family: var(--font-fira);
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.trigger:hover {
+  background-color: #fc6d1431;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid #fc6c14;
+  outline-offset: 2px;
+}
+
+/* Gewählt: weiße Fläche mit oranger Kante links — dieselbe Auszeichnung wie
+ * eine aktive Zeile im Kategorie-Filter. */
+.triggerActive {
+  background-color: #fff;
+  box-shadow: inset 4px 0 0 #fc6c14;
+}
+
+.triggerLogo {
+  width: auto;
+  height: auto;
+  max-width: 34px;
+  max-height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.triggerLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #18222f;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triggerCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  background-color: #eef2ef;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #18222f;
+  flex-shrink: 0;
+}
+
+.chevron,
+.chevronOpen {
+  flex-shrink: 0;
+  color: #18222f;
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ─── Menü ──────────────────────────────────────────────────────────────── */
+
+/* Absolut unter dem Knopf, rechts ausgerichtet. Geschlossen per translate3d
+ * nach oben geparkt und unsichtbar; `pointer-events` aus, damit kein
+ * unsichtbarer Kasten über den Karten liegt. */
+.menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  width: min(92vw, 320px);
+  background-color: #f8f8ff;
+  border: 2px solid #18222f;
+  box-shadow: 0 10px 28px rgba(24, 34, 47, 0.14);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, -10px, 0);
+  transition:
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease;
+}
+
+.menuOpen {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Kopfzeile wie in der Legende: Markenorange, handgezogener Rahmen. */
+.menuHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.8rem;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #18222f;
+  border-bottom-left-radius: 15px 255px;
+  border-bottom-right-radius: 225px 15px;
+  border-top-left-radius: 255px 15px;
+  border-top-right-radius: 15px 225px;
+  background-color: #fc6c14;
+}
+
+.menuTitle {
+  margin: 0;
+  font-family: var(--font-anton);
+  font-size: 1.05rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #18222f;
+  line-height: 1.1;
+}
+
+.menuCounter {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #18222f;
+  background-color: #faebd7;
+  font-family: var(--font-fira);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #18222f;
+}
+
+/* Scrollt bei 16 Siegeln, bleibt aber unter der Unterkante von `.screen` —
+ * die hat `overflow: hidden`, ein höheres Menü würde dort abgeschnitten. */
+.menuBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  max-height: min(52vh, calc(var(--vh, 1vh) * 100 - 240px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.5rem 0.55rem 0.6rem;
+}
+
+/* ─── Zeilen ────────────────────────────────────────────────────────────── */
+
+.row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 1.5px solid #18222f;
+  background-color: #f8faf8;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    opacity 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.rowActive {
+  background-color: #faebd7;
+  border-color: #18222f;
+  box-shadow: inset 4px 0 0 #fc6c14;
+}
+
+.rowInactive {
+  background-color: #fff;
+  border-color: #d3a14c;
+  opacity: 0.78;
+}
+
+.row:hover {
+  opacity: 1;
+  border-color: #18222f;
+  background-color: #fc6d1431;
+}
+
+.rowButton {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.45rem;
+  border: none;
+  background-color: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rowButton:focus-visible {
+  outline: 2px solid #fc6c14;
+  outline-offset: 2px;
+}
+
+/* Feste Box für das Logo: die Dateien haben sehr verschiedene
+ * Seitenverhältnisse (von 3,3:1 bis 0,47:1), ohne gemeinsame Box stünden
+ * die Namen treppenförmig versetzt. */
+.logoBox {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.logo {
+  width: auto;
+  height: auto;
+  max-width: 44px;
+  max-height: 30px;
+  object-fit: contain;
+  transition: transform 0.16s ease;
+}
+
+.row:hover .logo {
+  transform: scale(1.06);
+}
+
+.rowName {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-fira);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #18222f;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowInactive .rowName {
+  color: #21406b;
+  font-weight: 600;
+}
+
+.rowCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  background-color: #eef2ef;
+  font-family: var(--font-fira);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.rowActive .rowCount {
+  color: #18222f;
+  background-color: #ffd700;
+}
+
+/* Im Kopf auf der orangen Fläche — der Markenorange aus der Legende wäre
+ * dort unsichtbar, deshalb die dunkle Schrift auf hellem Grund. */
+.resetButton {
+  padding: 0.16rem 0.5rem;
+  border: 1px solid #18222f;
+  border-radius: 999px;
+  background-color: #faebd7;
+  font-family: var(--font-fira);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #18222f;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.resetButton:hover {
+  background-color: #fff;
+}
+
+.resetButton:focus-visible {
+  outline: 2px solid #18222f;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .trigger {
+    max-width: 52vw;
+  }
+
+  .triggerLabel {
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu,
+  .trigger,
+  .row,
+  .logo,
+  .chevron,
+  .chevronOpen {
+    transition-duration: 1ms;
+  }
+
+  .menu {
+    transform: none;
+  }
+}

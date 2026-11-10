@@ -23,6 +23,7 @@ import {
 import PlaceRail, { RAIL_SCROLL_PREFIX } from "@/components/PlaceRail";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import StadtSuche, { type CityOption } from "./StadtSuche";
+import ZertFilter, { type ZertOption } from "./ZertFilter";
 import { cityToSegment } from "@/lib/orte-shared";
 import styles from "./page.module.css";
 
@@ -41,6 +42,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
   const landParam = searchParams.get("land") ?? "";
   const kategorieParam = searchParams.get("kategorie") ?? "";
   const stadtParam = searchParams.get("stadt") ?? "";
+  const zertParam = searchParams.get("zert") ?? "";
 
   // Zapamiętujemy oraz przywracamy aktualny stan filtrów /liste w sessionStorage:
   // - Gdy w URL są parametry (?stadt=...&kategorie=...&land=...), zapisujemy je w sessionStorage.
@@ -65,6 +67,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
   }, [searchParams, router]);
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [zertOpen, setZertOpen] = useState(false);
   const menuClipRef = useRef<HTMLDivElement>(null);
   const kategorieBarRef = useRef<HTMLDivElement>(null);
 
@@ -141,7 +144,13 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
       const nextStadt = next.get("stadt") ?? "";
       const nextLand = next.get("land") ?? "";
       const nextKat = next.get("kategorie") ?? "";
-      const nextResetKey = `${nextStadt}|${nextLand}|${nextKat}|${gps.state}`;
+      const nextZert = next.get("zert") ?? "";
+      // MUSS genau dem `resetKey` entsprechen, der an PlaceRail geht —
+      // sonst löscht dieser Aufruf die Position unter einem anderen
+      // Schlüssel, als das Band sie später liest, und das Band stellt einen
+      // alten Wert wieder her. Bei einer kürzeren Auswahl landet es dann am
+      // rechten Ende, wo keine Karte mehr folgt.
+      const nextResetKey = `${nextStadt}|${nextLand}|${nextKat}|${nextZert}|${gps.state}`;
 
       try {
         sessionStorage.setItem(LAST_LISTE_URL_KEY, nextUrl);
@@ -173,10 +182,50 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
         ) {
           return false;
         }
+        if (
+          zertParam &&
+          !(place.Zertifizierungen ?? []).some(
+            (z) => cityToSegment(z.name) === zertParam,
+          )
+        ) {
+          return false;
+        }
         return true;
       }),
-    [places, stadtParam, activeLand, activeCategory],
+    [places, stadtParam, activeLand, activeCategory, zertParam],
   );
+
+  // Alle vorkommenden Zertifikate mit Anzahl. Gezählt wird über ALLE Orte,
+  // nicht über die gefilterten — sonst schrumpfen die Zahlen, sobald eine
+  // Stadt gewählt ist, und das Menü wirkt unruhig.
+  //
+  // Nur Zertifikate, die wirklich an veröffentlichten Orten hängen,
+  // erscheinen: vier der 16 Siegel in Directus haben Verknüpfungen zu Pins,
+  // die es nicht mehr gibt oder die unveröffentlicht sind.
+  const zertOptions = useMemo<ZertOption[]>(() => {
+    const map = new Map<string, ZertOption>();
+    for (const place of places) {
+      for (const zert of place.Zertifizierungen ?? []) {
+        const slug = cityToSegment(zert.name);
+        if (!slug) continue;
+        const found = map.get(slug);
+        if (found) {
+          found.count += 1;
+        } else {
+          map.set(slug, {
+            slug,
+            name: zert.name,
+            imageUuid: zert.imageUuid,
+            count: 1,
+          });
+        }
+      }
+    }
+    // Die ergiebigsten oben — wie bei den Städte-Vorschlägen.
+    return [...map.values()].sort(
+      (a, b) => b.count - a.count || a.name.localeCompare(b.name, "de"),
+    );
+  }, [places]);
 
   // Nach Entfernung sortieren, wenn ein Standort vorliegt. Gerechnet wird
   // hier im Browser statt über die Supabase-Funktion nearby_orte: die
@@ -264,7 +313,14 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   const selectedCityName = cityOptions.find((c) => c.segment === stadtParam)?.name;
 
-  const railLabel = [selectedCityName, activeCategory?.name, activeLand]
+  const activeZertName = zertOptions.find((z) => z.slug === zertParam)?.name;
+
+  const railLabel = [
+    selectedCityName,
+    activeCategory?.name,
+    activeZertName,
+    activeLand,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -309,6 +365,23 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
         {gps.state === "error" && (
           <span className={styles.gpsError}>{gps.message}</span>
         )}
+
+        {/* Zertifikate — der Filter, der bisher fehlte: 16 Siegel liegen im
+            Bestand, waren aber nicht auffindbar. Rechts im Streifen, der
+            GPS-Knopf bleibt links; das Menü legt sich über die Karten und
+            verschiebt das Band nicht. */}
+        {zertOptions.length > 0 && (
+          <ZertFilter
+            options={zertOptions}
+            selected={zertParam}
+            onSelectAction={(slug) => {
+              setZertOpen(false);
+              setParam("zert", slug);
+            }}
+            open={zertOpen}
+            onToggleAction={() => setZertOpen((v) => !v)}
+          />
+        )}
       </div>
 
       {/* ── 1. Karten ─────────────────────────────────────────────────── */}
@@ -319,7 +392,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
           <PlaceRail
             places={ordered}
             label={railLabel || "Alle Orte"}
-            resetKey={`${stadtParam}|${landParam}|${kategorieParam}|${gps.state}`}
+            resetKey={`${stadtParam}|${landParam}|${kategorieParam}|${zertParam}|${gps.state}`}
           />
         )}
       </div>
