@@ -253,10 +253,28 @@ export async function POST(request: NextRequest) {
     event.event_type === "BILLING.SUBSCRIPTION.RENEWED" ||
     event.event_type === "PAYMENT.SALE.COMPLETED";
 
+  // EXPIRED gehört NICHT hierher. Seit die Pläne auf `total_cycles: 1` stehen
+  // (keine automatische Verlängerung, § AGB), schickt PayPal dieses Ereignis
+  // bei jedem Partner genau dann, wenn das bezahlte Jahr vorbei ist — also im
+  // Regelfall, nicht im Störfall. `premium_until` dort auf null zu setzen
+  // nähme dem Partner den Monat Karenz (PREMIUM_MONTHS = 13), der ihm Zeit
+  // gibt, nach der Erinnerung von Hand zu verlängern. Der Eintrag soll
+  // auslaufen, weil das Datum erreicht ist, nicht weil ein Ereignis ihn löscht.
   const isRevoke =
     event.event_type === "BILLING.SUBSCRIPTION.CANCELLED" ||
-    event.event_type === "BILLING.SUBSCRIPTION.EXPIRED" ||
     event.event_type === "BILLING.SUBSCRIPTION.SUSPENDED";
+
+  // Das Auslaufen wird vermerkt, aber nicht vollzogen: ohne diese Zeile wäre
+  // später nicht nachvollziehbar, ob ein Partner seinen Zugang verloren hat,
+  // weil das Datum erreicht war oder weil etwas anderes schiefging.
+  if (event.event_type === "BILLING.SUBSCRIPTION.EXPIRED") {
+    console.info(
+      "subscription-webhook: subscription expired (bezahltes Jahr vorbei) — " +
+        "premium_until bleibt unverändert und läuft vom Datum her aus",
+      { subscriptionId: getSubscriptionId(event) }
+    );
+    return NextResponse.json({ received: true });
+  }
 
   if (!isGrant && !isRevoke) {
     return NextResponse.json({ received: true });

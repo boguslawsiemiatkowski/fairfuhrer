@@ -1,0 +1,102 @@
+# scripts/paypal-plans-produktion.ps1.example
+#
+# Legt die acht Produktionspläne ohne automatische Verlängerung an.
+#
+# WARUM ÜBERHAUPT NEU ANLEGEN
+# Im PayPal-Panel steht bei jedem Plan „Anzahl der Rechnungszyklen:
+# Unbegrenzt", aber dieses Feld lässt sich nicht ändern — „Aktualisieren" bei
+# der Preisgestaltung bietet nur die versäumten Zyklen bis zur Aussetzung an,
+# was etwas anderes ist. PayPal erlaubt am bestehenden Plan nur `description`,
+# `payment_preferences.*` und `taxes.percentage`; `billing_cycles` nicht.
+# Also: neuen Plan anlegen, alten deaktivieren.
+#
+# SO WIRD SIE BENUTZT
+#   1. Kopieren und die Kopie `paypal-plans-produktion.ps1` nennen (ohne
+#      `.example`). Die Kopie steht in .gitignore und kann nicht eingecheckt
+#      werden — in ihr stehen Zugangsdaten.
+#   2. Unten CLIENT_ID und SECRET einsetzen (PayPal Developer -> Apps &
+#      Credentials -> Live -> Fairfuehrer).
+#   3. Starten:  pwsh -File scripts\paypal-plans-produktion.ps1
+#      Zuerst kommt eine Vorschau mit allen Preisen, dann die Rückfrage, ob
+#      angelegt werden soll. Nichts geschieht ohne ausdrückliches „ja".
+#   4. Danach die Kopie löschen — das Secret liegt sonst im Klartext herum.
+#
+# Die alten Plan-IDs sind bereits eingetragen, aus der Planliste des
+# Produktivkontos (Produkt `PROD-0KS91336US1098000`, acht Pläne, alle mit null
+# laufenden Abonnements). Die Zuordnung Name -> Variable stammt aus den
+# Plannamen und wird von der Vorschau überprüft: steht neben einem Plan ein
+# anderer Preis als hier, ist die Zuordnung falsch.
+#
+#   netto   25 / 50 / 100 / 200 EUR
+#   brutto  29,75 / 59,50 / 119 / 238 EUR
+
+$ErrorActionPreference = "Stop"
+
+# ── Zugangsdaten ────────────────────────────────────────────────────────────
+# Gelten nur in diesem Lauf.
+
+$env:PAYPAL_MODE = "production"
+$env:PAYPAL_CLIENT_ID = "HIER_PRODUKTIONS_CLIENT_ID_EINSETZEN"
+$env:PAYPAL_CLIENT_SECRET = "HIER_PRODUKTIONS_SECRET_EINSETZEN"
+
+# ── Bestehende Pläne (Produktion) ───────────────────────────────────────────
+# Aus ihnen liest das Skript Preis, Produkt, Takt und Zahlungseinstellungen,
+# damit keine Beträge von Hand abgetippt werden.
+
+# netto — für eu_reverse_charge und third_country (ohne deutsche MwSt.)
+$env:PAYPAL_PLAN_ID_NONPROFIT = "P-96291418ED776793DNHY3KNY"
+$env:PAYPAL_PLAN_ID_MICRO     = "P-78208367E31082008NHY3KUY"
+$env:PAYPAL_PLAN_ID_SMALL     = "P-37802867W3946872CNHY3K4A"
+$env:PAYPAL_PLAN_ID_MEDIUM    = "P-14A900752U754273GNHY3K6A"
+
+# brutto — für de und eu_no_vat (Preis enthält 19 % MwSt.)
+$env:PAYPAL_PLAN_ID_NONPROFIT_BRUTTO = "P-2U38563027202484MNHZR5BQ"
+$env:PAYPAL_PLAN_ID_MICRO_BRUTTO     = "P-9MT72741N7510051DNHZR5GY"
+$env:PAYPAL_PLAN_ID_SMALL_BRUTTO     = "P-07789733J7952093FNHZR5MQ"
+$env:PAYPAL_PLAN_ID_MEDIUM_BRUTTO    = "P-4JU977239E541053NNHZR5SA"
+
+# ── Ablauf ──────────────────────────────────────────────────────────────────
+# Vorschau und Anlegen in einem Lauf, mit Rückfrage dazwischen. Zwei getrennte
+# Aufrufe gingen nicht: die Zugangsdaten oben gelten nur innerhalb dieses
+# Skripts, ein zweiter Aufruf von Hand fände sie nicht mehr.
+
+if ($env:PAYPAL_CLIENT_ID -like "HIER_*" -or $env:PAYPAL_CLIENT_SECRET -like "HIER_*") {
+  throw "Client ID und Secret oben noch nicht eingesetzt."
+}
+
+$skript = Join-Path $PSScriptRoot "paypal-plans-einmalig.ps1"
+
+Write-Host ""
+Write-Host "────────────────────────────────────────────────────────" -ForegroundColor Yellow
+Write-Host " VORSCHAU — es wird nichts angelegt." -ForegroundColor Yellow
+Write-Host " Sollwerte:  netto 25 / 50 / 100 / 200" -ForegroundColor Yellow
+Write-Host "             brutto 29,75 / 59,50 / 119 / 238" -ForegroundColor Yellow
+Write-Host "────────────────────────────────────────────────────────" -ForegroundColor Yellow
+Write-Host ""
+
+& pwsh -NoProfile -File $skript
+if ($LASTEXITCODE -ne 0) { throw "Vorschau fehlgeschlagen — nichts angelegt." }
+
+Write-Host ""
+Write-Host "Stimmen alle acht Preise mit den Sollwerten überein?" -ForegroundColor Cyan
+Write-Host "Bei einer Abweichung ist die Zuordnung der alten Plan-IDs falsch:" -ForegroundColor Cyan
+Write-Host "dann hier abbrechen und nachsehen." -ForegroundColor Cyan
+Write-Host ""
+$antwort = Read-Host "Acht neue Pläne anlegen und die alten deaktivieren? (ja/nein)"
+
+if ($antwort -ne "ja") {
+  Write-Host "Abgebrochen. Es wurde nichts geändert." -ForegroundColor Yellow
+  return
+}
+
+Write-Host ""
+& pwsh -NoProfile -File $skript -Apply -Deactivate
+if ($LASTEXITCODE -ne 0) { throw "Anlegen fehlgeschlagen — Ausgabe oben prüfen." }
+
+Write-Host ""
+Write-Host "────────────────────────────────────────────────────────" -ForegroundColor Green
+Write-Host " Fertig. Die acht Zeilen `PAYPAL_PLAN_ID_...=P-...` oben" -ForegroundColor Green
+Write-Host " werden auf Render gebraucht." -ForegroundColor Green
+Write-Host ""
+Write-Host " Nicht vergessen: diese Datei löschen." -ForegroundColor Green
+Write-Host "────────────────────────────────────────────────────────" -ForegroundColor Green

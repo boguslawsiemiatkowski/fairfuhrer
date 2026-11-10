@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# PayPal-Produktionslauf: die Kopie der .example-Vorlage enthält Client ID und
+# Secret im Klartext und darf nicht eingecheckt werden. Die Vorlage selbst
+# (.example, ohne Zugangsdaten) bleibt versioniert.
+scripts/paypal-plans-produktion.ps1
+
 # vercel
 .vercel
 
