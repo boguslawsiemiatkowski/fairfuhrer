@@ -30,9 +30,9 @@
   align-items: center;
   gap: 0.4rem;
   max-width: min(60vw, 260px);
-  padding: 0.22rem 0.5rem;
+  padding: 0.22rem 0.5rem 0.14rem;
   border: 1px solid #18222f;
-  background-color: #fff2e8e6;
+  background-color: #fff;
   font-family: var(--font-fira);
   cursor: pointer;
   transition:
@@ -67,7 +67,7 @@
 }
 
 .triggerLabel {
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;

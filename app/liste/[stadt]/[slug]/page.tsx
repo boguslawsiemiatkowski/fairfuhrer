@@ -19,13 +19,17 @@ import {
   Footprints,
   Bike,
   Car,
+  Phone,
+  ExternalLink,
 } from "lucide-react";
 import BackToListeLink from "@/components/BackToListeLink";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import PlaceGallery from "@/components/PlaceGallery";
+import SharePlaceButton from "@/components/SharePlaceButton";
 import {
   cityToSegment,
+  distanceInMeters,
   fetchAllPlaces,
   findPlaceBySlug,
   formatDistance,
@@ -192,11 +196,60 @@ export default async function OrtPage({ params }: RouteParams) {
   // „Entdeckung in der Nähe": ein anderer Pin im Ring 400 m .. 12 km, über
   // den eigenen slug ausgewählt. fetchAllPlaces() liegt im Cache, der zweite
   // Aufruf kostet keine weitere Anfrage.
-  const discovery = pickDiscovery(place, await fetchAllPlaces());
+  const allPlaces = await fetchAllPlaces();
+  const discovery = pickDiscovery(place, allPlaces);
   const discoveryHref =
     discovery && cityToSegment(discovery.place.Stadt)
       ? `/liste/${cityToSegment(discovery.place.Stadt)}/${discovery.place.slug}`
       : null;
+
+  // Inne miejsca w tym samym mieście (posortowane od najbliższego)
+  const sameCityPlaces = allPlaces
+    .filter(
+      (p) =>
+        p.id !== place.id &&
+        Boolean(p.slug) &&
+        cityToSegment(p.Stadt) === stadt,
+    )
+    .map((p) => ({
+      place: p,
+      meters: distanceInMeters(
+        place.location.coordinates,
+        p.location.coordinates,
+      ),
+    }))
+    .sort((a, b) => a.meters - b.meters);
+
+  // Do 3 proponowanych miejsc na dole strony: najpierw z tego samego miasta,
+  // a jeśli w mieście jest mniej niż 3 inne miejsca — uzupełniamy najbliższymi z okolicy
+  const relatedPlaces = [...sameCityPlaces.slice(0, 3)];
+  if (relatedPlaces.length < 3) {
+    const usedIds = new Set([
+      place.id,
+      ...(discovery ? [discovery.place.id] : []),
+      ...relatedPlaces.map((r) => r.place.id),
+    ]);
+    const nearbyFallback = allPlaces
+      .filter(
+        (p) =>
+          !usedIds.has(p.id) &&
+          Boolean(p.slug) &&
+          Boolean(cityToSegment(p.Stadt)),
+      )
+      .map((p) => ({
+        place: p,
+        meters: distanceInMeters(
+          place.location.coordinates,
+          p.location.coordinates,
+        ),
+      }))
+      .sort((a, b) => a.meters - b.meters)
+      .slice(0, 3 - relatedPlaces.length);
+
+    relatedPlaces.push(...nearbyFallback);
+  }
+
+  const totalInCityCount = sameCityPlaces.length + 1;
 
   const pinIdentifier = encodeURIComponent(place.slug || String(place.id));
   const mapPinHref = `/karte?pin=${pinIdentifier}`;
@@ -261,8 +314,12 @@ export default async function OrtPage({ params }: RouteParams) {
 
             {place.Telefon && (
               <p className={styles.contactLine}>
-                <a href={`tel:${place.Telefon.replace(/\s+/g, "")}`}>
-                  {place.Telefon}
+                <a
+                  href={`tel:${place.Telefon.replace(/\s+/g, "")}`}
+                  className={styles.contactLink}
+                >
+                  <Phone size={15} aria-hidden="true" />
+                  <span>{place.Telefon}</span>
                 </a>
               </p>
             )}
@@ -273,8 +330,10 @@ export default async function OrtPage({ params }: RouteParams) {
                   href={safeLinkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className={styles.contactLink}
                 >
-                  {place.Link_Text || "Website besuchen"}
+                  <ExternalLink size={15} aria-hidden="true" />
+                  <span>{place.Link_Text || "Website besuchen"}</span>
                 </a>
               </p>
             )}
@@ -400,6 +459,7 @@ export default async function OrtPage({ params }: RouteParams) {
                         .join(" · ")}
                     </p>
                   </div>
+                  <SharePlaceButton title={place.Name} city={place.Stadt} />
                 </div>
 
                 <p className={styles.locationCardHint}>
@@ -454,9 +514,81 @@ export default async function OrtPage({ params }: RouteParams) {
               </div>
             </section>
 
-            <p className={styles.backLink}>
-              <Link href="/liste">Alle Orte durchsuchen</Link>
-            </p>
+            {/* Sekcja polecająca inne miejsca w tym samym mieście lub najbliższej okolicy */}
+            {relatedPlaces.length > 0 && (
+              <section
+                className={styles.relatedSection}
+                aria-labelledby="weitere-orte"
+              >
+                <h2 id="weitere-orte" className={styles.galleryTitle}>
+                  {sameCityPlaces.length > 0 && place.Stadt
+                    ? `Weitere Orte in ${place.Stadt}`
+                    : "Weitere Orte in der Umgebung"}
+                </h2>
+
+                <div className={styles.relatedGrid}>
+                  {relatedPlaces.map(({ place: relPlace, meters }) => {
+                    const relStadtSegment = cityToSegment(relPlace.Stadt);
+                    const relHref = `/liste/${relStadtSegment}/${relPlace.slug}`;
+                    const relCat = relPlace.Kategorie[0];
+                    const relColor = categoryColorFor(relCat);
+
+                    return (
+                      <Link
+                        key={relPlace.id}
+                        href={relHref}
+                        className={styles.relatedCard}
+                      >
+                        <CategoryIcon
+                          categoryId={relCat?.id ?? null}
+                          color={relColor}
+                          strokeColor="#fff"
+                          size={36}
+                          className={styles.relatedCardIcon}
+                        />
+                        <div className={styles.relatedCardBody}>
+                          <span className={styles.relatedCardName}>
+                            {relPlace.Name}
+                          </span>
+                          <span className={styles.relatedCardMeta}>
+                            {[
+                              relCat?.name,
+                              relPlace.Stadt,
+                              formatDistance(meters),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </div>
+                        <MoveRight
+                          size={16}
+                          className={styles.relatedCardArrow}
+                          aria-hidden="true"
+                        />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            <div className={styles.footerNav}>
+              {sameCityPlaces.length > 0 && place.Stadt && (
+                <Link
+                  href={`/liste?stadt=${encodeURIComponent(stadt)}`}
+                  className={styles.cityCatalogLink}
+                >
+                  <span>
+                    Alle {totalInCityCount} Orte in {place.Stadt} entdecken
+                  </span>
+                  <MoveRight size={17} aria-hidden="true" />
+                </Link>
+              )}
+
+              <Link href="/liste" className={styles.allPlacesLink}>
+                Alle Orte im Katalog durchsuchen →
+              </Link>
+            </div>
           </div>
         </div>
       </article>

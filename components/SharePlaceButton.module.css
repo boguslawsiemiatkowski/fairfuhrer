@@ -1,0 +1,37 @@
+/* components/SharePlaceButton.module.css */
+
+.shareButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.45rem 0.78rem;
+  background-color: #e7d051;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.shareButton:hover {
+  background-color: #18222f;
+  color: #fff;
+  box-shadow: 2px 2px 0 goldenrod;
+}
+
+.shareButtonCopied {
+  background-color: #2e7d32;
+  color: #ffffff;
+  border-color: #18222f;
+}
+
+.shareButtonCopied:hover {
+  background-color: #2e7d32;
+  color: #ffffff;
+}
