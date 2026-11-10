@@ -171,6 +171,19 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
 
   const activeLand = LAENDER.find((l) => cityToSegment(l) === landParam);
 
+  // Ein Ort trägt das gewählte Siegel. Als eigene Funktion, weil die Prüfung
+  // in `filtered` und in jedem Zähler gebraucht wird: stünde sie viermal
+  // ausgeschrieben da, bliebe beim nächsten Filter wieder eine Stelle zurück
+  // — genau so war es hier, als der Siegelfilter dazukam.
+  const matchesZert = useCallback(
+    (place: Place) =>
+      !zertParam ||
+      (place.Zertifizierungen ?? []).some(
+        (z) => cityToSegment(z.name) === zertParam,
+      ),
+    [zertParam],
+  );
+
   const filtered = useMemo(
     () =>
       places.filter((place) => {
@@ -182,22 +195,20 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
         ) {
           return false;
         }
-        if (
-          zertParam &&
-          !(place.Zertifizierungen ?? []).some(
-            (z) => cityToSegment(z.name) === zertParam,
-          )
-        ) {
-          return false;
-        }
+        if (!matchesZert(place)) return false;
         return true;
       }),
-    [places, stadtParam, activeLand, activeCategory, zertParam],
+    [places, stadtParam, activeLand, activeCategory, matchesZert],
   );
 
   // Alle vorkommenden Zertifikate mit Anzahl. Gezählt wird über ALLE Orte,
   // nicht über die gefilterten — sonst schrumpfen die Zahlen, sobald eine
   // Stadt gewählt ist, und das Menü wirkt unruhig.
+  //
+  // Hier absichtlich OHNE `matchesZert`, anders als bei Ländern, Städten und
+  // Kategorien: das Siegelmenü ist eine Einfachauswahl. Rechnete es sich selbst
+  // ein, stünde bei jedem anderen Siegel 0 und man käme nicht mehr von Demeter
+  // zu Bioland, ohne vorher aufzuheben.
   //
   // Nur Zertifikate, die wirklich an veröffentlichten Orten hängen,
   // erscheinen: vier der 16 Siegel in Directus haben Verknüpfungen zu Pins,
@@ -258,6 +269,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
       ) {
         continue;
       }
+      if (!matchesZert(place)) continue;
       const segment = cityToSegment(place.Stadt);
       if (!segment) continue;
       const entry = map.get(segment);
@@ -273,7 +285,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
     return [...map.values()].sort(
       (a, b) => b.count - a.count || a.name.localeCompare(b.name, "de"),
     );
-  }, [places, activeLand, activeCategory]);
+  }, [places, activeLand, activeCategory, matchesZert]);
 
   // Zähler zeigen, was bei den ÜBRIGEN Filtern noch möglich ist — so führt
   // kein Chip in ein leeres Ergebnis.
@@ -286,10 +298,34 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
           (p) =>
             p.Land === land &&
             (!activeCategory ||
-              p.Kategorie.some((c) => c.id === activeCategory.id)),
+              p.Kategorie.some((c) => c.id === activeCategory.id)) &&
+            matchesZert(p),
         ).length,
       })).filter((l) => l.count > 0),
-    [places, activeCategory],
+    [places, activeCategory, matchesZert],
+  );
+
+  // Die beiden „Alle“-Knöpfe heben je einen Filter auf, nicht alle: der eine
+  // das Land, der andere die Kategorie. Ihre Zahl muss also zeigen, was nach
+  // dem Aufheben übrig bleibt — nicht `places.length`, denn sonst verspricht
+  // „Alle (591)“ bei gewähltem Siegel 591 Orte und liefert zehn.
+  const landResetCount = useMemo(
+    () =>
+      places.filter(
+        (p) =>
+          (!activeCategory ||
+            p.Kategorie.some((c) => c.id === activeCategory.id)) &&
+          matchesZert(p),
+      ).length,
+    [places, activeCategory, matchesZert],
+  );
+
+  const categoryResetCount = useMemo(
+    () =>
+      places.filter(
+        (p) => (!activeLand || p.Land === activeLand) && matchesZert(p),
+      ).length,
+    [places, activeLand, matchesZert],
   );
 
   const categoryCounts = useMemo(() => {
@@ -300,12 +336,13 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
         places.filter(
           (p) =>
             (!activeLand || p.Land === activeLand) &&
-            p.Kategorie.some((c) => c.id === cat.id),
+            p.Kategorie.some((c) => c.id === cat.id) &&
+            matchesZert(p),
         ).length,
       );
     }
     return map;
-  }, [categories, places, activeLand]);
+  }, [categories, places, activeLand, matchesZert]);
 
   const barColor = activeCategory
     ? categoryColorFor(activeCategory)
@@ -410,7 +447,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
             onClick={() => setParam("land", "")}
             aria-pressed={!landParam}
           >
-            Alle ({places.length})
+            Alle ({landResetCount})
           </button>
           {landChips.map((l) => {
             const active = l.segment === landParam;
@@ -461,7 +498,7 @@ export default function OrteListe({ places, categories }: OrteListeProps) {
                 <CategoryIcon categoryId={null} color="#fff" strokeColor="#000" />
               </span>
               <span className={styles.menuText}>Alle</span>
-              <span className={styles.menuCount}>{places.length}</span>
+              <span className={styles.menuCount}>{categoryResetCount}</span>
             </button>
 
             {categories.map((cat) => {
