@@ -172,18 +172,18 @@ export default function Header() {
             Impressum
           </Link>
           <Link
-            href="/datenschutz"
-            className={styles.mobileNavLink}
-            onClick={closeMenu}
-          >
-            Datenschutz
-          </Link>
-          <Link
             href="/agb"
             className={styles.mobileNavLink}
             onClick={closeMenu}
           >
             AGB
+          </Link>
+          <Link
+            href="/datenschutz"
+            className={styles.mobileNavLink}
+            onClick={closeMenu}
+          >
+            Datenschutz
           </Link>
         </nav>
 
