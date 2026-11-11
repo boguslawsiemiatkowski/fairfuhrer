@@ -1,7 +1,14 @@
 // Rozwinięty plik z Directusa (obraz) — id + modified_on do cache-bustingu URL.
+//
+// width/height pochodzą z metadanych pliku w Directusie i są potrzebne dla
+// `next/image` (bez wymiarów komponent nie zadziała, a wpisywanie ich na
+// sztywno rozjechałoby się po podmianie obrazu w CMS). Opcjonalne, bo nie
+// każde zapytanie o nie prosi, a pliki inne niż obrazy ich nie mają.
 export interface DirectusFileRef {
   id: string;
   modified_on?: string | null;
+  width?: number | null;
+  height?: number | null;
 }
 
 export interface PartnerPageContent {

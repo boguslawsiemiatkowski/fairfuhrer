@@ -129,10 +129,19 @@ async function fetchDirectusList<T>(
 export async function getHomePageContent(): Promise<HomePageContent | null> {
   // Rozwijamy pola obrazów o modified_on — używane jako cache-buster w URL
   // (podmiana pliku pod tym samym UUID inaczej zostaje w 30-dniowym cache).
+  //
+  // width/height pobieramy, bo `next/image` wymaga wymiarów. Directus zna je
+  // z metadanych pliku, więc nie trzeba ich wpisywać w kodzie ani rezygnować
+  // z optymalizacji: wcześniej oba obrazy szły surowym <img>, czyli bez
+  // zmiany rozmiaru i bez lazy-loadingu (partner_image ma 3471×3471 px).
+  //
   // ISR + tag "home-page": Directus Flow "Home Page" woła POST /api/revalidate
   // po każdej zmianie w home_page_content.
   return fetchDirectusSingle<HomePageContent>(
-    "/items/home_page_content?fields=*,traveler_image.id,traveler_image.modified_on,partner_image.id,partner_image.modified_on&limit=1",
+    "/items/home_page_content?fields=*" +
+      ",traveler_image.id,traveler_image.modified_on,traveler_image.width,traveler_image.height" +
+      ",partner_image.id,partner_image.modified_on,partner_image.width,partner_image.height" +
+      "&limit=1",
     { tag: "home-page", revalidate: 3600, label: "home page content" },
   );
 }

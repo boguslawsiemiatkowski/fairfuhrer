@@ -11,6 +11,7 @@ import MuxVideoEmbed from "@/components/MuxVideoEmbed";
 import { ConditionalMuxVideo } from "@/components/ConditionalMuxVideo";
 import styles from "./page.module.css";
 import { getHomePageContent } from "@/lib/directus";
+import { fetchCategories } from "@/lib/orte";
 import { categoryColorFor } from "@/components/CategoryIcon";
 
 const APP_STORE_URL =
@@ -59,20 +60,45 @@ function StoreBadgeLinks({
   );
 }
 
-const CATEGORIES = [
-  { id: 1, name: "Sehenswertes", color: "#E45858" },
-  { id: 3, name: "Einkaufen", color: "#B8A2CD" },
-  { id: 5, name: "Engagement", color: "#42D742" },
-  { id: 8, name: "Unternehmen &\nHandwerk", color: "#E0D12E" },
-  { id: 2, name: "Essen &\nÜbernachten", color: "#6477E3" },
-] as const;
+// Die Kategorienamen kommen aus Directus und sind einzeilig. Lang genug, um
+// umzubrechen, sind nur die mit „&“ — dort wird der Umbruch VOR dem zweiten
+// Wort eingefügt, damit „Essen & Übernachten“ wie bisher zweizeilig steht.
+// `white-space: pre-line` an `.categoryName` zeigt das \n an.
+//
+// Nötig, weil der Name früher mit fest eingetragenem „&\n“ im Code stand;
+// aus Directus kommt er ohne Umbruch, und ohne diese Zeile würde die Reihe
+// der fünf Kreise auf dem Desktop auseinanderlaufen.
+function withLineBreak(name: string): string {
+  return name.replace(/\s*&\s*/, " &\n");
+}
 
 export default async function HomePage() {
-  const content = await getHomePageContent();
+  // Beides parallel: die Seite wartet sonst zweimal hintereinander auf
+  // Directus. Kategorien haben ihren eigenen Cache-Tag („kategorien“), den
+  // der Flow „Kategorien“ nach jeder Änderung erneuert.
+  const [content, categories] = await Promise.all([
+    getHomePageContent(),
+    fetchCategories(),
+  ]);
 
   // Felder `traveler_content` und `partner_content` sind Markdown (Directus
   // `input-rich-text-md`). Vor dem Rendern in HTML konvertieren, sonst werden
   // **fett** und Absätze als Rohtext angezeigt.
+  //
+  // BEWUSST OHNE SANITIZER, mit Begründung: `marked` lässt rohes HTML
+  // unverändert durch — nachgemessen, auch `<script>`, `onerror=` und
+  // `javascript:` in Links. Das ist hier kein Einfallstor, weil die Texte
+  // ausschließlich aus Directus kommen und nur die Redaktion dort schreibt.
+  // Ein Sanitizer würde eine Abhängigkeit kosten (DOMPurify braucht ein DOM,
+  // das es in Server-Komponenten nicht gibt, also jsdom), ohne heute etwas
+  // abzuwenden.
+  //
+  // Sobald Inhalte von außen kommen — Partner, die ihren Text selbst
+  // einreichen, oder eine Wiederaufnahme der Community-Funktion — muss hier
+  // sanitisiert werden. Dann am besten `dompurify` projektweit durch
+  // `isomorphic-dompurify` ersetzen, damit Server und Browser dieselbe
+  // Bibliothek verwenden (im Browser läuft DOMPurify bereits in
+  // utils/popupGenerator.ts).
   const travelerHtml = content?.traveler_content
     ? await marked(content.traveler_content)
     : "";
@@ -289,35 +315,36 @@ export default async function HomePage() {
         <div className={styles.section2Content}>
           <h2 className={styles.section2Title}>{content?.section2_title}</h2>
           <div className={styles.categoriesList}>
-            {CATEGORIES.map((cat) => {
+            {categories.map((cat) => {
               const iconPaths =
                 getCategoryIconPaths(cat.id) ?? DEFAULT_ICON_PATHS;
+              const color = categoryColorFor(cat);
               return (
-                <div key={cat.name} className={styles.categoryItem}>
+                <div key={cat.id} className={styles.categoryItem}>
                   <svg
                     width={80}
                     height={80}
                     viewBox="0 0 80 80"
                     aria-hidden="true"
+                    focusable="false"
                   >
-                    <circle
-                      cx="40"
-                      cy="40"
-                      r="38"
-                      fill={categoryColorFor(cat)}
-                    />
+                    <circle cx="40" cy="40" r="38" fill={color} />
                     <circle cx="40" cy="40" r="28" fill="white" />
                     <g
                       transform="translate(22, 22) scale(1.5)"
                       fill="none"
-                      stroke={categoryColorFor(cat)}
+                      stroke={color}
                       strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
+                      // Feste Zeichenketten aus lib/categoryIcons.ts, nach
+                      // `cat.id` ausgewählt — keine Directus-Inhalte.
                       dangerouslySetInnerHTML={{ __html: iconPaths }}
                     />
                   </svg>
-                  <span className={styles.categoryName}>{cat.name}</span>
+                  <span className={styles.categoryName}>
+                    {withLineBreak(cat.name)}
+                  </span>
                 </div>
               );
             })}
@@ -340,10 +367,15 @@ export default async function HomePage() {
               <div className={styles.ctaFeaturedMedia}>
                 {content.traveler_image?.id ? (
                   <div className={styles.ctaFeaturedImageWrap}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={assetUrl(content.traveler_image)}
-                      alt={content.traveler_title}
+                    {/* Die Maße stehen in den Dateimetadaten von Directus und
+                        werden mitgeladen; `width:auto` und `max-height:82vh`
+                        im CSS entscheiden weiterhin über die Anzeigegröße. */}
+                    <Image
+                      src={assetUrl(content.traveler_image) ?? ""}
+                      alt={content.traveler_title ?? ""}
+                      width={content.traveler_image.width ?? 925}
+                      height={content.traveler_image.height ?? 672}
+                      sizes="(max-width: 900px) 92vw, 46vw"
                       className={styles.ctaFeaturedImage}
                     />
                     <h2 className={styles.ctaFeaturedTitle}>
@@ -409,10 +441,15 @@ export default async function HomePage() {
               </div>
               {content.partner_image?.id && (
                 <div className={styles.ctaImage}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={assetUrl(content.partner_image)}
-                    alt={content.partner_title}
+                  {/* Die Quelldatei ist 3471×3471 px groß und stand bisher
+                      unverkleinert in einer 36 % breiten Spalte. `sizes` sagt
+                      dem Loader, wie breit sie wirklich erscheint. */}
+                  <Image
+                    src={assetUrl(content.partner_image) ?? ""}
+                    alt={content.partner_title ?? ""}
+                    width={content.partner_image.width ?? 1000}
+                    height={content.partner_image.height ?? 1000}
+                    sizes="(max-width: 900px) 92vw, 36vw"
                   />
                 </div>
               )}

@@ -304,11 +304,11 @@
   background-color: rgba(0, 0, 0, 0.24);
   border: 1px solid rgba(255, 255, 255, 0.32);
   font-family: var(--font-fira);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0.16rem 0.52rem;
+  padding: 0.2rem 0.52rem 0.1rem;
   border-radius: 10px;
   display: inline-block;
   line-height: 1.3;

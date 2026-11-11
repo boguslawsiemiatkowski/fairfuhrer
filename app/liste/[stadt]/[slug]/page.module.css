@@ -460,7 +460,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.85rem 1rem;
-  background-color: #ffffff;
+  background-color: #fff7ed;
   color: #18222f;
   border: 2px solid #18222f;
   box-shadow: 3px 3px 0 #18222f;
@@ -472,7 +472,7 @@
 }
 
 .relatedCard:hover {
-  background-color: #fff7ed;
+  background-color: #dd9090a4;
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 #18222f;
 }
