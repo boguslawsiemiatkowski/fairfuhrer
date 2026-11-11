@@ -11,8 +11,13 @@ import MuxVideoEmbed from "@/components/MuxVideoEmbed";
 import { ConditionalMuxVideo } from "@/components/ConditionalMuxVideo";
 import styles from "./page.module.css";
 import { getHomePageContent } from "@/lib/directus";
-import { fetchCategories } from "@/lib/orte";
+import {
+  audioUrlFor,
+  fetchCategories,
+  fetchPublishedPlacesCount,
+} from "@/lib/orte";
 import { categoryColorFor } from "@/components/CategoryIcon";
+import HeroAudiopinStage from "@/components/HeroAudiopinStage";
 
 const APP_STORE_URL =
   "https://apps.apple.com/de/app/fairf%C3%BChrer/id6778095803";
@@ -73,13 +78,30 @@ function withLineBreak(name: string): string {
 }
 
 export default async function HomePage() {
-  // Beides parallel: die Seite wartet sonst zweimal hintereinander auf
-  // Directus. Kategorien haben ihren eigenen Cache-Tag („kategorien“), den
-  // der Flow „Kategorien“ nach jeder Änderung erneuert.
-  const [content, categories] = await Promise.all([
+  // Öffentliche Directus-Adresse: die Bild- und Audioverweise werden im
+  // Browser abgerufen. Stand vorher weiter unten, obwohl `assetUrl` sie
+  // bereits oberhalb verwendete — das ging nur durch, weil `assetUrl` erst
+  // im JSX aufgerufen wird.
+  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "";
+
+  // Alles parallel: die Seite wartet sonst dreimal hintereinander auf
+  // Directus. Kategorien und die Ortszahl haben eigene Cache-Tags
+  // („kategorien“, „orte“), die die jeweiligen Flows erneuern.
+  const [content, categories, placesCount] = await Promise.all([
     getHomePageContent(),
     fetchCategories(),
+    fetchPublishedPlacesCount(),
   ]);
+
+  // Der Audiopin für das Hero wird in Directus ausgewählt. Hier wird nur
+  // geprüft, ob daraus etwas Vorzeigbares wird: ohne Audioadresse gibt es
+  // nichts anzuhören, und dann ist das alte Bild die bessere Wahl.
+  //
+  // Dass eine Adresse existiert, heißt nicht, dass die Datei dort liegt —
+  // bei neun der 590 veröffentlichten Pins fehlt sie (Stand 2026-11-11).
+  // Genau deshalb wählt die Redaktion den Pin aus und kein Zufall.
+  const heroPin = content?.hero_audiopin ?? null;
+  const heroAudioSrc = heroPin ? audioUrlFor(heroPin) : undefined;
 
   // Felder `traveler_content` und `partner_content` sind Markdown (Directus
   // `input-rich-text-md`). Vor dem Rendern in HTML konvertieren, sonst werden
@@ -241,21 +263,35 @@ export default async function HomePage() {
     }),
   } as React.CSSProperties;
 
-  const directusUrl = process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "";
-
   return (
     <main className={styles.main} style={cssVars}>
       {/* SEKCJA 1: Hero */}
       <div className={styles.heroContainer}>
+        {/* Links steht ein Audiopin zum Anhören, nicht mehr ein bloßes Bild:
+            die Seite verspricht „in 100 Sekunden die Geschichte dahinter“ —
+            hier kann man das sofort nachprüfen.
+
+            Welcher Pin, entscheidet die Redaktion in Directus. Fehlt die
+            Auswahl oder hat der Pin kein Audio, bleibt das alte Bild stehen;
+            das Hero darf an dieser Stelle nicht zerbrechen. */}
         <div className={styles.heroImageSide}>
-          <Image
-            src={heroImage}
-            alt="FairFührer Guide Hero"
-            fill
-            priority
-            unoptimized
-            style={{ objectFit: "cover" }}
-          />
+          {heroPin && heroAudioSrc ? (
+            <HeroAudiopinStage
+              pin={heroPin}
+              audioSrc={heroAudioSrc}
+              placesCount={placesCount}
+              directusUrl={directusUrl}
+            />
+          ) : (
+            <Image
+              src={heroImage}
+              alt="FairFührer Guide Hero"
+              fill
+              priority
+              unoptimized
+              style={{ objectFit: "cover" }}
+            />
+          )}
         </div>
         <div className={styles.heroTextSide}>
           <h1 className={styles.heroTitle}>{content?.hero_title}</h1>

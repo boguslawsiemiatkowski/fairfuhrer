@@ -137,10 +137,19 @@ export async function getHomePageContent(): Promise<HomePageContent | null> {
   //
   // ISR + tag "home-page": Directus Flow "Home Page" woła POST /api/revalidate
   // po każdej zmianie w home_page_content.
+  // `hero_audiopin` ist eine Relation auf `Orte` und wird gleich mitgeladen:
+  // Audio, Titelbild samt Maßen und die erste Kategorie für die Farbe. Ein
+  // zweiter Aufruf wäre unnötig, weil alles an einem Datensatz hängt.
   return fetchDirectusSingle<HomePageContent>(
     "/items/home_page_content?fields=*" +
       ",traveler_image.id,traveler_image.modified_on,traveler_image.width,traveler_image.height" +
       ",partner_image.id,partner_image.modified_on,partner_image.width,partner_image.height" +
+      ",hero_audiopin.id,hero_audiopin.Name,hero_audiopin.Stadt,hero_audiopin.Land,hero_audiopin.slug" +
+      ",hero_audiopin.Audio,hero_audiopin.Audio_Datei,hero_audiopin.Hauptbild" +
+      ",hero_audiopin.Titelbild.id,hero_audiopin.Titelbild.modified_on" +
+      ",hero_audiopin.Titelbild.width,hero_audiopin.Titelbild.height" +
+      ",hero_audiopin.Kategorie.Kategorie_id.id,hero_audiopin.Kategorie.Kategorie_id.Name" +
+      ",hero_audiopin.Kategorie.Kategorie_id.Farbe" +
       "&limit=1",
     { tag: "home-page", revalidate: 3600, label: "home page content" },
   );

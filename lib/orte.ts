@@ -57,9 +57,79 @@ import {
   sanitizeExternalUrl,
   sanitizeWordHtml,
 } from "./orte-shared";
+// Reine URL-Bauer ohne Supabase-Client, deshalb auch auf dem Server
+// unproblematisch.
+import { getAudioUrl } from "./supabase";
 
 export function hasAudio(place: Place): boolean {
   return Boolean(place.Audio || place.Audio_Datei);
+}
+
+/**
+ * Adresse der Audiodatei eines Pins.
+ *
+ * Es gibt zwei Ablagen, historisch gewachsen: neuere Pins verweisen über
+ * `Audio` auf eine Datei in Directus, ältere über `Audio_Datei` auf einen
+ * Pfad im Supabase Storage (`places/audio/`). Beide müssen bedient werden,
+ * solange die Umstellung auf Directus nicht abgeschlossen ist.
+ *
+ * Gibt `undefined` zurück, wenn kein Audio hinterlegt ist — ob die Datei
+ * dort auch wirklich liegt, sagt diese Funktion nicht. Bei neun der 590
+ * veröffentlichten Pins fehlt sie (Stand 2026-11-11), deshalb wird der
+ * Audiopin im Hero von der Redaktion ausgewählt und nicht ausgelost.
+ */
+export function audioUrlFor(source: {
+  Audio?: string | null;
+  Audio_Datei?: string | null;
+}): string | undefined {
+  // Hier die öffentliche Adresse, nicht DIRECTUS_URL: die Datei wird im
+  // Browser abgespielt, also muss der Verweis von außen erreichbar sein.
+  // (`DIRECTUS_URL` oben dient den Abfragen vom Server aus.)
+  const publicUrl = (process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "").replace(
+    /\/+$/,
+    "",
+  );
+  if (source.Audio && publicUrl) {
+    return `${publicUrl}/assets/${source.Audio}`;
+  }
+  if (source.Audio_Datei) {
+    // Der erste Parameter wird in getAudioUrl nicht verwendet (`_placeId`).
+    return getAudioUrl(0, source.Audio_Datei);
+  }
+  return undefined;
+}
+
+/**
+ * Anzahl der veröffentlichten Pins — für die Zahl im Hero („591 faire Orte“).
+ *
+ * Bewusst über `aggregate[count]` statt über die geladenen Orte: die Zahl
+ * soll auch dann stimmen, wenn die Startseite die Orte selbst nicht braucht,
+ * und ein Zähler aus der Datenbank veraltet nicht so, wie eine im Text
+ * eingetragene Zahl es täte („über 600 PINs“ stand im CMS, tatsächlich sind
+ * es 591).
+ *
+ * Der Filter auf `veroeffentlicht` ist wesentlich: ohne ihn würden
+ * eingereichte, noch nicht freigegebene Pins mitgezählt, und die Seite würde
+ * mehr versprechen, als auf der Karte steht.
+ */
+export async function fetchPublishedPlacesCount(): Promise<number | null> {
+  try {
+    const url = new URL(`${requireBaseUrl()}/items/Orte`);
+    url.searchParams.set("aggregate[count]", "id");
+    url.searchParams.set("filter[Bearbeitungsstatus][_eq]", "veroeffentlicht");
+
+    const data = await fetchFromDirectus<{ count: { id: string } }>(
+      url.toString(),
+      "orte",
+    );
+    const raw = data.data?.[0]?.count?.id;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  } catch (error) {
+    // Die Zahl ist Beiwerk — fehlt sie, bleibt die Zeile im Hero einfach weg.
+    console.error("Error fetching published places count:", error);
+    return null;
+  }
 }
 
 // ─── Transformation ─────────────────────────────────────────────────────────

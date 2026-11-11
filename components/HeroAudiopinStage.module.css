@@ -1,0 +1,195 @@
+/* components/HeroAudiopinStage.module.css
+   Linke Hälfte des Heros: Titelbild, darüber die Kategoriefarbe mit
+   Transparenz, darauf Name, Abspieler und Verweis auf die Karte.
+
+   Die Farbfläche ist nicht Zierde, sondern Voraussetzung: ohne sie wäre
+   weiße Schrift auf einem beliebigen Foto unlesbar. Die Farbe selbst kommt
+   aus der Kategorie des Ortes und ist schon um die Hälfte abgedunkelt
+   (categoryColorFor), damit sie Weiß trägt.
+*/
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image {
+  object-fit: cover;
+  /* Hinter der Farbfläche; eigene Ebene, damit das Bild nicht mitskaliert,
+     wenn der Inhalt wächst. */
+  z-index: 0;
+}
+
+/* Deckkraft ist der eigentliche Regler dieser Fläche: zu wenig und die
+   Schrift flimmert über Bilddetails, zu viel und das Foto verschwindet.
+   Bei 0.82 schlugen Blätter und Flaschenetikett noch durch den Ortsnamen —
+   nachgesehen am Pin „Randegger Ottilien-Quelle“. 0.9 lässt die Form des
+   Ortes erkennen und hält die Schrift ruhig.
+
+   Zusätzlich ein Verlauf von oben: dort steht der größte Text, und dort
+   sind Fotos am häufigsten hell (Himmel). Der Verlauf liegt über der
+   Farbfläche, nimmt aber ihre Farbe nicht weg — er dunkelt nur ab. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.9;
+  z-index: 1;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.08) 45%,
+    rgba(0, 0, 0, 0.18) 100%
+  );
+}
+
+.content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 420px;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: #fff;
+  font-family: var(--font-fira);
+}
+
+/* ─── Kategorie ──────────────────────────────────────────────────────────── */
+
+.categoryRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  padding: 0.25rem 0.7rem 0.25rem 0.3rem;
+  background-color: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+}
+
+.categoryIcon {
+  flex-shrink: 0;
+}
+
+.categoryName {
+  font-family: var(--font-fira-condensed), var(--font-fira), sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.3;
+}
+
+/* ─── Ort ────────────────────────────────────────────────────────────────── */
+
+.name {
+  font-family: var(--font-anton), sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  margin: 0;
+  /* Der Name steht auf einer Farbfläche über einem Foto — ein feiner Schatten
+     hält ihn auch über helleren Bildstellen ablesbar. */
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
+}
+
+.location {
+  margin: 0.4rem 0 0 0;
+  font-size: 0.98rem;
+  opacity: 0.92;
+}
+
+/* ─── Abspieler ──────────────────────────────────────────────────────────── */
+
+/* Trennlinie wie in der linken Spalte der Audiopin-Seite: der Abspieler
+   gehört zur Fläche, bekommt aber einen eigenen Abschnitt. */
+.playerWrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding-top: 1.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+/* ─── Karte & Zahl ───────────────────────────────────────────────────────── */
+
+.mapLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 0.6rem 1.1rem;
+  background-color: rgba(255, 255, 255, 0.95);
+  color: #18222f;
+  border: 2px solid #18222f;
+  box-shadow: 3px 3px 0 #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s,
+    background-color 0.15s;
+}
+
+.mapLink:hover,
+.mapLink:focus-visible {
+  background-color: #fff;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #18222f;
+}
+
+.mapLink:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.count {
+  margin: 1.35rem 0 0 0;
+  font-size: 0.92rem;
+  opacity: 0.95;
+}
+
+.count strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ─── Mobil ──────────────────────────────────────────────────────────────── */
+
+/* Auf Mobil liegt das Hero-Bild als Hintergrund hinter Titel und Knopf
+   (siehe app/page.module.css). Diese Fläche steht dort als eigener
+   Abschnitt darunter, deshalb braucht sie eine eigene Höhe. */
+@media (max-width: 900px) {
+  .stage {
+    min-height: 60vh;
+  }
+
+  .content {
+    padding: 2.25rem 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapLink {
+    transition-duration: 1ms;
+  }
+}

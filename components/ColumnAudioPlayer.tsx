@@ -61,6 +61,52 @@ export default function ColumnAudioPlayer({
     if (audioRef.current) audioRef.current.playbackRate = value;
   }, []);
 
+  // Die Länge nicht allein aus `onLoadedMetadata` nehmen.
+  //
+  // Liegt die Datei schon im Cache des Browsers, kennt das <audio>-Element
+  // seine Länge, bevor React die Insel hydriert hat — das einzige
+  // `loadedmetadata` ist dann vorbei, bevor der Handler hängt. Die Anzeige
+  // blieb in dem Fall dauerhaft bei „0:00“, obwohl das Element 104 Sekunden
+  // kannte. Auf der Startseite gut zu sehen, weil dort beim zweiten Aufruf
+  // alles aus dem Cache kommt.
+  //
+  // Deshalb: horchen UND nachsehen, und zwar so lange, bis die Länge da ist.
+  // Nur im Produktions-Build sichtbar; `next dev` lädt anders und verdeckt
+  // das Problem.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+
+    const sync = () => {
+      if (Number.isFinite(el.duration) && el.duration > 0) {
+        setDuration(el.duration);
+        return true;
+      }
+      return false;
+    };
+
+    el.addEventListener("durationchange", sync);
+    el.addEventListener("loadedmetadata", sync);
+
+    if (!sync()) {
+      const timer = setInterval(() => {
+        if (sync()) clearInterval(timer);
+      }, 120);
+      const stop = setTimeout(() => clearInterval(timer), 5000);
+      return () => {
+        clearInterval(timer);
+        clearTimeout(stop);
+        el.removeEventListener("durationchange", sync);
+        el.removeEventListener("loadedmetadata", sync);
+      };
+    }
+
+    return () => {
+      el.removeEventListener("durationchange", sync);
+      el.removeEventListener("loadedmetadata", sync);
+    };
+  }, [src]);
+
   // Leertaste und Pfeiltasten steuern den Guide — aber nur, wenn der Fokus
   // nicht in einem Eingabefeld steht.
   useEffect(() => {

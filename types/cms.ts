@@ -11,6 +11,33 @@ export interface DirectusFileRef {
   height?: number | null;
 }
 
+// Ein Ort aus der Kollektion `Orte`, so weit aufgelöst, wie das Hero der
+// Startseite ihn braucht: Audio, Titelbild samt Maßen und die erste Kategorie
+// (sie gibt die Farbe der Überlagerung).
+//
+// Audio liegt in zwei Formen vor — neuere Pins verweisen über `Audio` auf eine
+// Directus-Datei, ältere über `Audio_Datei` auf einen Pfad im Supabase
+// Storage. Beide Wege müssen bedient werden; `lib/orte.ts` hat dafür
+// `audioUrlFor()`.
+export interface HeroAudiopin {
+  id: number;
+  Name?: string | null;
+  Stadt?: string | null;
+  Land?: string | null;
+  slug?: string | null;
+  Audio?: string | null;
+  Audio_Datei?: string | null;
+  Titelbild?: DirectusFileRef | null;
+  Hauptbild?: string | null;
+  Kategorie?: { Kategorie_id?: HeroAudiopinKategorie | null }[] | null;
+}
+
+export interface HeroAudiopinKategorie {
+  id: number;
+  Name?: string | null;
+  Farbe?: string | null;
+}
+
 export interface PartnerPageContent {
   id: number;
   // Globalny kolor linków (Markdown-Links) dla całej kolekcji — obie strony
@@ -238,6 +265,14 @@ export interface HomePageContent {
   section4_button_font_size?: string;
   section4_button_background_color?: string;
   section4_button_mobile_font_size?: string;
+  // Audiopin im Hero: Relation auf die Kollektion `Orte`. Die Redaktion wählt
+  // ihn selbst aus, statt ihn auszulosen — zwei Gründe:
+  //   1. bei einigen älteren Pins fehlt die Audiodatei; ein Zufallstreffer
+  //      würde an der sichtbarsten Stelle der Website ins Leere spielen,
+  //   2. dieser Platz soll später Teil des Premium-Pakets werden, also muss
+  //      er sich gezielt vergeben lassen.
+  // Leer oder ohne Audio: das Hero fällt auf das statische Bild zurück.
+  hero_audiopin?: HeroAudiopin | null;
   traveler_title?: string;
   traveler_content?: string;
   // Tekst „Vision" wyświetlany POD zdjęciem (nie w kolumnie tekstu) — Markdown
