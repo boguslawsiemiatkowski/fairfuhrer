@@ -145,6 +145,24 @@
   text-align: center;
 }
 
+/* ===== SEKCJA 2b: Karten zu den Kategorien ===== */
+.categoryCardsSection {
+  background-color: #ffffff;
+  padding: 3rem 2rem;
+  border-bottom: 2px solid #000000;
+}
+
+.categoryCardsInner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (max-width: 560px) {
+  .categoryCardsSection {
+    padding: 2rem 1rem;
+  }
+}
+
 .section2Title {
   font-size: var(--fs-s2-title);
   color: var(--color-s2-title);

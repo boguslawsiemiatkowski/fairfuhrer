@@ -2,7 +2,6 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { marked } from "marked";
-import { getCategoryIconPaths, DEFAULT_ICON_PATHS } from "@/lib/categoryIcons";
 import heroImage from "@/public/fair-fuehrer-guide-hero.jpg";
 import appStoreBadge from "@/public/app-store-badge.svg";
 import googlePlayBadge from "@/public/android-store-badge.svg";
@@ -11,13 +10,16 @@ import MuxVideoEmbed from "@/components/MuxVideoEmbed";
 import { ConditionalMuxVideo } from "@/components/ConditionalMuxVideo";
 import styles from "./page.module.css";
 import { getHomePageContent } from "@/lib/directus";
+import { getCategoryIconPaths, DEFAULT_ICON_PATHS } from "@/lib/categoryIcons";
 import {
   audioUrlFor,
   fetchCategories,
+  fetchPlacesCountByCategory,
   fetchPublishedPlacesCount,
 } from "@/lib/orte";
 import { categoryColorFor } from "@/components/CategoryIcon";
 import HeroAudiopinStage from "@/components/HeroAudiopinStage";
+import CategoryCards from "@/components/CategoryCards";
 
 const APP_STORE_URL =
   "https://apps.apple.com/de/app/fairf%C3%BChrer/id6778095803";
@@ -67,12 +69,8 @@ function StoreBadgeLinks({
 
 // Die Kategorienamen kommen aus Directus und sind einzeilig. Lang genug, um
 // umzubrechen, sind nur die mit „&“ — dort wird der Umbruch VOR dem zweiten
-// Wort eingefügt, damit „Essen & Übernachten“ wie bisher zweizeilig steht.
+// Wort eingefügt, damit „Essen & Übernachten“ zweizeilig steht.
 // `white-space: pre-line` an `.categoryName` zeigt das \n an.
-//
-// Nötig, weil der Name früher mit fest eingetragenem „&\n“ im Code stand;
-// aus Directus kommt er ohne Umbruch, und ohne diese Zeile würde die Reihe
-// der fünf Kreise auf dem Desktop auseinanderlaufen.
 function withLineBreak(name: string): string {
   return name.replace(/\s*&\s*/, " &\n");
 }
@@ -87,11 +85,14 @@ export default async function HomePage() {
   // Alles parallel: die Seite wartet sonst dreimal hintereinander auf
   // Directus. Kategorien und die Ortszahl haben eigene Cache-Tags
   // („kategorien“, „orte“), die die jeweiligen Flows erneuern.
-  const [content, categories, placesCount] = await Promise.all([
-    getHomePageContent(),
-    fetchCategories(),
-    fetchPublishedPlacesCount(),
-  ]);
+  const [content, categories, placesCount, categoryCounts] = await Promise.all(
+    [
+      getHomePageContent(),
+      fetchCategories(),
+      fetchPublishedPlacesCount(),
+      fetchPlacesCountByCategory(),
+    ],
+  );
 
   // Der Audiopin für das Hero wird in Directus ausgewählt. Hier wird nur
   // geprüft, ob daraus etwas Vorzeigbares wird: ohne Audioadresse gibt es
@@ -387,6 +388,19 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* SEKCJA 2b: Karten zu den Kategorien
+          Die Kreise darüber benennen die fünf Kategorien, sagen aber nicht,
+          was sich dahinter verbirgt, und führen nirgendwohin. Diese Karten
+          ergänzen beides: Beschreibungstext aus Directus, Zahl der Orte und
+          ein Verweis auf die gefilterte Liste. */}
+      {categories.length > 0 && (
+        <section className={styles.categoryCardsSection}>
+          <div className={styles.categoryCardsInner}>
+            <CategoryCards categories={categories} counts={categoryCounts} />
+          </div>
+        </section>
+      )}
 
       {/* SEKCJA 3: Traveler & Partner */}
       {(content?.traveler_title || content?.partner_title) && (

@@ -112,6 +112,49 @@ export function audioUrlFor(source: {
  * eingereichte, noch nicht freigegebene Pins mitgezählt, und die Seite würde
  * mehr versprechen, als auf der Karte steht.
  */
+/**
+ * Zahl der veröffentlichten Pins je Kategorie, als `{ [Kategorie-ID]: Anzahl }`.
+ *
+ * Ein Ort kann mehreren Kategorien angehören, deshalb ergibt die Summe mehr
+ * als die Gesamtzahl der Orte — jede Kategorie zählt für sich.
+ *
+ * Wird über dieselbe Abfrage wie die Orte selbst geholt (Tag „orte“), damit
+ * der Flow, der nach einer Änderung in Directus revalidiert, auch diese
+ * Zahlen erneuert.
+ */
+export async function fetchPlacesCountByCategory(): Promise<
+  Record<number, number>
+> {
+  try {
+    const url = new URL(`${requireBaseUrl()}/items/Orte`);
+    url.searchParams.set("fields", "Kategorie.Kategorie_id.id");
+    url.searchParams.set(
+      "filter[Bearbeitungsstatus][_eq]",
+      "veroeffentlicht",
+    );
+    url.searchParams.set("limit", "-1");
+
+    const data = await fetchFromDirectus<{
+      Kategorie?: { Kategorie_id?: { id?: number } | null }[] | null;
+    }>(url.toString(), "orte");
+
+    const counts: Record<number, number> = {};
+    for (const ort of data.data) {
+      for (const eintrag of ort.Kategorie ?? []) {
+        const id = eintrag?.Kategorie_id?.id;
+        if (typeof id === "number") {
+          counts[id] = (counts[id] ?? 0) + 1;
+        }
+      }
+    }
+    return counts;
+  } catch (error) {
+    // Die Zahlen sind Beiwerk: fehlen sie, zeigen die Karten eben keine.
+    console.error("Error fetching places count by category:", error);
+    return {};
+  }
+}
+
 export async function fetchPublishedPlacesCount(): Promise<number | null> {
   try {
     const url = new URL(`${requireBaseUrl()}/items/Orte`);
