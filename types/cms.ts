@@ -297,6 +297,14 @@ export interface HomePageContent {
   video_text?: string;
   video_feature_list?: string;
   video_feature_list_background_color?: string;
+  // Zuruf unter den Kategorie-Karten: `slogan_01` ist die Aufforderung,
+  // `slogan_02` der Satz darunter. Fehlt `slogan_01`, entfällt der ganze
+  // Abschnitt — ein dunkles Band ohne Überschrift wäre sinnlos.
+  slogan_01?: string;
+  slogan_02?: string;
+  // Zeichen unter dem Zuruf: der Kartenstift mit kleinem Abspielsymbol,
+  // transparentes PNG. Fehlt es, entfällt nur das Bild, nicht der Abschnitt.
+  app_icon?: DirectusFileRef | null;
   video_button_label?: string;
   video_button_url?: string;
 }

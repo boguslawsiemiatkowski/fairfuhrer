@@ -160,7 +160,6 @@ export default function CookieBanner() {
                   <div className={styles.cookieList}>
                     <span className={styles.cookieTag}>Google Analytics</span>
                     <span className={styles.cookieTag}>Google Tag</span>
-                    <span className={styles.cookieTag}>Hotjar</span>
                   </div>
                 </div>
               </div>

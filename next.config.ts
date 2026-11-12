@@ -5,7 +5,7 @@ const isDev = process.env.NODE_ENV === "development";
 
 // Budujemy politykę Content-Security-Policy (CSP) dostosowaną do wszystkich usług
 // zewnętrznych używanych w FairFührer (Directus, Supabase, Mapbox GL, Mux, PayPal,
-// Cloudflare Turnstile, Google Analytics, Hotjar).
+// Cloudflare Turnstile, Google Analytics).
 // Uwaga: 'upgrade-insecure-requests' włączamy wyłącznie na produkcji, aby nie
 // wymuszać HTTPS na http://localhost:10000 podczas lokalnego developmentu.
 const cspDirectives = [
@@ -14,13 +14,13 @@ const cspDirectives = [
   "form-action 'self' https://www.paypal.com https://*.paypal.com",
   "frame-ancestors 'self'",
   "object-src 'none'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com https://www.google-analytics.com https://static.hotjar.com https://script.hotjar.com https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://www.paypalobjects.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://www.googletagmanager.com https://www.google-analytics.com https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://www.paypalobjects.com`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://cms.fairfuehrer.guide https://*.supabase.co https://*.mapbox.com https://image.mux.com https://www.google-analytics.com https://www.googletagmanager.com https://*.hotjar.com https://www.paypalobjects.com https://*.paypal.com",
+  "img-src 'self' data: blob: https://cms.fairfuehrer.guide https://*.supabase.co https://*.mapbox.com https://image.mux.com https://www.google-analytics.com https://www.googletagmanager.com https://www.paypalobjects.com https://*.paypal.com",
   "media-src 'self' data: blob: https://cms.fairfuehrer.guide https://*.supabase.co https://stream.mux.com https://*.mux.com https://*.edgemv.mux.com",
-  "font-src 'self' data: https://script.hotjar.com",
-  "connect-src 'self' https://cms.fairfuehrer.guide https://*.supabase.co wss://*.supabase.co https://*.tiles.mapbox.com https://api.mapbox.com https://events.mapbox.com https://*.mux.com https://*.litix.io https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.hotjar.com https://*.hotjar.io wss://*.hotjar.com https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com",
-  "frame-src 'self' https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://vars.hotjar.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://cms.fairfuehrer.guide https://*.supabase.co wss://*.supabase.co https://*.tiles.mapbox.com https://api.mapbox.com https://events.mapbox.com https://*.mux.com https://*.litix.io https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com",
+  "frame-src 'self' https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
   ...(!isDev ? ["upgrade-insecure-requests"] : []),

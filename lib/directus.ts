@@ -144,6 +144,7 @@ export async function getHomePageContent(): Promise<HomePageContent | null> {
     "/items/home_page_content?fields=*" +
       ",traveler_image.id,traveler_image.modified_on,traveler_image.width,traveler_image.height" +
       ",partner_image.id,partner_image.modified_on,partner_image.width,partner_image.height" +
+      ",app_icon.id,app_icon.modified_on,app_icon.width,app_icon.height" +
       ",hero_audiopin.id,hero_audiopin.Name,hero_audiopin.Stadt,hero_audiopin.Land,hero_audiopin.slug" +
       ",hero_audiopin.Audio,hero_audiopin.Audio_Datei,hero_audiopin.Hauptbild" +
       ",hero_audiopin.Titelbild.id,hero_audiopin.Titelbild.modified_on" +

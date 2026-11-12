@@ -11,17 +11,12 @@ import { CookieProvider } from "../context/CookieContext";
 import { AuthProvider } from "../context/AuthContext";
 import CookieBanner from "../components/CookieBanner";
 import AppPromoModal from "../components/AppPromoModal";
-import HotjarTag from "../components/HotjarTag";
 import { WebVitals } from "./_components/web-vitals";
 import { AnalyticsTracker } from "./_components/analytics-tracker";
 import { anton, firaSansCondensed } from "./fonts";
 import { Suspense } from "react";
 
 // Environment Variables
-const HOTJAR_SITE_ID = process.env.NEXT_PUBLIC_HOTJAR_SITE_ID
-  ? parseInt(process.env.NEXT_PUBLIC_HOTJAR_SITE_ID)
-  : null;
-
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GOOGLE_TAG_ID ?? null;
 
 export const viewport: Viewport = {
@@ -94,9 +89,6 @@ export default function RootLayout({
               <AnalyticsTracker gaId={GA_MEASUREMENT_ID} />
             </Suspense>
           )}
-
-          {/* Hotjar Tag */}
-          {HOTJAR_SITE_ID && <HotjarTag siteId={HOTJAR_SITE_ID} />}
 
           <AuthProvider>
             <PayPalProvider>

@@ -163,6 +163,102 @@
   }
 }
 
+/* ===== SEKCJA 2c: Zuruf =====
+   Dunkles Band nach den hellen Karten. Der Abschnitt trägt nur einen Satz,
+   und das ist Absicht: nach fünf Karten braucht die Seite eine Stelle, an
+   der das Auge nichts zu vergleichen hat.
+
+   Die beiden Lichtflecke im Hintergrund sind sehr schwach (0.07 und 0.05)
+   — sie sollen die Fläche nur davor bewahren, wie ein flacher Balken zu
+   wirken, und dürfen nicht mit der Schrift konkurrieren. */
+.sloganSection {
+  position: relative;
+  overflow: hidden;
+  background-color: #18222f;
+  padding: clamp(3.5rem, 9vw, 6rem) 2rem;
+  border-bottom: 2px solid #000000;
+}
+
+.sloganSection::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 18% 28%,
+      rgba(252, 108, 20, 0.07),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 84% 76%,
+      rgba(252, 108, 20, 0.05),
+      transparent 46%
+    );
+  pointer-events: none;
+}
+
+.sloganInner {
+  position: relative;
+  max-width: 880px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.sloganHeadline {
+  font-family: var(--font-anton), sans-serif;
+  font-weight: 400;
+  /* Groß genug, um die Fläche zu tragen, aber unter der Hero-Überschrift:
+     das Hero bleibt die erste Stimme der Seite. */
+  font-size: clamp(2rem, 5.5vw, 3.4rem);
+  line-height: 1.12;
+  letter-spacing: 0.01em;
+  color: #ffffff;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.sloganAccent {
+  color: #fc6c14;
+}
+
+.sloganText {
+  font-family: var(--font-fira), sans-serif;
+  font-size: clamp(1rem, 1.9vw, 1.2rem);
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.88);
+  margin: 1.4rem auto 0;
+  max-width: 44rem;
+  text-wrap: pretty;
+}
+
+/* Das Zeichen steht unter dem Satz, nicht daneben: der Abschnitt lebt von
+   der Mittelachse. Etwas kleiner als die Originaldatei (128 px), damit es
+   als Zeichen wirkt und nicht als Abbildung. */
+.sloganIcon {
+  display: block;
+  width: 88px;
+  height: auto;
+  margin: 2rem auto 0;
+  /* Auf dunklem Grund wirkt ein freigestelltes PNG schnell wie aufgeklebt.
+     Der weiche Schein darunter bindet es an die Fläche. */
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+}
+
+@media (max-width: 560px) {
+  .sloganSection {
+    padding: 2.75rem 1.25rem;
+  }
+
+  .sloganText {
+    margin-top: 1.1rem;
+  }
+
+  .sloganIcon {
+    width: 72px;
+    margin-top: 1.6rem;
+  }
+}
+
 .section2Title {
   font-size: var(--fs-s2-title);
   color: var(--color-s2-title);

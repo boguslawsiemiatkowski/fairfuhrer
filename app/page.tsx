@@ -104,6 +104,14 @@ export default async function HomePage() {
   const heroPin = content?.hero_audiopin ?? null;
   const heroAudioSrc = heroPin ? audioUrlFor(heroPin) : undefined;
 
+  // Erstes Wort des Zurufs getrennt, damit es farbig gesetzt werden kann.
+  // Die Trennung passiert hier und nicht im CSS, weil `::first-word` in CSS
+  // nicht existiert — nur `::first-line` und `::first-letter`.
+  const [firstWord = "", ...otherWords] = (content?.slogan_01 ?? "")
+    .trim()
+    .split(/\s+/);
+  const restWords = otherWords.join(" ");
+
   // Felder `traveler_content` und `partner_content` sind Markdown (Directus
   // `input-rich-text-md`). Vor dem Rendern in HTML konvertieren, sonst werden
   // **fett** und Absätze als Rohtext angezeigt.
@@ -398,6 +406,40 @@ export default async function HomePage() {
         <section className={styles.categoryCardsSection}>
           <div className={styles.categoryCardsInner}>
             <CategoryCards categories={categories} counts={categoryCounts} />
+          </div>
+        </section>
+      )}
+
+      {/* SEKCJA 2c: Zuruf
+          Nach den hellen Karten ein dunkles Band, auf dem nur ein Satz
+          steht. Der Bruch gibt der Seite Luft und hebt das hervor, was
+          FairFührer am stärksten für sich hat und bisher nirgends oben
+          stand: dass es nichts kostet. */}
+      {content?.slogan_01 && (
+        <section className={styles.sloganSection}>
+          <div className={styles.sloganInner}>
+            <p className={styles.sloganHeadline}>
+              {/* Nur das erste Wort in der Markenfarbe — „kostenlos“ ist das
+                  Argument, der Rest ist Satzbau. */}
+              <span className={styles.sloganAccent}>{firstWord}</span>
+              {restWords && <span> {restWords}</span>}
+            </p>
+            {content.slogan_02 && (
+              <p className={styles.sloganText}>{content.slogan_02}</p>
+            )}
+            {content.app_icon?.id && (
+              /* Reines Zeichen, kein Inhalt: der Satz darüber sagt bereits
+                 alles, deshalb leeres alt und aria-hidden. */
+              <Image
+                src={assetUrl(content.app_icon) ?? ""}
+                alt=""
+                aria-hidden="true"
+                width={content.app_icon.width ?? 128}
+                height={content.app_icon.height ?? 128}
+                sizes="88px"
+                className={styles.sloganIcon}
+              />
+            )}
           </div>
         </section>
       )}

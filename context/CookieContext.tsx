@@ -53,7 +53,6 @@ function trackPreferencesChange(prefs: CookiePreferences): void {
     consent_analytics: prefs.analytics,
     consent_functional: prefs.functional,
     consent_necessary: prefs.necessary,
-    hotjar_enabled: prefs.analytics,
     timestamp: new Date().toISOString(),
     integration: "nextjs_third_parties",
   });
