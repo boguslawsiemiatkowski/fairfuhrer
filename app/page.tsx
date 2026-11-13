@@ -143,10 +143,6 @@ export default async function HomePage() {
         '<a target="_blank" rel="noopener noreferrer" ',
       )
     : "";
-  const videoFeatureListHtml = content?.video_feature_list
-    ? await marked(content.video_feature_list)
-    : "";
-
   const c = (val?: string) =>
     val ? (val.startsWith("#") ? val : `#${val}`) : undefined;
 
@@ -410,6 +406,27 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* Das Video stand bisher ganz unten, hinter zwei Textblöcken — dort
+          sah es kaum jemand. Jetzt steht es hier: erst zeigen, wie es
+          aussieht, dann im Abschnitt darunter sagen, dass es nichts kostet.
+
+          Heller Grund wie bei den Karten darüber, damit das dunkle Band mit
+          dem Zuruf die einzige ruhige Fläche der Seite bleibt. */}
+      {content?.video_mux_playback_id && (
+        <section className={styles.videoSection}>
+          <div className={styles.videoFrame}>
+            <ConditionalMuxVideo>
+              <MuxVideoEmbed
+                playbackId={content.video_mux_playback_id}
+                thumbnailTime={content.video_thumbnail_time}
+                autoPlay={false}
+                muted={false}
+              />
+            </ConditionalMuxVideo>
+          </div>
+        </section>
+      )}
+
       {/* SEKCJA 2c: Zuruf
           Nach den hellen Karten ein dunkles Band, auf dem nur ein Satz
           steht. Der Bruch gibt der Seite Luft und hebt das hervor, was
@@ -550,47 +567,16 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* SEKCJA 4: Fairführer-Video — 2 Spalten: links Video (60%), rechts Feature-Liste (40%) */}
-      {content?.video_mux_playback_id && (
-        <section
-          className={styles.videoSection}
-          style={{
-            backgroundColor: content.video_background_color || "#ffffff",
-          }}
-        >
-          <div className={styles.videoBlock}>
-            <div className={styles.videoSide}>
-              <ConditionalMuxVideo>
-                <MuxVideoEmbed
-                  playbackId={content.video_mux_playback_id}
-                  thumbnailTime={content.video_thumbnail_time}
-                  autoPlay={false}
-                  muted={false}
-                />
-              </ConditionalMuxVideo>
-            </div>
-            {videoFeatureListHtml && (
-              <div
-                className={styles.videoTextSide}
-                style={
-                  c(content?.video_feature_list_background_color)
-                    ? {
-                        backgroundColor: c(
-                          content.video_feature_list_background_color,
-                        ),
-                      }
-                    : undefined
-                }
-              >
-                <div
-                  className={styles.videoFeatureList}
-                  dangerouslySetInnerHTML={{ __html: videoFeatureListHtml }}
-                />
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+      {/* Der frühere Abschnitt 4 (Video links, Merkmalliste rechts) ist
+          entfallen. Das Video steht jetzt oben im Zuruf-Abschnitt, wo es
+          direkt auf den Satz folgt, der es ankündigt. Die Liste
+          („über 600 PINs entdecken …") wurde bewusst nicht mitgenommen:
+          ihr letzter Punkt lautete „kostenlos loslegen" und hätte den
+          Zuruf darüber wiederholt.
+
+          Die Felder `video_feature_list` und `video_feature_list_background_color`
+          bleiben in Directus erhalten — die Liste lässt sich jederzeit
+          zurückholen. */}
     </main>
   );
 }
