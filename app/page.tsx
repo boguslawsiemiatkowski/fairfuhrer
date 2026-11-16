@@ -6,8 +6,6 @@ import heroImage from "@/public/fair-fuehrer-guide-hero.jpg";
 import appStoreBadge from "@/public/app-store-badge.svg";
 import googlePlayBadge from "@/public/android-store-badge.svg";
 import seenergienLogo from "@/public/seenergienlogo.png";
-import MuxVideoEmbed from "@/components/MuxVideoEmbed";
-import { ConditionalMuxVideo } from "@/components/ConditionalMuxVideo";
 import styles from "./page.module.css";
 import { getHomePageContent } from "@/lib/directus";
 import { getCategoryIconPaths, DEFAULT_ICON_PATHS } from "@/lib/categoryIcons";
@@ -20,6 +18,9 @@ import {
 import { categoryColorFor } from "@/components/CategoryIcon";
 import HeroAudiopinStage from "@/components/HeroAudiopinStage";
 import CategoryCards from "@/components/CategoryCards";
+import MuxVideoEmbed from "@/components/MuxVideoEmbed";
+import { ConditionalMuxVideo } from "@/components/ConditionalMuxVideo";
+import LucideIcon from "@/components/LucideIcon";
 
 const APP_STORE_URL =
   "https://apps.apple.com/de/app/fairf%C3%BChrer/id6778095803";
@@ -130,11 +131,11 @@ export default async function HomePage() {
   // `isomorphic-dompurify` ersetzen, damit Server und Browser dieselbe
   // Bibliothek verwenden (im Browser läuft DOMPurify bereits in
   // utils/popupGenerator.ts).
-  const travelerHtml = content?.traveler_content
-    ? await marked(content.traveler_content)
-    : "";
-  const travelerVisionHtml = content?.traveler_vision
-    ? await marked(content.traveler_vision)
+  // `traveler_content` und `traveler_vision` werden hier nicht mehr gelesen:
+  // der lange Fließtext ist auf /ueber-uns zu Hause, auf der Startseite steht
+  // jetzt der kurze Mission-Block. Die Felder bleiben in Directus erhalten.
+  const missionHtml = content?.mission_text
+    ? await marked(content.mission_text)
     : "";
   // Links im partner_content sollen in neuem Tab öffnen: target + rel zu jedem <a>.
   const partnerHtml = content?.partner_content
@@ -143,6 +144,18 @@ export default async function HomePage() {
         '<a target="_blank" rel="noopener noreferrer" ',
       )
     : "";
+  const zweiWegeFeaturesHtml = content?.zwei_wege_features
+    ? await marked(content.zwei_wege_features)
+    : "";
+
+  // Das Repeater-Feld kommt als JSON aus Directus. Ein leeres Feld liefert
+  // `null`, ein frisch angelegtes kann auch mal einen String enthalten —
+  // deshalb erst prüfen, dann filtern: Zeilen ohne Text fallen raus, damit
+  // keine leeren Punkte mit Symbol stehen bleiben.
+  const partnerVorteile = Array.isArray(content?.partner_cta_vorteile)
+    ? content.partner_cta_vorteile.filter((v) => v?.text)
+    : [];
+
   const c = (val?: string) =>
     val ? (val.startsWith("#") ? val : `#${val}`) : undefined;
 
@@ -406,27 +419,6 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Das Video stand bisher ganz unten, hinter zwei Textblöcken — dort
-          sah es kaum jemand. Jetzt steht es hier: erst zeigen, wie es
-          aussieht, dann im Abschnitt darunter sagen, dass es nichts kostet.
-
-          Heller Grund wie bei den Karten darüber, damit das dunkle Band mit
-          dem Zuruf die einzige ruhige Fläche der Seite bleibt. */}
-      {content?.video_mux_playback_id && (
-        <section className={styles.videoSection}>
-          <div className={styles.videoFrame}>
-            <ConditionalMuxVideo>
-              <MuxVideoEmbed
-                playbackId={content.video_mux_playback_id}
-                thumbnailTime={content.video_thumbnail_time}
-                autoPlay={false}
-                muted={false}
-              />
-            </ConditionalMuxVideo>
-          </div>
-        </section>
-      )}
-
       {/* SEKCJA 2c: Zuruf
           Nach den hellen Karten ein dunkles Band, auf dem nur ein Satz
           steht. Der Bruch gibt der Seite Luft und hebt das hervor, was
@@ -445,82 +437,206 @@ export default async function HomePage() {
               <p className={styles.sloganText}>{content.slogan_02}</p>
             )}
             {content.app_icon?.id && (
-              /* Reines Zeichen, kein Inhalt: der Satz darüber sagt bereits
-                 alles, deshalb leeres alt und aria-hidden. */
-              <Image
-                src={assetUrl(content.app_icon) ?? ""}
-                alt=""
-                aria-hidden="true"
-                width={content.app_icon.width ?? 128}
-                height={content.app_icon.height ?? 128}
-                sizes="88px"
-                className={styles.sloganIcon}
-              />
+              /* Drei Wege nebeneinander: links Google Play, in der Mitte die
+                 Karte im Browser, rechts der App Store.
+
+                 Die Ladenzeichen stehen auch oben in der Hero-Leiste, dort
+                 aber klein und zwischen anderem. Auf breiten Schirmen geht
+                 das unter; auf dem Telefon hat die Leiste einen eigenen
+                 Abschnitt und ist deutlich genug — deshalb blendet das CSS
+                 diese Reihe dort aus statt sie zu wiederholen. */
+              <div className={styles.sloganWege}>
+                <a
+                  href={GOOGLE_PLAY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.sloganStore}
+                  aria-label="Fairführer bei Google Play öffnen"
+                >
+                  <Image
+                    src={googlePlayBadge}
+                    alt="Google Play"
+                    unoptimized
+                    className={styles.sloganStoreImg}
+                  />
+                </a>
+
+                <Link
+                  href="/karte"
+                  className={styles.sloganIconLink}
+                  aria-label="Zur interaktiven Karte"
+                >
+                  <Image
+                    src={assetUrl(content.app_icon) ?? ""}
+                    alt=""
+                    aria-hidden="true"
+                    width={content.app_icon.width ?? 128}
+                    height={content.app_icon.height ?? 128}
+                    sizes="104px"
+                    className={styles.sloganIcon}
+                  />
+                </Link>
+
+                <a
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.sloganStore}
+                  aria-label="Fairführer im App Store öffnen"
+                >
+                  <Image
+                    src={appStoreBadge}
+                    alt="App Store"
+                    unoptimized
+                    className={styles.sloganStoreImg}
+                  />
+                </a>
+              </div>
             )}
           </div>
         </section>
       )}
 
-      {/* SEKCJA 3: Traveler & Partner */}
-      {(content?.traveler_title || content?.partner_title) && (
-        <section className={styles.section3}>
-          {content?.traveler_title && (
-            <div
-              className={styles.ctaFeatured}
-              style={
-                c(content?.traveler_background_color)
-                  ? { backgroundColor: c(content.traveler_background_color) }
-                  : undefined
-              }
-            >
-              <div className={styles.ctaFeaturedMedia}>
-                {content.traveler_image?.id ? (
-                  <div className={styles.ctaFeaturedImageWrap}>
-                    {/* Die Maße stehen in den Dateimetadaten von Directus und
-                        werden mitgeladen; `width:auto` und `max-height:82vh`
-                        im CSS entscheiden weiterhin über die Anzeigegröße. */}
-                    <Image
-                      src={assetUrl(content.traveler_image) ?? ""}
-                      alt={content.traveler_title ?? ""}
-                      width={content.traveler_image.width ?? 925}
-                      height={content.traveler_image.height ?? 672}
-                      sizes="(max-width: 900px) 92vw, 46vw"
-                      className={styles.ctaFeaturedImage}
-                    />
-                    <h2 className={styles.ctaFeaturedTitle}>
-                      {content.traveler_title}
-                    </h2>
-                  </div>
-                ) : (
-                  <h2 className={styles.ctaTitle}>{content.traveler_title}</h2>
-                )}
-                {travelerVisionHtml && (
-                  <div
-                    className={styles.ctaFeaturedVision}
-                    dangerouslySetInnerHTML={{ __html: travelerVisionHtml }}
-                  />
-                )}
-              </div>
-              <div className={styles.ctaFeaturedContent}>
-                {travelerHtml && (
-                  <div
-                    className={styles.ctaText}
-                    dangerouslySetInnerHTML={{ __html: travelerHtml }}
-                  />
-                )}
-                {content.traveler_cta_label && content.traveler_cta_url && (
-                  <Link
-                    href={content.traveler_cta_url}
-                    className={styles.ctaButton}
-                    {...externalProps(content.traveler_cta_url)}
-                  >
-                    {content.traveler_cta_label}
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
+      {/* SEKCJA 2d: Zwei Wege — Liste und Karte nebeneinander
+          Der Abschnitt beantwortet die Frage, die der Zuruf darüber offen
+          lässt: wie sieht das eigentlich aus? Zwei Bilder sagen das
+          schneller als ein Film, den man erst starten müsste. */}
+      {content?.zwei_wege_titel && (
+        <section className={styles.zweiWegeSection}>
+          <div className={styles.zweiWegeInner}>
+            <h2 className={styles.zweiWegeTitel}>{content.zwei_wege_titel}</h2>
 
+            <div className={styles.zweiWegeGrid}>
+              {/* Beide Spalten sind Verweise: wer das Bild sieht und es
+                  ausprobieren will, soll nicht erst einen Knopf suchen. */}
+              <Link href="/liste" className={styles.wegKarte}>
+                {content.liste_bild?.id && (
+                  <span className={styles.wegBildWrap}>
+                    <Image
+                      src={assetUrl(content.liste_bild) ?? ""}
+                      alt=""
+                      aria-hidden="true"
+                      width={content.liste_bild.width ?? 800}
+                      height={content.liste_bild.height ?? 600}
+                      sizes="(max-width: 860px) 94vw, 640px"
+                      className={styles.wegBild}
+                    />
+                  </span>
+                )}
+                <span className={styles.wegInhalt}>
+                  {content.liste_titel && (
+                    <span className={styles.wegTitel}>
+                      {content.liste_titel}
+                    </span>
+                  )}
+                  {content.liste_text && (
+                    <span className={styles.wegText}>{content.liste_text}</span>
+                  )}
+                  <span className={styles.wegPfeil} aria-hidden="true">
+                    →
+                  </span>
+                </span>
+              </Link>
+
+              <Link href="/karte" className={styles.wegKarte}>
+                {content.karte_bild?.id && (
+                  <span className={styles.wegBildWrap}>
+                    <Image
+                      src={assetUrl(content.karte_bild) ?? ""}
+                      alt=""
+                      aria-hidden="true"
+                      width={content.karte_bild.width ?? 800}
+                      height={content.karte_bild.height ?? 600}
+                      sizes="(max-width: 860px) 94vw, 640px"
+                      className={styles.wegBild}
+                    />
+                  </span>
+                )}
+                <span className={styles.wegInhalt}>
+                  {content.karte_titel && (
+                    <span className={styles.wegTitel}>
+                      {content.karte_titel}
+                    </span>
+                  )}
+                  {content.karte_text && (
+                    <span className={styles.wegText}>{content.karte_text}</span>
+                  )}
+                  <span className={styles.wegPfeil} aria-hidden="true">
+                    →
+                  </span>
+                </span>
+              </Link>
+            </div>
+
+            {zweiWegeFeaturesHtml && (
+              <div
+                className={styles.zweiWegeFeatures}
+                dangerouslySetInnerHTML={{ __html: zweiWegeFeaturesHtml }}
+              />
+            )}
+
+            {/* App-Hinweis mit Film — zwei Bilder zeigen die Webseite, der
+                Film zeigt, dass es dasselbe auch als App gibt. Beides
+                antwortet auf „wie sieht das aus?“, also steht es zusammen
+                und nicht in einem eigenen Abschnitt.
+
+                Rahmen und Schatten sind unverändert aus dem früheren
+                Video-Abschnitt übernommen. */}
+            {content.app_hinweis_titel && content.video_mux_playback_id && (
+              <div className={styles.appHinweis}>
+                <h3 className={styles.appHinweisTitel}>
+                  {content.app_hinweis_titel}
+                </h3>
+                <div className={styles.videoFrame}>
+                  <ConditionalMuxVideo>
+                    <MuxVideoEmbed
+                      playbackId={content.video_mux_playback_id}
+                      thumbnailTime={content.video_thumbnail_time}
+                      autoPlay={false}
+                      muted={false}
+                    />
+                  </ConditionalMuxVideo>
+                </div>
+
+                {/* Der Kern der Sache steht unter dem Film, nicht daneben:
+                    der Satz stammt aus genau diesem Film, und ein Bild
+                    daneben wäre ein zweites Mal dieselbe Szene. */}
+                {content.mission_titel && (
+                  <div className={styles.missionInhalt}>
+                    <h2 className={styles.missionTitel}>
+                      {content.mission_titel}
+                    </h2>
+                    {missionHtml && (
+                      <div
+                        className={styles.missionText}
+                        dangerouslySetInnerHTML={{ __html: missionHtml }}
+                      />
+                    )}
+                    {content.mission_cta_label && content.mission_cta_url && (
+                      <Link
+                        href={content.mission_cta_url}
+                        className={styles.missionLink}
+                        {...externalProps(content.mission_cta_url)}
+                      >
+                        {content.mission_cta_label}
+                        <span aria-hidden="true"> →</span>
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* SEKCJA 3: Partner
+          Der Mission-Block stand hier mit einem Bild daneben — dasselbe
+          Motiv, das auch im Film zu sehen ist, und dort noch dazu mit dem
+          alten Stand der App. Zweimal dieselbe Szene untereinander war
+          aufdringlich; der Text steht jetzt unter dem Film selbst. */}
+      {content?.partner_title && (
+        <section className={styles.section3}>
           {content?.partner_title && (
             <div
               className={`${styles.ctaBlock} ${styles.ctaBlockReverse}`}
@@ -564,6 +680,63 @@ export default async function HomePage() {
               )}
             </div>
           )}
+        </section>
+      )}
+
+      {/* SEKCJA 4: Partner-Aufruf — der Schluss der Seite
+          Bis hierher spricht die Seite zu Besuchern. Dieser Abschnitt
+          wendet sich an die andere Seite: an Betriebe, Vereine und
+          Projekte, die aufgenommen werden wollen.
+
+          Dunkles Band wie beim Zuruf weiter oben — die Seite bekommt damit
+          eine Klammer, und der Farbwechsel sagt ohne Worte, dass hier ein
+          anderer Adressat gemeint ist. */}
+      {content?.partner_cta_titel && (
+        <section className={styles.partnerCta}>
+          <div className={styles.partnerCtaInner}>
+            <h2 className={styles.partnerCtaTitel}>
+              {content.partner_cta_titel}
+            </h2>
+
+            {content.partner_cta_text && (
+              <p className={styles.partnerCtaText}>{content.partner_cta_text}</p>
+            )}
+
+            {partnerVorteile.length > 0 && (
+              <ul className={styles.partnerCtaVorteile}>
+                {partnerVorteile.map((vorteil, i) => (
+                  <li key={i} className={styles.partnerCtaVorteil}>
+                    {/* Die Symbole sind Schmuck, kein Inhalt: der
+                        Screenreader soll den Text vorlesen, nicht
+                        „Symbol Mikrofon“ davor. */}
+                    <span className={styles.partnerCtaIcon}>
+                      <LucideIcon
+                        name={vorteil.icon}
+                        size={28}
+                        strokeWidth={1.5}
+                        aria-hidden
+                      />
+                    </span>
+                    <span className={styles.partnerCtaVorteilText}>
+                      {vorteil.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {content.partner_cta_button_label &&
+              content.partner_cta_button_url && (
+                <Link
+                  href={content.partner_cta_button_url}
+                  className={styles.partnerCtaButton}
+                  {...externalProps(content.partner_cta_button_url)}
+                >
+                  {content.partner_cta_button_label}
+                  <span aria-hidden="true"> →</span>
+                </Link>
+              )}
+          </div>
         </section>
       )}
 

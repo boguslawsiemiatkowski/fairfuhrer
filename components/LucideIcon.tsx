@@ -4,19 +4,30 @@
 // importiert — kein dynamischer Import, voll RSC-kompatibel.
 
 import {
+  AudioLines,
+  BadgeCheck,
   Binoculars,
-  Send,
-  Search,
-  MapPin,
-  Leaf,
-  Users,
+  Compass,
+  Euro,
   Heart,
+  Images,
+  Leaf,
+  MapPin,
+  Mic,
+  Search,
+  Send,
+  Shield,
   Sparkles,
+  Users,
   type LucideIcon as LucideIconType,
 } from "lucide-react";
 
 // Directus liefert kebab-case Namen (lucide.dev/icons). Hier auf die
 // PascalCase-Komponenten mappen. Neue Icons einfach oben importieren + eintragen.
+//
+// Der Partner-Abschnitt der Startseite speichert die Namen in PascalCase,
+// weil dort ein Auswahlfeld mit festen Werten steht. Deshalb unten eine
+// Normalisierung: beide Schreibweisen finden dasselbe Symbol.
 const ICON_MAP: Record<string, LucideIconType> = {
   binoculars: Binoculars,
   send: Send,
@@ -25,7 +36,22 @@ const ICON_MAP: Record<string, LucideIconType> = {
   leaf: Leaf,
   users: Users,
   heart: Heart,
+  "audio-lines": AudioLines,
+  mic: Mic,
+  images: Images,
+  "badge-check": BadgeCheck,
+  compass: Compass,
+  shield: Shield,
+  euro: Euro,
 };
+
+// "AudioLines" und "audio-lines" sollen dasselbe Symbol finden.
+function toKebab(name: string): string {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/\s+/g, "-")
+    .toLowerCase();
+}
 
 interface LucideIconProps {
   name?: string;
@@ -45,7 +71,7 @@ export default function LucideIcon({
   "aria-hidden": ariaHidden = true,
 }: LucideIconProps) {
   // Unbekannter/leerer Name → neutrales Fallback-Icon, damit das Layout hält.
-  const Icon = (name && ICON_MAP[name]) || Sparkles;
+  const Icon = (name && ICON_MAP[toKebab(name)]) || Sparkles;
   return (
     <Icon
       size={size}

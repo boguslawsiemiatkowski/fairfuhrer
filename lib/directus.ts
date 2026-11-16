@@ -142,9 +142,14 @@ export async function getHomePageContent(): Promise<HomePageContent | null> {
   // zweiter Aufruf wäre unnötig, weil alles an einem Datensatz hängt.
   return fetchDirectusSingle<HomePageContent>(
     "/items/home_page_content?fields=*" +
-      ",traveler_image.id,traveler_image.modified_on,traveler_image.width,traveler_image.height" +
+      // `traveler_image` wird nicht mehr geladen — der lange Traveler-Block
+      // ist dem kurzen Mission-Block gewichen. Das Feld bleibt in Directus.
       ",partner_image.id,partner_image.modified_on,partner_image.width,partner_image.height" +
       ",app_icon.id,app_icon.modified_on,app_icon.width,app_icon.height" +
+      ",liste_bild.id,liste_bild.modified_on,liste_bild.width,liste_bild.height" +
+      ",karte_bild.id,karte_bild.modified_on,karte_bild.width,karte_bild.height" +
+      // `mission_bild` wird nicht geladen: der Mission-Text steht unter dem
+      // Film und kommt ohne eigenes Bild aus. Das Feld bleibt in Directus.
       ",hero_audiopin.id,hero_audiopin.Name,hero_audiopin.Stadt,hero_audiopin.Land,hero_audiopin.slug" +
       ",hero_audiopin.Audio,hero_audiopin.Audio_Datei,hero_audiopin.Hauptbild" +
       ",hero_audiopin.Titelbild.id,hero_audiopin.Titelbild.modified_on" +

@@ -230,33 +230,287 @@
   margin: 1.4rem auto 0;
   max-width: 44rem;
   text-wrap: pretty;
+  text-shadow: 1px 2px 2px rgba(0, 0, 0, 1);
 }
 
 /* Das Zeichen steht unter dem Satz, nicht daneben: der Abschnitt lebt von
    der Mittelachse. Etwas kleiner als die Originaldatei (128 px), damit es
    als Zeichen wirkt und nicht als Abbildung. */
+/* Drei Wege nebeneinander: Google Play, die Karte im Browser, App Store.
+   Das Zeichen in der Mitte bleibt die Hauptsache und ist deshalb größer
+   als die beiden Ladenzeichen daneben. */
+.sloganWege {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1rem, 3vw, 2.25rem);
+  margin-top: 2.25rem;
+}
+
+.sloganIconLink {
+  display: inline-block;
+  line-height: 0;
+  border-radius: 50%;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sloganIconLink:hover,
+.sloganIconLink:focus-visible {
+  transform: scale(1.06);
+}
+
+.sloganIconLink:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 6px;
+}
+
 .sloganIcon {
   display: block;
-  width: 88px;
+  width: 104px;
   height: auto;
-  margin: 2rem auto 0;
   /* Auf dunklem Grund wirkt ein freigestelltes PNG schnell wie aufgeklebt.
      Der weiche Schein darunter bindet es an die Fläche. */
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
 }
 
-/* ===== Video zwischen Karten und Zuruf =====
-   Eigener Abschnitt auf hellem Grund wie die Karten darüber. Das Video
-   zeigt, wie sich die Karte bedienen lässt; der dunkle Zuruf darunter
-   sagt dann, dass das nichts kostet. */
-.videoSection {
+/* Deutlich größer als die Zeichen in der Hero-Leiste (34 px), aber kleiner
+   als das Zeichen in der Mitte — sie begleiten es, statt mit ihm zu
+   konkurrieren. */
+.sloganStore {
+  display: inline-block;
+  line-height: 0;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sloganStore:hover,
+.sloganStore:focus-visible {
+  transform: translateY(-2px);
+}
+
+.sloganStore:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 4px;
+}
+
+.sloganStoreImg {
+  height: 52px;
+  width: auto;
+  display: block;
+}
+
+@media (max-width: 560px) {
+  .sloganSection {
+    padding: 2.75rem 1.25rem;
+  }
+
+  .sloganText {
+    margin-top: 1.1rem;
+  }
+
+  .sloganWege {
+    margin-top: 1.6rem;
+  }
+
+  .sloganIcon {
+    width: 84px;
+  }
+
+  /* Auf dem Telefon hat die Hero-Leiste einen eigenen Abschnitt, in dem die
+     Ladenzeichen groß und allein stehen. Sie hier zu wiederholen hieße,
+     dieselbe Sache zweimal auf kurzer Strecke zu sagen. Auf breiten
+     Schirmen dagegen gehen sie oben in der Leiste unter — dort sind sie
+     hier zum ersten Mal wirklich sichtbar. */
+  .sloganStore {
+    display: none;
+  }
+}
+
+/* ===== SEKCJA 2d: Zwei Wege — Liste und Karte ===== */
+.zweiWegeSection {
   background-color: #ffffff;
-  padding: 3rem 2rem;
+  padding: clamp(3rem, 7vw, 4.5rem) 2rem;
   border-bottom: 2px solid #000000;
 }
 
+.zweiWegeInner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.zweiWegeTitel {
+  font-family: var(--font-anton), sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.7rem, 4vw, 2.8rem);
+  line-height: 1.15;
+  color: #18222f;
+  text-align: center;
+  margin: 0 0 clamp(2rem, 4vw, 3rem);
+  text-wrap: balance;
+}
+
+.zweiWegeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(1.25rem, 3vw, 2.25rem);
+}
+
+/* Die ganze Spalte ist ein Verweis — wer das Bild sieht und es ausprobieren
+   will, soll nicht erst einen Knopf suchen. Form wie bei den
+   Kategorie-Karten: harte Kante, versetzter Schatten. */
+.wegKarte {
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f5f5;
+  border: 2px solid #18222f;
+  box-shadow: 6px 6px 0 #18222f;
+  text-decoration: none;
+  overflow: hidden;
+  transition:
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.18s;
+}
+
+.wegKarte:hover,
+.wegKarte:focus-visible {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #18222f;
+}
+
+.wegKarte:focus-visible {
+  outline: 3px solid #fc6c14;
+  outline-offset: 3px;
+}
+
+/* Das Seitenverhältnis folgt den Screenshots (1855 × 873 ≈ 17 / 8), damit
+   der ganze Bildschirm zu sehen ist und nichts an den Seiten abgeschnitten
+   wird. Breit und flach statt hoch und beschnitten. */
+.wegBildWrap {
+  display: block;
+  width: 100%;
+  aspect-ratio: 17 / 8;
+  overflow: hidden;
+  border-bottom: 2px solid #18222f;
+  background-color: #f2efea;
+}
+
+/* contain statt cover: lieber ein schmaler Rand als ein fehlender Bildrand.
+   Bei passendem Verhältnis ist der Rand ohnehin nicht zu sehen. */
+.wegBild {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+
+.wegInhalt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 1.4rem 1.4rem;
+  flex: 1;
+}
+
+.wegTitel {
+  font-family: var(--font-anton), sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  line-height: 1.2;
+  color: #18222f;
+}
+
+.wegText {
+  font-family: var(--font-fira), sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #475569;
+  flex: 1;
+}
+
+.wegPfeil {
+  color: #fc6c14;
+  font-weight: 700;
+  font-size: 1.1rem;
+  transition: transform 0.18s;
+}
+
+.wegKarte:hover .wegPfeil,
+.wegKarte:focus-visible .wegPfeil {
+  transform: translateX(4px);
+}
+
+/* Was beide Wege können — steht unter den Spalten, weil es für beide gilt
+   und nicht in eine der zwei Seiten gehört. */
+.zweiWegeFeatures {
+  margin: clamp(2rem, 4vw, 2.75rem) auto 0;
+  max-width: 54rem;
+  font-family: var(--font-fira), sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #334155;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.zweiWegeFeatures p {
+  margin: 0 0 0.8rem;
+}
+
+.zweiWegeFeatures p:last-child {
+  margin-bottom: 0;
+}
+
+.zweiWegeFeatures strong {
+  color: #18222f;
+  font-weight: 700;
+}
+
+.zweiWegeFeatures a {
+  color: #fc6c14;
+  text-underline-offset: 3px;
+}
+
+/* Listen mittig, ohne hängende Aufzählungspunkte am linken Rand. */
+.zweiWegeFeatures ul,
+.zweiWegeFeatures ol {
+  list-style-position: inside;
+  padding-left: 0;
+  margin: 0 0 0.8rem;
+}
+
+.zweiWegeFeatures li {
+  margin-bottom: 0.35rem;
+}
+
+/* ===== App-Hinweis mit Film — im selben Abschnitt wie die Screenshots =====
+   Die Screenshots zeigen die Webseite; der Film zeigt, dass es dasselbe
+   auch als App gibt. Beides gehört zur Frage „wie sieht das aus?“, also
+   steht es zusammen und nicht in einem eigenen Abschnitt. */
+.appHinweis {
+  margin-top: clamp(2.5rem, 5vw, 3.75rem);
+  padding-top: clamp(2.25rem, 4vw, 3rem);
+  border-top: 2px solid #18222f;
+}
+
+.appHinweisTitel {
+  font-family: var(--font-anton), sans-serif;
+  font-weight: 400;
+  /* Auf dem Desktop bleiben es die 2,5 rem, die Bogusław gewählt hat; auf
+     schmalen Geräten geht die Zeile herunter, sonst bricht der längere
+     Titel („Die Handy-App gibt es gratis zum Download“) in vier Zeilen. */
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  line-height: 1.15;
+  color: #18222f;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 0 0 clamp(1.5rem, 3vw, 2.25rem);
+  text-wrap: balance;
+}
+
 /* Rahmen und versetzter Schatten wie bei den übrigen Flächen der Seite —
-   harte Kante, kein weicher Schlagschatten. */
+   harte Kante, kein weicher Schlagschatten. Unverändert aus dem früheren
+   Video-Abschnitt übernommen. */
 .videoFrame {
   width: 100%;
   max-width: 900px;
@@ -275,26 +529,37 @@
   height: 100%;
 }
 
+@media (max-width: 860px) {
+  .zweiWegeGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 560px) {
-  .sloganSection {
-    padding: 2.75rem 1.25rem;
+  .zweiWegeSection {
+    padding: 2.25rem 1rem;
   }
 
-  .sloganText {
-    margin-top: 1.1rem;
+  .wegKarte {
+    box-shadow: 4px 4px 0 #18222f;
   }
 
-  .sloganIcon {
-    width: 72px;
-    margin-top: 1.6rem;
-  }
-
-  .videoSection {
-    padding: 2rem 1rem;
+  .zweiWegeFeatures {
+    text-align: left;
+    font-size: 0.95rem;
   }
 
   .videoFrame {
     box-shadow: 4px 4px 0 #18222f;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wegKarte,
+  .wegPfeil,
+  .sloganIconLink,
+  .sloganStore {
+    transition-duration: 1ms;
   }
 }
 
@@ -345,205 +610,113 @@
 
 .ctaBlock {
   display: flex;
-  align-items: stretch;
-  min-height: 340px;
+  flex-direction: column-reverse;
+  justify-content: center;
+  align-items: center;
 }
 
 .ctaBlockReverse {
   background-color: #f7f4f0;
 }
+/* ===== SEKCJA 3a: Mission — kurzer Block statt langem Artikel =====
+   Hier standen früher gut 1000 Zeichen Fließtext. Nach Karten, Screenshots
+   und Film war das eine Wand aus Text an der Stelle, an der jemand gerade
+   losgehen will. Die lange Fassung steht auf /ueber-uns.
 
-/* ===== SEKCJA 3 — pierwszy blok (Traveler) jako artykuł redakcyjny =====
-   Zdjęcie w naturalnym kształcie, wycentrowane; tytuł nachodzi na dolną
-   krawędź zdjęcia w prostokątnym granatowym pasie; pod spodem lead + długi
-   tekst w wygodnej kolumnie, lista jako „feature items". Bez zaokrągleń,
-   bez gradientów. */
-.ctaFeatured {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 4.5rem 2rem 5rem;
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 3.5rem;
-}
+   Form wie im Abschnitt „Zwei Wege“ darüber: harte Kante, versetzter
+   Schatten, dieselbe Breite — damit die beiden Abschnitte nicht aussehen,
+   als kämen sie aus zwei verschiedenen Entwürfen. */
+/* Steht unter dem Film, mittig und in derselben Breite wie der Rahmen
+   darüber — Überschrift, drei Sätze, Verweis, senkrecht untereinander.
 
-/* Lewa kolumna: zdjęcie (z nachodzącym tytułem) + tekst „Vision" pod nim */
-.ctaFeaturedMedia {
-  flex: 1 1 46%;
-  min-width: 0;
+   Das Bild dieses Blocks ist entfallen: es zeigte dieselbe Szene wie der
+   Film und obendrein einen alten Stand der App. */
+.missionInhalt {
+  max-width: 900px;
+  margin: clamp(1.75rem, 3.5vw, 2.5rem) auto 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-}
-
-.ctaFeaturedImageWrap {
-  position: relative;
-  align-self: flex-start;
-  max-width: 100%;
-  margin-bottom: 3.5rem;
-}
-
-.ctaFeaturedImage {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 82vh;
-}
-
-.ctaFeaturedTitle {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  transform: translateY(38%);
-  max-width: 88%;
-  margin: 0;
-  padding: 0.6rem 1.6rem;
-  background-color: #18222f;
-  color: #ffffff;
-  font-family: var(--font-anton);
-  font-weight: 400;
-  font-size: clamp(1.6rem, 3.2vw, 2.9rem);
-  line-height: 1.12;
-}
-
-.ctaFeaturedContent {
-  flex: 1 1 54%;
-  min-width: 0;
-  max-width: 74ch;
-  text-align: left;
-}
-
-.ctaFeaturedContent .ctaText {
-  max-width: none;
-  margin: 0;
-}
-
-/* Tekst „Vision" pod zdjęciem — oddzielony pomarańczową kreską u góry */
-.ctaFeaturedVision {
-  width: 100%;
-  font-family: var(--font-fira);
-  font-size: 1rem;
-  line-height: 1.7;
-  color: #000;
-  border-top: 3px solid #fc6c14;
-  padding-top: 1.25rem;
-  text-align: justify;
-}
-
-.ctaFeaturedVision p {
-  margin: 0 0 0.75rem 0;
-}
-
-.ctaFeaturedVision p:last-child {
-  margin-bottom: 0;
-}
-
-.ctaFeaturedVision strong {
-  font-weight: 700;
-}
-
-/* Lead — pierwszy akapit jako wyróżniony wstęp (większy rozmiar, ale
-   normalna grubość 400, żeby nie wyglądał na pogrubiony) */
-.ctaFeaturedContent .ctaText > p:first-child {
-  font-size: clamp(1.2rem, 2.2vw, 1.5rem);
-  line-height: 1.5;
-  font-weight: 400;
-  color: #18222f;
-  margin-bottom: 1.75rem;
+  align-items: center;
+  gap: 1.1rem;
   text-align: center;
 }
 
-/* Pull-quote — działa, gdy w Directusie oznaczysz linię jako cytat: > … */
-.ctaFeaturedContent .ctaText blockquote {
-  margin: 2.25rem 0;
-  padding: 0.25rem 0 0.25rem 1.5rem;
-  border-left: 4px solid #fc6c14;
-  font-family: var(--font-anton);
+/* Der Satz stammt aus dem Film und ist der Kern der Sache — deshalb steht
+   er hier als Überschrift und nicht mehr am Ende eines langen Textes.
+
+   Die große Stufe ist Absicht (Bogusław): der Satz soll den Abschnitt
+   abschließen, nicht ihn leise ausklingen lassen. */
+.missionTitel {
+  font-family: var(--font-anton), sans-serif;
   font-weight: 400;
-  font-size: clamp(1.4rem, 2.6vw, 2rem);
-  line-height: 1.25;
+  font-size: clamp(1.5rem, 3.2vw, 2.4rem);
+  line-height: 1.15;
   color: #18222f;
-}
-
-.ctaFeaturedContent .ctaText blockquote p {
   margin: 0;
+  text-wrap: balance;
 }
 
-/* Lista cech jako „feature items" — kwadratowe pomarańczowe znaczniki */
-.ctaFeaturedContent .ctaText ul {
-  list-style: none;
-  margin: 1.75rem 0;
-  padding: 0;
-  display: grid;
-  gap: 0.85rem;
+.missionText {
+  font-family: var(--font-fira), sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #334155;
+  text-wrap: pretty;
 }
 
-.ctaFeaturedContent .ctaText li {
-  position: relative;
-  margin: 0;
-  padding-left: 1.75rem;
-  line-height: 1.5;
+.missionText p {
+  margin: 0 0 0.9rem;
 }
 
-.ctaFeaturedContent .ctaText li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.55em;
-  width: 0.6rem;
-  height: 0.6rem;
-  background-color: #fc6c14;
+.missionText p:last-child {
+  margin-bottom: 0;
 }
 
-.ctaFeaturedContent .ctaButton {
-  margin-top: 0.5rem;
+.missionText strong {
+  color: #18222f;
+  font-weight: 700;
 }
 
-@media (min-width: 640px) {
-  .ctaFeaturedContent .ctaText ul {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.85rem 2rem;
-  }
+/* Verweis, kein Knopf: die Startseite hat schon genug Knöpfe, und das Ziel
+   ist Hintergrund zum Nachlesen, nicht der nächste Schritt. */
+.missionLink {
+  font-family: var(--font-fira), sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fc6c14;
+  text-decoration: none;
+  border-bottom: 2px solid #fc6c14;
+  padding-bottom: 2px;
+  transition: gap 0.18s;
 }
 
-/* Poniżej 1000px: pierwszy blok układa się pionowo (zdjęcie + vision, potem tekst) */
-@media (max-width: 800px) {
-  .ctaFeatured {
-    flex-direction: column;
-    gap: 0;
-    padding: 3.5rem 1.5rem 4rem;
-  }
+.missionLink:hover,
+.missionLink:focus-visible {
+  color: #18222f;
+  border-bottom-color: #18222f;
+}
 
-  .ctaFeaturedMedia,
-  .ctaFeaturedContent {
-    flex: none;
-    width: 100%;
-    max-width: none;
-  }
+.missionLink:focus-visible {
+  outline: 3px solid #fc6c14;
+  outline-offset: 4px;
+}
 
-  .ctaFeaturedMedia {
-    align-items: center;
-    margin-bottom: 2.5rem;
-  }
-
-  .ctaFeaturedImageWrap {
-    align-self: center;
+@media (max-width: 560px) {
+  /* Mittig gesetzter Fließtext ist auf schmalen Geräten schlechter zu
+     lesen als linksbündiger — die Überschrift bleibt mittig. */
+  .missionText {
+    text-align: left;
+    font-size: 1rem;
   }
 }
 
 .ctaImage {
-  flex: 0 0 36%;
-  max-width: 36%;
   overflow: hidden;
   box-sizing: border-box;
   padding: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Białe tło pod obrazem (logo SDGs na białym) — niezależnie od koloru bloku */
-  background-color: #ffffff;
 }
 
 /* contain (nie cover) — cały obraz (np. okrąg SDGs) zawsze w pełni widoczny,
@@ -556,11 +729,14 @@
 }
 
 .ctaContent {
-  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 3rem 4rem;
+  padding: 3rem 1rem;
+  background-color: #f7f4f0;
+  border-top: 2px solid #18222f;
+  border-right: 2px solid #18222f;
+  border-left: 2px solid #18222f;
 }
 
 .ctaTitle {
@@ -570,6 +746,8 @@
   color: #fc6c14;
   margin: 0 1rem 1.2rem 0;
   line-height: 1.2;
+  text-wrap: balance;
+  text-align: center;
 }
 
 /* Styl tekstu ujednolicony ze stroną Mitmachen (.sectionText):
@@ -580,9 +758,11 @@
   font-family: var(--font-fira);
   font-weight: 400;
   color: #18222f;
+  text-wrap: pretty;
+  text-align: center;
   line-height: 1.7;
   margin: 0 0 2rem 0;
-  max-width: 600px;
+  max-width: 800px;
 }
 
 /* Markdown-rendered Inhalte aus Directus (traveler_content / partner_content):
@@ -623,7 +803,7 @@
   text-decoration: none;
   color: #fff;
   background-color: #18222f;
-  border: 2px solid #18222f;
+  border: 2px solid #fff;
   padding: 0.75rem 2rem;
   border-radius: 9999px;
   transition:
@@ -635,7 +815,6 @@
   background-color: #fc6c14;
   color: #18222f;
 }
-
 
 /* ===== STARE STYLE SEKCJI 4 — zachowane jako referencja (nieużywane) ===== */
 .section4 {
@@ -835,16 +1014,6 @@
     order: 1;
     padding: 2rem 3rem;
   }
-
-  .ctaFeatured {
-    padding: 2.5rem 1.5rem 3rem;
-  }
-
-  .ctaFeaturedTitle {
-    white-space: normal;
-    max-width: 88%;
-    font-size: clamp(1.4rem, 6vw, 2rem);
-  }
 }
 
 @media (max-width: 500px) {
@@ -873,5 +1042,151 @@
 @supports not (height: 100dvh) {
   .heroContainer {
     height: calc(100vh - 90px);
+  }
+}
+
+/* ===== SEKCJA 4: Partner-Aufruf — der Schluss der Seite =====
+   Dunkles Band wie beim Zuruf weiter oben. Die Seite bekommt damit eine
+   Klammer, und der Farbwechsel sagt ohne Worte, dass hier ein anderer
+   Adressat gemeint ist: nicht mehr der Besucher, sondern der Betrieb. */
+.partnerCta {
+  background-color: #18222f;
+  padding: clamp(3.25rem, 7vw, 5rem) 2rem;
+  /* Zwei sehr schwache Lichter, damit das Band keine flache Fläche ist.
+     Sie dürfen dem Text keine Aufmerksamkeit wegnehmen. */
+  background-image:
+    radial-gradient(
+      circle at 18% 22%,
+      rgba(252, 108, 20, 0.09),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 82% 78%,
+      rgba(252, 108, 20, 0.06),
+      transparent 55%
+    );
+}
+
+.partnerCtaInner {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.partnerCtaTitel {
+  font-family: var(--font-anton), sans-serif;
+  font-weight: 400;
+  font-size: clamp(1.7rem, 4vw, 2.8rem);
+  line-height: 1.15;
+  color: #fc6c14;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.partnerCtaText {
+  font-family: var(--font-fira), sans-serif;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  line-height: 1.65;
+  color: #cbd5e1;
+  max-width: 44rem;
+  margin: 1.1rem 0 0;
+  text-wrap: pretty;
+}
+
+/* Zwei Spalten: vier kurze Zeilen untereinander wären eine lange Strecke,
+   nebeneinander liest man sie auf einen Blick. */
+.partnerCtaVorteile {
+  list-style: none;
+  margin: clamp(2rem, 4vw, 2.75rem) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 2.5rem;
+  width: 100%;
+  text-align: left;
+}
+
+.partnerCtaVorteil {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+/* Kontur statt Fläche, dünner Strich: Lucide zeichnet voreingestellt mit
+   2 — auf dunklem Grund leuchtet das Symbol damit stärker als der Text
+   daneben, was die Rangfolge verdreht. */
+.partnerCtaIcon {
+  flex: 0 0 auto;
+  color: #fc6c14;
+  line-height: 0;
+  margin-top: 0.1rem;
+}
+
+.partnerCtaVorteilText {
+  font-family: var(--font-fira), sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+}
+
+/* Harte Kante und versetzter Schatten wie bei den Karten der Seite —
+   kein weicher Schlagschatten, keine Rundung. */
+.partnerCtaButton {
+  display: inline-flex;
+  align-items: center;
+  /* Der Pfeil steht in einem eigenen Element — ohne gap klebt er am Wort,
+     weil inline-flex den Leerraum dazwischen schluckt. */
+  gap: 0.5rem;
+  margin-top: clamp(2rem, 4vw, 2.75rem);
+  padding: 0.85rem 1.9rem;
+  background-color: #fc6c14;
+  color: #18222f;
+  font-family: var(--font-fira), sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  text-decoration: none;
+  border: 2px solid #18222f;
+  box-shadow: 5px 5px 0 #ffffff;
+  transition:
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.18s;
+}
+
+.partnerCtaButton:hover,
+.partnerCtaButton:focus-visible {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 #ffffff;
+}
+
+.partnerCtaButton:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 4px;
+}
+
+@media (max-width: 700px) {
+  .partnerCtaVorteile {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .partnerCta {
+    padding: 2.5rem 1.25rem;
+  }
+
+  .partnerCtaButton {
+    box-shadow: 4px 4px 0 #ffffff;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partnerCtaButton {
+    transition-duration: 1ms;
   }
 }

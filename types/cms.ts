@@ -205,6 +205,14 @@ export interface UeberUnsContent {
   abschluss_background_color?: string;
 }
 
+/** Ein Vorteil im Partner-Abschnitt der Startseite: Lucide-Name + Text.
+ *  Beide Felder sind optional, weil Directus eine Zeile auch halb
+ *  ausgefüllt speichern kann. */
+export interface PartnerVorteil {
+  icon?: string;
+  text?: string;
+}
+
 export interface HomePageContent {
   id: number;
   // Globalny kolor linków (Markdown-Links) dla całej strony głównej
@@ -305,6 +313,36 @@ export interface HomePageContent {
   // Zeichen unter dem Zuruf: der Kartenstift mit kleinem Abspielsymbol,
   // transparentes PNG. Fehlt es, entfällt nur das Bild, nicht der Abschnitt.
   app_icon?: DirectusFileRef | null;
+  // Abschnitt „Zwei Wege“: links die Liste, rechts die Karte. Fehlt
+  // `zwei_wege_titel`, entfällt der ganze Abschnitt.
+  zwei_wege_titel?: string;
+  liste_titel?: string;
+  liste_text?: string;
+  liste_bild?: DirectusFileRef | null;
+  karte_titel?: string;
+  karte_text?: string;
+  karte_bild?: DirectusFileRef | null;
+  // Was beide Wege können (Routenplaner, Filter …) — Markdown.
+  zwei_wege_features?: string;
+  // Überschrift über dem Film im selben Abschnitt. Fehlt sie, entfällt der
+  // App-Hinweis samt Film, auch wenn eine Playback-ID gesetzt ist.
+  app_hinweis_titel?: string;
+  // Mission-Block unter dem Film. Löst den früheren `traveler_*`-Block ab:
+  // dort standen gut 1000 Zeichen Fließtext, der auf die Startseite geraten
+  // war. Die lange Fassung steht auf /ueber-uns, hier nur der Kern.
+  // Fehlt `mission_titel`, entfällt der ganze Block.
+  mission_titel?: string;
+  mission_text?: string;
+  mission_bild?: DirectusFileRef | null;
+  mission_cta_label?: string;
+  mission_cta_url?: string;
+  // Partner-Abschnitt am Seitenende (dunkles Band). Fehlt `partner_cta_titel`,
+  // entfällt der ganze Abschnitt.
+  partner_cta_titel?: string;
+  partner_cta_text?: string;
+  partner_cta_vorteile?: PartnerVorteil[] | null;
+  partner_cta_button_label?: string;
+  partner_cta_button_url?: string;
   video_button_label?: string;
   video_button_url?: string;
 }
