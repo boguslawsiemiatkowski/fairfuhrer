@@ -251,12 +251,16 @@
   display: inline-block;
   line-height: 0;
   border-radius: 50%;
-  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0px 0px 0px 0px black;
+  transition:
+    transform 1s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 1s ease;
 }
 
 .sloganIconLink:hover,
 .sloganIconLink:focus-visible {
   transform: scale(1.06);
+  box-shadow: 1px 3px 18px 2px rgba(0, 0, 0, 0.2);
 }
 
 .sloganIconLink:focus-visible {
@@ -279,12 +283,16 @@
 .sloganStore {
   display: inline-block;
   line-height: 0;
-  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0px 0px 0px 0px black;
+  transition:
+    transform 1s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 1s ease;
 }
 
 .sloganStore:hover,
 .sloganStore:focus-visible {
-  transform: translateY(-2px);
+  transform: scale(1.06);
+  box-shadow: 1px 3px 18px 2px rgba(0, 0, 0, 0.2);
 }
 
 .sloganStore:focus-visible {
@@ -366,14 +374,14 @@
   text-decoration: none;
   overflow: hidden;
   transition:
-    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.18s;
+    transform 1s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 1s ease;
 }
 
 .wegKarte:hover,
 .wegKarte:focus-visible {
-  transform: translate(-2px, -2px);
-  box-shadow: 8px 8px 0 #18222f;
+  transform: translate(4px, -4px);
+  box-shadow: 1px 1px 0 #18222f;
 }
 
 .wegKarte:focus-visible {
@@ -431,7 +439,7 @@
   color: #fc6c14;
   font-weight: 700;
   font-size: 1.1rem;
-  transition: transform 0.18s;
+  transition: transform 1s;
 }
 
 .wegKarte:hover .wegPfeil,
@@ -679,26 +687,63 @@
 
 /* Verweis, kein Knopf: die Startseite hat schon genug Knöpfe, und das Ziel
    ist Hintergrund zum Nachlesen, nicht der nächste Schritt. */
+/* Nach dem Vorbild „link--iocaste“ (Codrops): statt eines geraden Strichs
+   liegt unter dem Wort eine Grafik, die dreimal so breit ist wie der
+   Verweis und in der Mitte eine Welle trägt. Zu sehen ist anfangs das
+   gerade Stück ganz links; beim Zeigen rutscht die Grafik um zwei Drittel
+   nach links, und die Welle läuft durch.
+
+   Der frühere `border-bottom` ist entfallen — er läge doppelt unter der
+   Linie der Grafik. */
 .missionLink {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  padding-bottom: 10px;
   font-family: var(--font-fira), sans-serif;
   font-weight: 700;
   font-size: 1rem;
   color: #fc6c14;
   text-decoration: none;
-  border-bottom: 2px solid #fc6c14;
-  padding-bottom: 2px;
-  transition: gap 0.18s;
+  transition: color 0.3s ease;
+}
+
+.missionLinkText {
+  display: inline-block;
+}
+
+.missionLinkGrafik {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 6px;
+  transition: transform 0.7s cubic-bezier(0, 0.25, 0.5, 1);
+}
+
+.missionLink:hover .missionLinkGrafik,
+.missionLink:focus-visible .missionLinkGrafik {
+  transform: translate3d(-66.6%, 0, 0);
 }
 
 .missionLink:hover,
 .missionLink:focus-visible {
   color: #18222f;
-  border-bottom-color: #18222f;
 }
 
 .missionLink:focus-visible {
   outline: 3px solid #fc6c14;
   outline-offset: 4px;
+}
+
+/* Die laufende Welle ist Schmuck: ohne Bewegung bleibt der gerade Strich
+   stehen, der Verweis ist dadurch nicht schlechter erkennbar. */
+@media (prefers-reduced-motion: reduce) {
+  .missionLinkGrafik {
+    transition-duration: 1ms;
+  }
 }
 
 @media (max-width: 560px) {
@@ -810,14 +855,13 @@
   border: 5px solid #fff;
   padding: 0.75rem 2rem;
   border-radius: 9999px;
-  transition:
-    background-color 0.25s ease,
-    color 0.25s ease;
+  transition: all 1s ease;
+  box-shadow: 0px 0px 0px 0px black;
 }
 
 .ctaButton:hover {
-  background-color: #fff2e8e6;
-  color: #18222f;
+  background-color: firebrick;
+  box-shadow: 1px 3px 18px 2px rgba(0, 0, 0, 0.2);
 }
 
 /* ===== STARE STYLE SEKCJI 4 — zachowane jako referencja (nieużywane) ===== */
@@ -1136,38 +1180,54 @@
   color: #e2e8f0;
 }
 
-/* Harte Kante und versetzter Schatten wie bei den Karten der Seite —
-   kein weicher Schlagschatten, keine Rundung. */
+/* Nach dem Vorbild „button--pandora“ (Codrops): der Knopf selbst ist nur
+   die untere, dunkle Fläche. Darüber liegt die orange Fläche, nach links
+   oben versetzt; beim Zeigen rückt sie weiter weg, sodass die dunkle
+   Kante darunter breiter wird — als höbe sich der Knopf vom Grund ab.
+
+   Hier geht nichts verloren: die Form bleibt ein Rechteck, der Rahmen
+   läuft ringsum, und der Versatz entsteht aus zwei echten Flächen statt
+   aus einem beschnittenen Schatten. Die frühere Pfeilform („anthe“) hat
+   beides nicht geschafft — `clip-path` schnitt Rahmen und Schatten an der
+   rechten Seite mit weg. */
 .partnerCtaButton {
-  display: inline-flex;
-  align-items: center;
-  /* Der Pfeil steht in einem eigenen Element — ohne gap klebt er am Wort,
-     weil inline-flex den Leerraum dazwischen schluckt. */
-  gap: 0.5rem;
+  position: relative;
+  display: inline-block;
   margin-top: clamp(2rem, 4vw, 2.75rem);
-  padding: 0.85rem 1.9rem;
-  background-color: #fc6c14;
+  /* Rechts und unten bleibt Platz für die dunkle Kante, die beim Zeigen
+     breiter wird — ohne diesen Rand würde der Knopf dabei wachsen. */
+  margin-right: 8px;
+  margin-bottom: 8px;
+  padding: 0;
+  /* ⚠ Nicht #18222f wie im Vorbild: der Abschnitt hat genau diese Farbe,
+     die untere Fläche wäre unsichtbar und der Knopf würde beim Zeigen
+     bloß zucken. Weiß ist auf dem dunklen Band der Akzent, der die
+     Bewegung überhaupt erst sichtbar macht. */
+  background: #ffffff;
   color: #18222f;
   font-family: var(--font-fira), sans-serif;
   font-weight: 700;
   font-size: 1.05rem;
   text-decoration: none;
-  border: 2px solid #18222f;
-  box-shadow: 5px 5px 0 #ffffff;
-  transition:
-    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.18s;
 }
 
-.partnerCtaButton:hover,
-.partnerCtaButton:focus-visible {
-  transform: translate(-2px, -2px);
-  box-shadow: 7px 7px 0 #ffffff;
+.partnerCtaButtonText {
+  display: block;
+  padding: 0.85rem 1.9rem;
+  background: #fc6c14;
+  border: 2px solid #18222f;
+  transform: translate3d(-4px, -4px, 0);
+  transition: transform 0.3s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.partnerCtaButton:hover .partnerCtaButtonText,
+.partnerCtaButton:focus-visible .partnerCtaButtonText {
+  transform: translate3d(-8px, -8px, 0);
 }
 
 .partnerCtaButton:focus-visible {
   outline: 3px solid #ffffff;
-  outline-offset: 4px;
+  outline-offset: 6px;
 }
 
 @media (max-width: 700px) {
@@ -1183,14 +1243,16 @@
   }
 
   .partnerCtaButton {
-    box-shadow: 4px 4px 0 #ffffff;
-    width: 100%;
-    justify-content: center;
+    display: block;
+    width: calc(100% - 8px);
+    text-align: center;
   }
 }
 
+/* Auf Geräten ohne Mauszeiger gibt es kein Zeigen — die obere Fläche
+   bleibt dort schlicht stehen, wo sie ist. */
 @media (prefers-reduced-motion: reduce) {
-  .partnerCtaButton {
+  .partnerCtaButtonText {
     transition-duration: 1ms;
   }
 }

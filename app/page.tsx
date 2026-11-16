@@ -618,8 +618,28 @@ export default async function HomePage() {
                         className={styles.missionLink}
                         {...externalProps(content.mission_cta_url)}
                       >
-                        {content.mission_cta_label}
-                        <span aria-hidden="true"> →</span>
+                        <span className={styles.missionLinkText}>
+                          {content.mission_cta_label}
+                        </span>
+                        {/* Nach dem Vorbild „link--iocaste“ (Codrops): die
+                            Grafik ist dreimal so breit wie der Verweis und
+                            trägt in der Mitte eine Welle. Sichtbar ist
+                            zunächst das gerade Stück links; beim Zeigen
+                            rutscht sie um zwei Drittel nach links, sodass
+                            aus der geraden Linie eine Welle wird.
+
+                            Reines Schmuckwerk, deshalb aria-hidden. */}
+                        <svg
+                          className={styles.missionLinkGrafik}
+                          width="300%"
+                          height="12"
+                          viewBox="0 0 1200 60"
+                          preserveAspectRatio="none"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path d="M0,56.5c0,0,298.666,0,399.333,0C448.336,56.5,513.994,46,597,46c77.327,0,135,10.5,200.999,10.5c95.996,0,402.001,0,402.001,0" />
+                        </svg>
                       </Link>
                     )}
                   </div>
@@ -732,8 +752,13 @@ export default async function HomePage() {
                   className={styles.partnerCtaButton}
                   {...externalProps(content.partner_cta_button_url)}
                 >
-                  {content.partner_cta_button_label}
-                  <span aria-hidden="true"> →</span>
+                  {/* Die Schrift steht in einem eigenen Element, weil sie
+                      beim Zeigen nach links rückt, während die Fläche
+                      darunter zur Spitze zusammenläuft. Der frühere
+                      Textpfeil ist entfallen: die Form sagt dasselbe. */}
+                  <span className={styles.partnerCtaButtonText}>
+                    {content.partner_cta_button_label}
+                  </span>
                 </Link>
               )}
           </div>

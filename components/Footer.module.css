@@ -23,17 +23,48 @@
   gap: 1.25rem;
 }
 
+/* Dieselbe Unterstreichung wie in der Kopfzeile („link--metis“, Codrops):
+   die Linie wird zur rechten Kante hin weggewischt und wächst von links
+   wieder heran. Den Richtungswechsel macht `transform-origin`.
+   Hier 1 px statt 2 px, weil die Schrift kleiner ist als oben. */
 .link {
+  position: relative;
   color: #fc6c14;
   text-decoration: none;
   font-size: 1rem;
   font-family: var(--font-fira);
   font-weight: 500;
-  transition: color 0.2s ease;
+  transition: color 1s ease;
+}
+
+.link::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  pointer-events: none;
+  transform-origin: 100% 50%;
+  transform: scale3d(0, 1, 1);
+  transition: transform 1s ease;
+}
+
+.link:hover::before,
+.link:focus-visible::before {
+  transform-origin: 0% 50%;
+  transform: scale3d(1, 1, 1);
 }
 
 .link:hover {
   color: #000000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link::before {
+    transition-duration: 1ms;
+  }
 }
 
 .copyright {
