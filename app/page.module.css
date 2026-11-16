@@ -733,17 +733,21 @@
   flex-direction: column;
   justify-content: center;
   padding: 3rem 1rem;
-  background-color: #f7f4f0;
-  border-top: 2px solid #18222f;
-  border-right: 2px solid #18222f;
-  border-left: 2px solid #18222f;
+  background-color: #fc6c14;
+  border-style: solid;
+  border-left-width: 4px;
+  border-right-width: 4px;
+  border-top-width: 4px;
+  border-color: #18222f;
+  border-top-left-radius: 255px 15px;
+  border-top-right-radius: 15px 225px;
 }
 
 .ctaTitle {
   font-size: clamp(2.2rem, 4vw, 4rem);
   font-weight: 400;
   font-family: var(--font-anton);
-  color: #fc6c14;
+  color: whitesmoke;
   margin: 0 1rem 1.2rem 0;
   line-height: 1.2;
   text-wrap: balance;
@@ -796,14 +800,14 @@
 
 .ctaButton {
   display: inline-block;
-  align-self: flex-start;
+  align-self: center;
   font-family: var(--font-fira);
   font-size: 1rem;
   font-weight: 600;
   text-decoration: none;
   color: #fff;
   background-color: #18222f;
-  border: 2px solid #fff;
+  border: 5px solid #fff;
   padding: 0.75rem 2rem;
   border-radius: 9999px;
   transition:
@@ -812,7 +816,7 @@
 }
 
 .ctaButton:hover {
-  background-color: #fc6c14;
+  background-color: #fff2e8e6;
   color: #18222f;
 }
 
