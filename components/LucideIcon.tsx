@@ -7,16 +7,24 @@ import {
   AudioLines,
   BadgeCheck,
   Binoculars,
+  BookText,
   Compass,
   Euro,
+  FileText,
+  Globe,
   Heart,
   Images,
   Leaf,
+  Link as LinkIcon,
+  List,
   MapPin,
   Mic,
+  Phone,
+  Route,
   Search,
   Send,
   Shield,
+  Smartphone,
   Sparkles,
   Users,
   type LucideIcon as LucideIconType,
@@ -43,6 +51,18 @@ const ICON_MAP: Record<string, LucideIconType> = {
   compass: Compass,
   shield: Shield,
   euro: Euro,
+  // ⚠ Diese Namen stehen in den Auswahlfeldern der Partnerseite. Fehlt
+  // einer hier, zeigt die Seite stillschweigend das Ersatzsymbol
+  // (Sparkles) — ohne Fehler, aber auch ohne Hinweis. Beim Erweitern
+  // eines Auswahlfeldes in Directus also immer hier nachtragen.
+  list: List,
+  route: Route,
+  "book-text": BookText,
+  "file-text": FileText,
+  globe: Globe,
+  smartphone: Smartphone,
+  link: LinkIcon,
+  phone: Phone,
 };
 
 // "AudioLines" und "audio-lines" sollen dasselbe Symbol finden.

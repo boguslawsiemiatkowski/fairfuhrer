@@ -24,9 +24,9 @@ export default function Footer() {
           © {new Date().getFullYear()} FAIRFÜHRER
         </p>
         <div className={styles.links}>
-          <Link href="/partner-werden/voraussetzungen" className={styles.link}>
-            Voraussetzungen
-          </Link>
+          {/* „Voraussetzungen“ ist entfallen: die Unterseite gibt es nicht
+              mehr, ihr Inhalt steht als Abschnitt auf /partner-werden. Die
+              Fußzeile führt jetzt nur noch Rechtliches. */}
           <Link href="/impressum" className={styles.link}>
             Impressum
           </Link>

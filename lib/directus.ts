@@ -5,6 +5,7 @@ import "server-only";
 import type {
   HomePageContent,
   PartnerPageContent,
+  PartnerWerdenContent,
   ContactFormContent,
   ContactInfoContent,
   SupportSectionContent,
@@ -172,6 +173,34 @@ export async function getPartnerPageContent(options?: {
       revalidate: options?.revalidate ?? 604800,
       noStore: options?.noStore ?? false,
       label: "partner page content",
+    },
+  );
+}
+
+// Inhalte der neuen Partnerseite. Eigene Sammlung, weil `partner_page_content`
+// auf 79 Felder angewachsen war und die meisten davon zu einer Struktur
+// gehören, die mit der Umstellung verschwindet. Jene Sammlung ist in Directus
+// rot als „VERALTET“ markiert und bleibt unangetastet.
+//
+// ISR mit Tag "partner-werden": derselbe Tag wie bei der alten Seite, damit
+// ein bestehender Directus-Flow beide Seiten auf einmal erneuert.
+export async function getPartnerWerdenContent(options?: {
+  noStore?: boolean;
+  revalidate?: number;
+}): Promise<PartnerWerdenContent | null> {
+  // ⚠ Dateibeziehungen werden von `fields=*` NICHT aufgelöst — jede muss
+  // einzeln stehen, sonst kommt nur die UUID ohne Maße und `modified_on`.
+  return fetchDirectusSingle<PartnerWerdenContent>(
+    "/items/partner_werden_content?fields=*" +
+      ",app_icon.id,app_icon.modified_on,app_icon.width,app_icon.height" +
+      ",zahlung_logo.id,zahlung_logo.modified_on,zahlung_logo.width,zahlung_logo.height" +
+      ",seenergien_logo.id,seenergien_logo.modified_on" +
+      ",seenergien_logo.width,seenergien_logo.height",
+    {
+      tag: "partner-werden",
+      revalidate: options?.revalidate ?? 3600,
+      noStore: options?.noStore ?? false,
+      label: "partner werden content",
     },
   );
 }

@@ -90,6 +90,22 @@ const nextConfig: NextConfig = {
     loader: "custom",
     loaderFile: "./supabase-image-loader.ts",
   },
+  async redirects() {
+    return [
+      {
+        // Die Unterseite „Voraussetzungen“ ist entfallen; ihr Inhalt steht
+        // jetzt als Abschnitt auf /partner-werden. Die Weiterleitung hält
+        // alte Verweise am Leben — sie stehen in E-Mails an Partner und
+        // standen bis zuletzt in der Fußzeile.
+        //
+        // `permanent: true` (308), weil die Seite dauerhaft verschwindet:
+        // Suchmaschinen sollen die Adresse übertragen, nicht beide behalten.
+        source: "/partner-werden/voraussetzungen",
+        destination: "/partner-werden#kriterien",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

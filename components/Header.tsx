@@ -56,7 +56,7 @@ export default function Header() {
           Liste
         </Link>
         <Link href="/partner-werden" className={styles.navLink}>
-          Mitmachen
+          Partner
         </Link>
         <Link href="/ueber-uns" className={styles.navLink}>
           Über uns
@@ -155,7 +155,7 @@ export default function Header() {
             className={styles.mobileNavLink}
             onClick={closeMenu}
           >
-            Mitmachen
+            Partner
           </Link>
           <Link
             href="/ueber-uns"

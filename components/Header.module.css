@@ -223,7 +223,7 @@
 .mobileHeaderUserMenu {
   display: none;
 }
-@media screen and (max-width: 800px) {
+@media screen and (max-width: 780px) {
   /* Hide desktop navigation and social */
   .nav,
   .social {

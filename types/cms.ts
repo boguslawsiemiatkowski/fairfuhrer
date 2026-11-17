@@ -38,6 +38,72 @@ export interface HeroAudiopinKategorie {
   Farbe?: string | null;
 }
 
+/** Eine Preisstufe auf der Partnerseite. Die Beträge stehen als Text in
+ *  Directus, damit „59,50 €“ genau so erscheint, wie es gemeint ist.
+ *  ⚠ Sie müssen zu den PayPal-Plänen passen — eine Änderung in Directus
+ *  ändert NICHT, was PayPal abbucht. */
+export interface PreisStufe {
+  titel?: string;
+  zielgruppe?: string;
+  preis_netto?: string;
+  preis_brutto?: string;
+  hervorheben?: boolean;
+}
+
+/** Eine Leistung bzw. Kriteriengruppe: Lucide-Name + Text. */
+export interface PartnerLeistung {
+  icon?: string;
+  titel?: string;
+  text?: string;
+}
+
+/** Inhalte der neuen Partnerseite (Sammlung `partner_werden_content`).
+ *  Löst `PartnerPageContent` ab; jene Sammlung ist in Directus als
+ *  veraltet markiert und versorgt nur noch die alte Seite. */
+export interface PartnerWerdenContent {
+  id: number;
+  hero_titel?: string;
+  hero_text?: string;
+  // Logo der Seenergien GmbH unter dem Einleitungstext — wer hinter dem
+  // Fairführer steht. Fehlt es, entfällt nur das Bild.
+  seenergien_logo?: DirectusFileRef | null;
+  // Preise — ⚠ `preise_titel` leer = der ganze Abschnitt entfällt.
+  preise_titel?: string;
+  preise_intro?: string;
+  preise_stufen?: PreisStufe[] | null;
+  preise_keine_verlaengerung?: string;
+  preise_steuerhinweis?: string;
+  // Zweiter, leiserer Weg zur Anmeldung direkt bei den Preisen.
+  // Beide Felder müssen gefüllt sein, sonst entfällt der Verweis.
+  preise_link_label?: string;
+  preise_link_url?: string;
+  // Leistungen mit Symbolen
+  leistungen_titel?: string;
+  leistungen?: PartnerLeistung[] | null;
+  // Studio samt Film
+  studio_titel?: string;
+  studio_text?: string;
+  studio_video_playback_id?: string;
+  studio_video_thumbnail_time?: number;
+  // Web und App — das App-Zeichen steht über der Überschrift, die beiden
+  // Ladenschilder darunter (Adressen stehen im Code, nicht in Directus).
+  plattformen_titel?: string;
+  plattformen_text?: string;
+  app_icon?: DirectusFileRef | null;
+  // Aufnahmekriterien — ersetzt die Unterseite /voraussetzungen
+  kriterien_titel?: string;
+  kriterien_intro?: string;
+  kriterien_gruppen?: PartnerLeistung[] | null;
+  // Schluss: Knopf und PayPal-Hinweis
+  cta_titel?: string;
+  cta_text?: string;
+  cta_button_label?: string;
+  cta_button_url?: string;
+  zahlung_hinweis?: string;
+  // Logo des Zahlungsdienstes. Fehlt es, bleibt nur der Hinweistext.
+  zahlung_logo?: DirectusFileRef | null;
+}
+
 export interface PartnerPageContent {
   id: number;
   // Globalny kolor linków (Markdown-Links) dla całej kolekcji — obie strony
