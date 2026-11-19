@@ -10,17 +10,24 @@ import {
   Layers,
   Lock,
   MapPin,
+  MapPinHouse,
+  Map as MapIcon,
+  MoveRight,
+  Navigation,
+  Footprints,
+  Bike,
+  Car,
   Mic,
   Pencil,
   Phone,
   Plus,
   Sparkles,
   Trash2,
-  Globe,
   FileText,
   Award,
   LayoutPanelLeft,
   Monitor,
+  GalleryHorizontalEnd,
 } from "lucide-react";
 import CategoryIcon, { categoryColorFor } from "@/components/CategoryIcon";
 import ColumnAudioPlayer from "@/components/ColumnAudioPlayer";
@@ -93,7 +100,7 @@ type StudioSection =
   | "galerie"
   | "zertifizierungen";
 
-type PreviewViewMode = "split" | "panel" | "page";
+type PreviewViewMode = "split" | "panel" | "card" | "page";
 
 // Proxy przez nasz API dla plików wymagających autoryzacji (galeria, titelbild, audio partnera)
 function assetUrl(uuid: string) {
@@ -183,6 +190,8 @@ export default function AudiopinPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const editorPanelRef = useRef<HTMLDivElement>(null);
+  const initializedForUserIdRef = useRef<string | null>(null);
+  const invalidPinIdsRef = useRef<Set<number>>(new Set());
 
   // 1. Załaduj opcje kategorii i certyfikatów z Directusa
   useEffect(() => {
@@ -198,6 +207,13 @@ export default function AudiopinPage() {
   // 2. Załaduj status premium i pin_id (z uwzględnieniem danych z AuthContext oraz Supabase)
   useEffect(() => {
     if (!user) return;
+    // Inicjalizujemy stan Studio dokładnie raz dla zalogowanego użytkownika —
+    // dzięki temu kolejne odświeżenia obiektu `user` w AuthContext (np. po
+    // TOKEN_REFRESHED lub /api/auth/me) nie resetują edytora ani nie nadpisują
+    // stanu usuniętym wcześniej pin_id.
+    if (initializedForUserIdRef.current === user.id) return;
+    initializedForUserIdRef.current = user.id;
+
     const supabase = getSupabaseBrowserClient();
     supabase
       .from("partner_profiles")
@@ -208,8 +224,9 @@ export default function AudiopinPage() {
         if (data?.premium_until) {
           setDbPremiumUntil(data.premium_until);
         }
+        const rawPinId = data?.pin_id ?? user.partnerProfile?.pin_id ?? null;
         const effectivePinId =
-          data?.pin_id ?? user.partnerProfile?.pin_id ?? null;
+          rawPinId && !invalidPinIdsRef.current.has(rawPinId) ? rawPinId : null;
         if (effectivePinId) {
           setPinId(effectivePinId);
           setPinLoading(true);
@@ -243,6 +260,7 @@ export default function AudiopinPage() {
     fetch(`/api/audiopin/${pinId}`)
       .then(async (r) => {
         if (r.status === 404 || r.status === 403) {
+          invalidPinIdsRef.current.add(pinId);
           setPinId(null);
           setPinData(null);
           setGalerieItems([]);
@@ -1341,13 +1359,15 @@ export default function AudiopinPage() {
           </h2>
           <p className={styles.studioSubheading}>
             Klicken Sie direkt auf ein beliebiges Element im{" "}
-            <strong>Karten-Panel</strong> oder auf der{" "}
+            <strong>Karten-Panel</strong>, auf der{" "}
+            <strong>Listen-Karte</strong> oder auf der{" "}
             <strong>Audiopin-Detailseite</strong>, um Ihre Inhalte einzufügen
-            und sofort zu sehen, wie Besucher*innen Ihren Ort erleben.
+            und sofort zu sehen, wie Besucher*innen Ihren Ort im Web und in der
+            App erleben.
           </p>
         </div>
 
-        {/* Przełącznik widoku: Split vs Panel Mapy vs Strona szczegółowa */}
+        {/* Przełącznik widoku: Split vs Panel Mapy vs Karta Listy vs Strona szczegółowa */}
         <div
           className={styles.viewModeGroup}
           role="tablist"
@@ -1363,7 +1383,7 @@ export default function AudiopinPage() {
             onClick={() => setPreviewMode("split")}
           >
             <Layers size={16} />
-            <span>Beide Ansichten</span>
+            <span>Alle Ansichten</span>
           </button>
           <button
             type="button"
@@ -1376,6 +1396,18 @@ export default function AudiopinPage() {
           >
             <LayoutPanelLeft size={16} />
             <span>Karten-Panel</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={previewMode === "card"}
+            className={`${styles.viewModeBtn} ${
+              previewMode === "card" ? styles.viewModeBtnActive : ""
+            }`}
+            onClick={() => setPreviewMode("card")}
+          >
+            <GalleryHorizontalEnd size={16} />
+            <span>Listen-Karte</span>
           </button>
           <button
             type="button"
@@ -1449,379 +1481,555 @@ export default function AudiopinPage() {
       {/* Aktywny panel edycji wybranego elementu */}
       {renderActiveSectionEditor()}
 
-      {/* GŁÓWNY OBSZAR PODGLĄDU NA ŻYWO (Karten-Panel + Audiopin-Detailseite) */}
+      {/* GŁÓWNY OBSZAR PODGLĄDU NA ŻYWO (Karten-Panel + Listen-Karte + Audiopin-Detailseite) */}
       <div
         className={`${styles.previewsGrid} ${
-          previewMode === "panel"
+          previewMode === "panel" || previewMode === "card"
             ? styles.previewsSinglePanel
             : previewMode === "page"
               ? styles.previewsSinglePage
               : ""
         }`}
       >
-        {/* ============================================================
-            WIDOK 1: KARTEN-PANEL (odpowiednik PlaceInfoPanel na /karte)
-           ============================================================ */}
-        {(previewMode === "split" || previewMode === "panel") && (
-          <section
-            className={styles.previewColumnPanel}
-            aria-label="Vorschau Karten-Panel"
-          >
-            <div className={styles.previewFrameHeader}>
-              <span className={styles.previewFrameDot} />
-              <span className={styles.previewFrameTitle}>
-                Vorschau 1: Seitenpanel auf der interaktiven Karte (/karte)
-              </span>
-            </div>
-
-            <div className={styles.mockPanel}>
-              {/* 1. Zdjęcie główne (Titelbild) + nakładany odtwarzacz Audio */}
-              <div className={styles.mockPanelHeroWrap}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openSectionEditor("titelbild")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openSectionEditor("titelbild");
-                    }
-                  }}
-                  className={`${styles.editableZone} ${styles.mockPanelHero} ${
-                    activeSection === "titelbild"
-                      ? styles.editableZoneActive
-                      : ""
-                  }`}
-                >
-                  {titelbildPreview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={titelbildPreview}
-                      alt={name || "Titelbild"}
-                      className={styles.mockPanelHeroImg}
-                    />
-                  ) : (
-                    <div className={styles.mockHeroPlaceholder}>
-                      <ImageIcon size={34} />
-                      <span>Klicken, um Titelbild hochzuladen</span>
-                      <small>JPG, PNG oder WebP (max. 5 MB)</small>
-                    </div>
-                  )}
-                  <span className={styles.zoneFloatingBadge}>
-                    <Pencil size={12} /> Titelbild
-                  </span>
-                </div>
-
-                {/* Nakładany pasek Audio na dolnej krawędzi zdjęcia */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openSectionEditor("audio")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openSectionEditor("audio");
-                    }
-                  }}
-                  className={`${styles.editableZone} ${styles.mockPanelAudioOverlay} ${
-                    activeSection === "audio" ? styles.editableZoneActive : ""
-                  }`}
-                >
-                  {audioPreview ? (
-                    <audio
-                      controls
-                      src={audioPreview}
-                      className={styles.mockPanelAudioPlayer}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <div className={styles.mockAudioPlaceholder}>
-                      <Mic size={16} />
-                      <span>+ Audiodatei hinzufügen (MP3/M4A/WAV)</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 2. Odznaki kategorii (Kategorien) */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => openSectionEditor("kategorien")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openSectionEditor("kategorien");
-                  }
-                }}
-                className={`${styles.editableZone} ${styles.mockPanelCategories} ${
-                  activeSection === "kategorien"
-                    ? styles.editableZoneActive
-                    : ""
-                }`}
+        {(previewMode === "split" ||
+          previewMode === "panel" ||
+          previewMode === "card") && (
+          <div className={styles.leftPreviewsStack}>
+            {/* ============================================================
+                WIDOK 1: KARTEN-PANEL (odpowiednik PlaceInfoPanel na /karte oraz ekranu Audiopinu w aplikacji mobilnej)
+               ============================================================ */}
+            {(previewMode === "split" || previewMode === "panel") && (
+              <section
+                className={styles.previewColumnPanel}
+                aria-label="Vorschau Karten-Panel"
               >
-                {selectedCategories.length > 0 ? (
-                  selectedCategories.map((cat) => (
-                    <span
-                      key={cat.id}
-                      className={styles.mockCategoryBadge}
-                      style={{
-                        backgroundColor: categoryColorFor(cat),
-                      }}
-                    >
-                      {cat.name}
-                    </span>
-                  ))
-                ) : (
-                  <span className={styles.mockEmptyPill}>
-                    + Kategorien auswählen *
-                  </span>
-                )}
-                <span className={styles.zoneCornerHint}>
-                  <Pencil size={11} /> Kategorien
-                </span>
-              </div>
-
-              {/* 3. Nazwa miejsca + Adres + Telefon */}
-              <div className={styles.mockPanelHeaderSection}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openSectionEditor("name")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openSectionEditor("name");
-                    }
-                  }}
-                  className={`${styles.editableZone} ${styles.mockNameZone} ${
-                    activeSection === "name" ? styles.editableZoneActive : ""
-                  }`}
-                >
-                  <h3 className={styles.mockPanelTitle}>
-                    {name.trim() || "Name Ihres Ortes hier eingeben…"}
-                  </h3>
-                  <span className={styles.zoneCornerHint}>
-                    <Pencil size={11} /> Name
+                <div className={styles.previewFrameHeader}>
+                  <span className={styles.previewFrameDot} />
+                  <span className={styles.previewFrameTitle}>
+                    Vorschau 1: Seitenpanel auf der Karte (/karte) &amp; Mobile
+                    App
                   </span>
                 </div>
 
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openSectionEditor("adresse")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openSectionEditor("adresse");
-                    }
-                  }}
-                  className={`${styles.editableZone} ${styles.mockAddressZone} ${
-                    activeSection === "adresse" ? styles.editableZoneActive : ""
-                  }`}
-                >
-                  <p className={styles.mockPanelAddress}>
-                    {adresse.trim() || stadt.trim() ? (
-                      <>
-                        {adresse}
-                        {stadt ? `, ${stadt}` : ""}
-                        {land ? ` (${land})` : ""}
-                      </>
-                    ) : (
-                      "📍 Straße, PLZ & Stadt hier auswählen…"
-                    )}
-                  </p>
-                  <span className={styles.zoneCornerHint}>
-                    <MapPin size={11} /> Adresse
-                  </span>
-                </div>
-
-                {/* Telefon w panelu mapy */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openSectionEditor("kontakt")}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openSectionEditor("kontakt");
-                    }
-                  }}
-                  className={`${styles.editableZone} ${styles.mockContactInline} ${
-                    activeSection === "kontakt" ? styles.editableZoneActive : ""
-                  }`}
-                >
-                  {telefon.trim() && isPremium ? (
-                    <span className={styles.mockPanelPhone}>📞 {telefon}</span>
-                  ) : (
-                    <span className={styles.mockOptionalHint}>
-                      <Phone size={13} />
-                      {isPremium
-                        ? "+ Telefonnummer mit Anruffunktion hinzufügen"
-                        : "🔒 Telefon-Anrufbutton (Partner-Pin)"}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* 4. Pełny opis (Vollbeschreibung) */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => openSectionEditor("beschreibung")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openSectionEditor("beschreibung");
-                  }
-                }}
-                className={`${styles.editableZone} ${styles.mockPanelSection} ${
-                  activeSection === "beschreibung"
-                    ? styles.editableZoneActive
-                    : ""
-                }`}
-              >
-                {safePreviewDescription ? (
+                <div className={styles.mockPanel}>
+                  {/* 1. Zdjęcie główne (Titelbild) nad kolorowym nagłówkiem kategorii */}
                   <div
-                    className={styles.mockPanelDescription}
-                    dangerouslySetInnerHTML={{ __html: safePreviewDescription }}
-                  />
-                ) : (
-                  <div className={styles.mockTextPlaceholder}>
-                    <FileText size={20} />
-                    <span>
-                      Hier erscheint Ihre ausführliche Beschreibung zum Mitlesen
-                      und Entdecken. Klicken Sie hier, um Ihren Text einzugeben.
-                    </span>
-                  </div>
-                )}
-                <span className={styles.zoneCornerHint}>
-                  <Pencil size={11} /> Beschreibung
-                </span>
-              </div>
-
-              {/* 5. Przycisk Website besuchen */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => openSectionEditor("kontakt")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openSectionEditor("kontakt");
-                  }
-                }}
-                className={`${styles.editableZone} ${styles.mockPanelSection} ${
-                  activeSection === "kontakt" ? styles.editableZoneActive : ""
-                }`}
-              >
-                {safePreviewLink && isPremium ? (
-                  <span className={styles.mockWebsiteButton}>
-                    Website besuchen
-                  </span>
-                ) : (
-                  <div className={styles.mockWebsitePlaceholder}>
-                    <Globe size={16} />
-                    <span>
-                      {isPremium
-                        ? "+ Website-Button („Website besuchen“) verlinken"
-                        : "🔒 Direktlink zur eigenen Website (Partner-Pin)"}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* 6. Bildergalerie w panelu mapy */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => openSectionEditor("galerie")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openSectionEditor("galerie");
-                  }
-                }}
-                className={`${styles.editableZone} ${styles.mockPanelSection} ${
-                  activeSection === "galerie" ? styles.editableZoneActive : ""
-                }`}
-              >
-                <h4 className={styles.mockPanelSubheading}>Bildergalerie</h4>
-                {galerieItems.length > 0 && isPremium ? (
-                  <div className={styles.mockPanelGalleryGrid}>
-                    {galerieItems.map((g) => (
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("titelbild")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("titelbild");
+                      }
+                    }}
+                    className={`${styles.editableZone} ${styles.mockPanelHero} ${
+                      activeSection === "titelbild"
+                        ? styles.editableZoneActive
+                        : ""
+                    }`}
+                  >
+                    {titelbildPreview ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        key={g.junctionId}
-                        src={g.preview}
-                        alt=""
-                        className={styles.mockPanelGalleryThumb}
+                        src={titelbildPreview}
+                        alt={name || "Titelbild"}
+                        className={styles.mockPanelHeroImg}
                       />
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.mockGalleryPlaceholder}>
-                    <ImageIcon size={18} />
-                    <span>
-                      {isPremium
-                        ? "+ Bis zu 6 Galeriebilder hinzufügen"
-                        : "🔒 Bildergalerie mit bis zu 6 Fotos (Partner-Pin)"}
+                    ) : (
+                      <div className={styles.mockHeroPlaceholder}>
+                        <ImageIcon size={34} />
+                        <span>Klicken, um Titelbild hochzuladen</span>
+                        <small>JPG, PNG oder WebP (max. 5 MB)</small>
+                      </div>
+                    )}
+                    <span className={styles.zoneFloatingBadge}>
+                      <Pencil size={12} /> Titelbild
                     </span>
                   </div>
-                )}
-              </div>
 
-              {/* 7. Zertifizierungen & Labels w panelu mapy */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => openSectionEditor("zertifizierungen")}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    openSectionEditor("zertifizierungen");
-                  }
-                }}
-                className={`${styles.editableZone} ${styles.mockPanelSection} ${
-                  activeSection === "zertifizierungen"
-                    ? styles.editableZoneActive
-                    : ""
-                }`}
-              >
-                <h4 className={styles.mockPanelSubheading}>
-                  Zertifizierungen &amp; Labels
-                </h4>
-                {selectedZerts.length > 0 ? (
-                  <div className={styles.mockZertGrid}>
-                    {selectedZerts.map((z) => (
-                      <div key={z.id} className={styles.mockZertBadgeItem}>
-                        {z.imageUuid ? (
+                  {/* 2. Kolorowy nagłówek w barwie kategorii — dokładnie jak w nowym PlaceInfoPanel */}
+                  <header
+                    className={styles.mockPanelColoredHeader}
+                    style={{ backgroundColor: themeColor }}
+                  >
+                    {/* Odznaki kategorii z ikonami */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSectionEditor("kategorien")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSectionEditor("kategorien");
+                        }
+                      }}
+                      className={`${styles.sidebarEditableZone} ${styles.mockPanelCategoryBadges} ${
+                        activeSection === "kategorien"
+                          ? styles.sidebarEditableZoneActive
+                          : ""
+                      }`}
+                    >
+                      {selectedCategories.length > 0 ? (
+                        <div className={styles.mockCategoryBadgesRow}>
+                          {selectedCategories.map((cat) => (
+                            <span
+                              key={cat.id}
+                              className={styles.mockCategoryBadge}
+                            >
+                              <CategoryIcon
+                                categoryId={cat.id}
+                                color="rgba(255,255,255,0.22)"
+                                strokeColor="#fff"
+                                size={22}
+                              />
+                              <span>{cat.name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className={styles.mockEmptyPillOnColor}>
+                          + Kategorien auswählen *
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Nazwa miejsca (Anton uppercase białym fontem) */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSectionEditor("name")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSectionEditor("name");
+                        }
+                      }}
+                      className={`${styles.sidebarEditableZone} ${
+                        activeSection === "name"
+                          ? styles.sidebarEditableZoneActive
+                          : ""
+                      }`}
+                    >
+                      <h3 className={styles.mockPanelTitle}>
+                        {name.trim() || "Name Ihres Ortes hier eingeben…"}
+                      </h3>
+                    </div>
+
+                    {/* Adres i miasto */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSectionEditor("adresse")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSectionEditor("adresse");
+                        }
+                      }}
+                      className={`${styles.sidebarEditableZone} ${
+                        activeSection === "adresse"
+                          ? styles.sidebarEditableZoneActive
+                          : ""
+                      }`}
+                    >
+                      <p className={styles.mockPanelAddress}>
+                        {adresse.trim() || stadt.trim() ? (
+                          <>
+                            {adresse}
+                            {stadt && (
+                              <>
+                                <br />
+                                {stadt}
+                                {land ? `, ${land}` : ""}
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          "📍 Straße, PLZ & Stadt hier auswählen…"
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Pigułka telefonu w kolorowym nagłówku */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSectionEditor("kontakt")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSectionEditor("kontakt");
+                        }
+                      }}
+                      className={`${styles.sidebarEditableZone} ${
+                        activeSection === "kontakt"
+                          ? styles.sidebarEditableZoneActive
+                          : ""
+                      }`}
+                    >
+                      {telefon.trim() && isPremium ? (
+                        <span className={styles.mockPanelPhonePill}>
+                          <Phone size={14} aria-hidden="true" />
+                          <span>{telefon}</span>
+                        </span>
+                      ) : (
+                        <span className={styles.mockSidebarHint}>
+                          <Phone size={13} />
+                          {isPremium
+                            ? "+ Telefonnummer mit Anruffunktion hinzufügen"
+                            : "🔒 Telefon-Anrufbutton (Partner-Pin)"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Nowoczesny odtwarzacz ColumnAudioPlayer zintegrowany w nagłówku (jak w PlaceInfoPanel i App) */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSectionEditor("audio")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSectionEditor("audio");
+                        }
+                      }}
+                      className={`${styles.sidebarEditableZone} ${styles.mockPanelAudioWrap} ${
+                        activeSection === "audio"
+                          ? styles.sidebarEditableZoneActive
+                          : ""
+                      }`}
+                    >
+                      {audioPreview ? (
+                        <div
+                          className={styles.mockPanelPlayerInner}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ColumnAudioPlayer
+                            src={audioPreview}
+                            title={name || "Audioguide"}
+                          />
+                        </div>
+                      ) : (
+                        <div className={styles.mockSidebarAudioEmpty}>
+                          <Mic size={17} />
+                          <span>+ Audiodatei hinzufügen (MP3/M4A/WAV)</span>
+                        </div>
+                      )}
+                    </div>
+                  </header>
+
+                  {/* 3. Pasek akcji CTA pod nagłówkiem (Zur vollständigen Seite + Route hierhin + Website besuchen) */}
+                  <div className={styles.mockPanelActionsBar}>
+                    <div className={styles.mockPanelPrimaryCta}>
+                      <span>Zur vollständigen Seite</span>
+                      <span aria-hidden="true">→</span>
+                    </div>
+
+                    <div className={styles.mockPanelSecondaryActions}>
+                      <span className={styles.mockPanelSecondaryCta}>
+                        <Navigation size={14} aria-hidden="true" />
+                        <span>Route hierhin</span>
+                      </span>
+
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openSectionEditor("kontakt")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openSectionEditor("kontakt");
+                          }
+                        }}
+                        className={`${styles.editableZone} ${styles.mockPanelWebsiteCtaZone} ${
+                          activeSection === "kontakt"
+                            ? styles.editableZoneActive
+                            : ""
+                        }`}
+                      >
+                        <span
+                          className={`${styles.mockPanelSecondaryCta} ${
+                            !(safePreviewLink && isPremium)
+                              ? styles.mockPanelSecondaryCtaMuted
+                              : ""
+                          }`}
+                        >
+                          <ExternalLink size={14} aria-hidden="true" />
+                          <span>
+                            {safePreviewLink && isPremium
+                              ? "Website besuchen"
+                              : isPremium
+                                ? "+ Website verlinken"
+                                : "Website (PRO)"}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Pełny opis (Vollbeschreibung) na białym tle */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("beschreibung")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("beschreibung");
+                      }
+                    }}
+                    className={`${styles.editableZone} ${styles.mockPanelSection} ${
+                      activeSection === "beschreibung"
+                        ? styles.editableZoneActive
+                        : ""
+                    }`}
+                  >
+                    {safePreviewDescription ? (
+                      <div
+                        className={styles.mockPanelDescription}
+                        dangerouslySetInnerHTML={{
+                          __html: safePreviewDescription,
+                        }}
+                      />
+                    ) : (
+                      <div className={styles.mockTextPlaceholder}>
+                        <FileText size={20} />
+                        <span>
+                          Hier erscheint Ihre ausführliche Beschreibung zum
+                          Mitlesen und Entdecken. Klicken Sie hier, um Ihren
+                          Text einzugeben.
+                        </span>
+                      </div>
+                    )}
+                    <span className={styles.zoneCornerHint}>
+                      <Pencil size={11} /> Beschreibung
+                    </span>
+                  </div>
+
+                  {/* 5. Bildergalerie w panelu mapy */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("galerie")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("galerie");
+                      }
+                    }}
+                    className={`${styles.editableZone} ${styles.mockPanelSection} ${
+                      activeSection === "galerie"
+                        ? styles.editableZoneActive
+                        : ""
+                    }`}
+                  >
+                    <h4 className={styles.mockPanelSubheading}>
+                      Bildergalerie
+                    </h4>
+                    {galerieItems.length > 0 && isPremium ? (
+                      <div className={styles.mockPanelGalleryGrid}>
+                        {galerieItems.map((g) => (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={assetUrl(z.imageUuid)}
-                            alt={z.name}
-                            title={z.name}
-                            className={styles.mockZertLogo}
+                            key={g.junctionId}
+                            src={g.preview}
+                            alt=""
+                            className={styles.mockPanelGalleryThumb}
                           />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.mockGalleryPlaceholder}>
+                        <ImageIcon size={18} />
+                        <span>
+                          {isPremium
+                            ? "+ Bis zu 6 Galeriebilder hinzufügen"
+                            : "🔒 Bildergalerie mit bis zu 6 Fotos (Partner-Pin)"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 6. Zertifizierungen & Labels w panelu mapy (3-kolumnowy grid w stylu Studio) */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSectionEditor("zertifizierungen")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openSectionEditor("zertifizierungen");
+                      }
+                    }}
+                    className={`${styles.editableZone} ${styles.mockPanelSection} ${
+                      activeSection === "zertifizierungen"
+                        ? styles.editableZoneActive
+                        : ""
+                    }`}
+                  >
+                    <h4 className={styles.mockPanelSubheading}>
+                      Zertifizierungen &amp; Labels
+                    </h4>
+                    {selectedZerts.length > 0 ? (
+                      <div className={styles.mockZertGrid}>
+                        {selectedZerts.map((z) => (
+                          <div key={z.id} className={styles.mockZertBadgeItem}>
+                            {z.imageUuid ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={assetUrl(z.imageUuid)}
+                                alt={z.name}
+                                title={z.name}
+                                className={styles.mockZertLogo}
+                              />
+                            ) : (
+                              <span className={styles.mockZertName}>
+                                {z.name}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.mockGalleryPlaceholder}>
+                        <Award size={18} />
+                        <span>+ Zertifizierungen &amp; Siegel auswählen</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ============================================================
+                WIDOK 2: LISTEN-KARTE (odpowiednik PinCard na /liste oraz w aplikacji mobilnej)
+               ============================================================ */}
+            {(previewMode === "split" || previewMode === "card") && (
+              <section
+                className={styles.previewColumnPanel}
+                aria-label="Vorschau Listen-Karte"
+              >
+                <div className={styles.previewFrameHeader}>
+                  <span className={styles.previewFrameDot} />
+                  <span className={styles.previewFrameTitle}>
+                    Vorschau 2: Karte in der Listen-Ansicht (/liste &amp; App)
+                  </span>
+                </div>
+
+                <div className={styles.mockPinCardContainer}>
+                  <div className={styles.mockPinCard}>
+                    {/* Tło zdjęcia karty */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSectionEditor("titelbild")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openSectionEditor("titelbild");
+                        }
+                      }}
+                      className={styles.mockPinCardImageArea}
+                    >
+                      {titelbildPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={titelbildPreview}
+                          alt={name || "Titelbild"}
+                          className={styles.mockPinCardImg}
+                        />
+                      ) : (
+                        <div className={styles.mockPinCardEmptyBg}>
+                          <ImageIcon size={32} />
+                          <span>Titelbild als Kartenhintergrund</span>
+                        </div>
+                      )}
+                      <span className={styles.zoneFloatingBadge}>
+                        <Pencil size={12} /> Titelbild
+                      </span>
+                    </div>
+
+                    <span
+                      className={styles.mockPinCardGradientTop}
+                      aria-hidden="true"
+                    />
+                    <span
+                      className={styles.mockPinCardGradientBottom}
+                      aria-hidden="true"
+                    />
+
+                    {/* Dolna zawartość karty: ikony kategorii + nazwa + miasto, kraj */}
+                    <div className={styles.mockPinCardBottom}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openSectionEditor("kategorien")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openSectionEditor("kategorien");
+                          }
+                        }}
+                        className={styles.mockPinCardChips}
+                      >
+                        {selectedCategories.length > 0 ? (
+                          selectedCategories.map((cat) => (
+                            <CategoryIcon
+                              key={cat.id}
+                              categoryId={cat.id}
+                              color={categoryColorFor(cat)}
+                              size={38}
+                            />
+                          ))
                         ) : (
-                          <span className={styles.mockZertName}>{z.name}</span>
+                          <span className={styles.mockEmptyPillOnColor}>
+                            + Kategorie
+                          </span>
                         )}
                       </div>
-                    ))}
+
+                      <h3
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openSectionEditor("name")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openSectionEditor("name");
+                          }
+                        }}
+                        className={styles.mockPinCardName}
+                      >
+                        {name.trim() || "Name Ihres Ortes"}
+                      </h3>
+
+                      <p
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openSectionEditor("adresse")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openSectionEditor("adresse");
+                          }
+                        }}
+                        className={styles.mockPinCardLocation}
+                      >
+                        {[stadt.trim(), land.trim()]
+                          .filter(Boolean)
+                          .join(", ") || "Stadt, Land"}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className={styles.mockGalleryPlaceholder}>
-                    <Award size={18} />
-                    <span>+ Zertifizierungen &amp; Siegel auswählen</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
+                </div>
+              </section>
+            )}
+          </div>
         )}
 
         {/* ============================================================
-            WIDOK 2: AUDIOPIN-DETAILSEITE (odpowiednik /liste/[stadt]/[slug])
+            WIDOK 3: AUDIOPIN-DETAILSEITE (odpowiednik /liste/[stadt]/[slug])
            ============================================================ */}
         {(previewMode === "split" || previewMode === "page") && (
           <section
@@ -1831,7 +2039,7 @@ export default function AudiopinPage() {
             <div className={styles.previewFrameHeader}>
               <span className={styles.previewFrameDot} />
               <span className={styles.previewFrameTitle}>
-                Vorschau 2: Eigene Audiopin-Detailseite (/liste/
+                Vorschau 3: Eigene Audiopin-Detailseite (/liste/
                 {cityToSegment(stadt) || "stadt"}/…)
               </span>
             </div>
@@ -1864,9 +2072,11 @@ export default function AudiopinPage() {
                       categoryId={primaryCategory?.id ?? null}
                       color="rgba(255,255,255,0.22)"
                       strokeColor="#fff"
-                      size={32}
+                      size={34}
                     />
-                    <span>{primaryCategory?.name ?? "Kategorie wählen"}</span>
+                    <span className={styles.mockSidebarCategoryName}>
+                      {primaryCategory?.name ?? "Kategorie wählen"}
+                    </span>
                   </div>
 
                   {/* Tytuł na pasku bocznym */}
@@ -1916,7 +2126,7 @@ export default function AudiopinPage() {
                     </p>
                   </div>
 
-                  {/* Telefon i Website na pasku bocznym */}
+                  {/* Telefon i Website na pasku bocznym (z ikonami Phone i ExternalLink jak na live stronie) */}
                   <div
                     role="button"
                     tabIndex={0}
@@ -1937,12 +2147,14 @@ export default function AudiopinPage() {
                       <>
                         {telefon.trim() && (
                           <span className={styles.mockSidebarLink}>
-                            {telefon}
+                            <Phone size={15} aria-hidden="true" />
+                            <span>{telefon}</span>
                           </span>
                         )}
                         {safePreviewLink && (
                           <span className={styles.mockSidebarLink}>
-                            Website besuchen
+                            <ExternalLink size={15} aria-hidden="true" />
+                            <span>Website besuchen</span>
                           </span>
                         )}
                       </>
@@ -1989,8 +2201,20 @@ export default function AudiopinPage() {
                 </div>
               </aside>
 
-              {/* Prawa kolumna strony szczegółowej */}
+              {/* Prawa kolumna strony szczegółowej (tło #f8f8ff) */}
               <div className={styles.mockDetailMain}>
+                {/* Plakietka „Entdeckung in der Nähe” w prawym górnym rogu (jak na live stronie) */}
+                <div className={styles.mockDiscoveryBadgeRow}>
+                  <div className={styles.mockDiscoveryBadge}>
+                    <span className={styles.mockDiscoveryLabel}>
+                      Entdeckung in der Nähe
+                    </span>
+                    <span className={styles.mockDiscoveryMeta}>
+                      1,4 km <MoveRight size={15} aria-hidden="true" />
+                    </span>
+                  </div>
+                </div>
+
                 {/* Zdjęcie główne w charakterystycznej ręcznie rysowanej ramce */}
                 <div
                   role="button"
@@ -2152,7 +2376,7 @@ export default function AudiopinPage() {
                   )}
                 </div>
 
-                {/* Sekcja Lage (Mapa lokalizacji na dole strony szczegółowej) */}
+                {/* Sekcja Lage & Routenplaner (nowa karta w stylu Studio z przyciskami Zu Fuß / Fahrrad / Auto) */}
                 <div
                   role="button"
                   tabIndex={0}
@@ -2167,23 +2391,72 @@ export default function AudiopinPage() {
                     activeSection === "adresse" ? styles.editableZoneActive : ""
                   }`}
                 >
-                  <h4 className={styles.mockDetailSectionTitle}>Lage</h4>
-                  <div className={styles.mockMapCard}>
-                    <div
-                      className={styles.mockMapPinCircle}
-                      style={{ backgroundColor: themeColor }}
-                    >
-                      <MapPin size={20} color="#fff" />
-                    </div>
-                    <div className={styles.mockMapInfo}>
-                      <strong>
-                        {name.trim() || "Ihr Standort auf der Karte"}
-                      </strong>
-                      <span>
-                        {adresse.trim() || stadt.trim()
-                          ? `${adresse}${stadt ? `, ${stadt}` : ""}`
-                          : "Klicken, um Adresse & Koordinaten festzulegen"}
+                  <h4 className={styles.mockDetailSectionTitle}>
+                    Lage &amp; Routenplaner
+                  </h4>
+                  <div className={styles.mockLocationCard}>
+                    <div className={styles.mockLocationCardHeader}>
+                      <span
+                        className={styles.mockLocationIconBadge}
+                        style={{ backgroundColor: themeColor }}
+                        aria-hidden="true"
+                      >
+                        <MapPinHouse size={20} color="#fff" />
                       </span>
+                      <div className={styles.mockLocationAddressBlock}>
+                        <strong className={styles.mockLocationPlaceName}>
+                          {name.trim() || "Ihr Standort auf der Karte"}
+                        </strong>
+                        <span className={styles.mockLocationAddressText}>
+                          {adresse.trim() || stadt.trim()
+                            ? [
+                                adresse.trim(),
+                                [stadt.trim(), land.trim()]
+                                  .filter(Boolean)
+                                  .join(", "),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")
+                            : "Klicken, um Adresse & Koordinaten festzulegen"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className={styles.mockLocationHint}>
+                      Öffnen Sie diesen Ort direkt im Informationspanel auf
+                      unserer interaktiven FairFührer-Karte, um benachbarte Pins
+                      zu entdecken oder Ihre Route direkt auf der Karte zu
+                      berechnen:
+                    </p>
+
+                    <div className={styles.mockOpenOnMapButton}>
+                      <span className={styles.mockOpenOnMapButtonLabel}>
+                        <MapIcon size={16} aria-hidden="true" />
+                        <span>Pin auf der FairFührer-Karte öffnen</span>
+                      </span>
+                      <MoveRight size={16} aria-hidden="true" />
+                    </div>
+
+                    <div className={styles.mockRouteQuickBlock}>
+                      <span className={styles.mockRouteQuickTitle}>
+                        <Navigation size={13} aria-hidden="true" />
+                        <span>Direkt Route auf der Karte planen:</span>
+                      </span>
+
+                      <div className={styles.mockRouteQuickButtons}>
+                        <span className={styles.mockRouteQuickBtn}>
+                          <Footprints size={15} aria-hidden="true" />
+                          <span>Zu Fuß</span>
+                        </span>
+                        <span className={styles.mockRouteQuickBtn}>
+                          <Bike size={15} aria-hidden="true" />
+                          <span>Fahrrad</span>
+                        </span>
+                        <span className={styles.mockRouteQuickBtn}>
+                          <Car size={15} aria-hidden="true" />
+                          <span>Auto</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

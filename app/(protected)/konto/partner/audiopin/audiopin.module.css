@@ -48,11 +48,11 @@
 .studioTopBar {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 1.25rem;
   padding: 1.5rem 1.75rem;
-  background: #f8faf8;
+  background: #faebd7;
   border: 2px solid #18222f;
   box-shadow: 0 4px 16px rgba(24, 34, 47, 0.06);
 }
@@ -60,6 +60,8 @@
 .studioTopLeft {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
   gap: 0.45rem;
   max-width: 780px;
 }
@@ -563,7 +565,9 @@
   font-size: 0.88rem;
   font-weight: 600;
   color: #18222f;
-  transition: border-color 0.15s, transform 0.1s;
+  transition:
+    border-color 0.15s,
+    transform 0.1s;
 }
 
 .categoryChoiceBtn:hover {
@@ -792,17 +796,23 @@
   flex-shrink: 0;
 }
 
-/* ─── 2. UKŁAD DWÓCH PODGLĄDÓW NA ŻYWO (Split / Single) ──────────────────── */
+/* ─── 2. UKŁAD PODGLĄDÓW NA ŻYWO (Split / Single) ────────────────────────── */
 
 .previewsGrid {
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: 410px 1fr;
   gap: 1.75rem;
   align-items: start;
 }
 
+.leftPreviewsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
 .previewsSinglePanel {
-  grid-template-columns: minmax(320px, 460px);
+  grid-template-columns: minmax(320px, 440px);
   justify-content: center;
 }
 
@@ -915,25 +925,20 @@
   border-radius: 999px;
 }
 
-/* ─── WZORZEC 1: KARTEN-PANEL (PlaceInfoPanel) ──────────────────────────── */
+/* ─── WZORZEC 1: KARTEN-PANEL (PlaceInfoPanel & Mobile App) ─────────────── */
 
 .mockPanel {
-  background: #fdf6e3;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
-  padding-bottom: 1.5rem;
-}
-
-.mockPanelHeroWrap {
-  position: relative;
-  width: 100%;
-  margin-bottom: 2.5rem;
+  padding-bottom: 1.35rem;
 }
 
 .mockPanelHero {
   width: 100%;
-  height: 220px;
-  background: #eae2cd;
+  height: 230px;
+  background: #f2efea;
+  border-bottom: 2px solid #18222f;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -966,129 +971,185 @@
   opacity: 0.8;
 }
 
-.mockPanelAudioOverlay {
-  position: absolute;
-  bottom: -1.8rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 86%;
-  z-index: 5;
-  background: #fff;
-  border-radius: 999px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
-  padding: 0.35rem 0.65rem;
-}
-
-.mockPanelAudioPlayer {
-  width: 100%;
-  height: 36px;
-  display: block;
-}
-
-.mockAudioPlaceholder {
+/* Kolorowy nagłówek w barwie kategorii — jak .placeHeader w PlaceInfoPanel.module.css */
+.mockPanelColoredHeader {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.75rem;
-  color: #18222f;
-  font-size: 0.8rem;
-  font-weight: 700;
+  text-align: center;
+  gap: 0.55rem;
+  padding: 1.35rem 1.25rem 1.3rem;
+  color: #ffffff;
+  border-bottom: 2px solid #18222f;
+  transition: background-color 0.25s ease;
 }
 
-.mockPanelCategories {
+.mockPanelCategoryBadges {
+  padding: 0.35rem 0.45rem;
+}
+
+.mockCategoryBadgesRow {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  padding: 0.6rem 1.25rem;
-  margin: 0.25rem 0.75rem 0;
+  gap: 0.45rem;
 }
 
 .mockCategoryBadge {
-  color: #fff;
-  text-shadow: 0.5px 0.5px 1px #000;
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-family: var(--font-fira);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  padding: 0.25rem 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.22rem 0.65rem 0.22rem 0.3rem;
   border-radius: 999px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
 }
 
-.mockEmptyPill {
-  padding: 0.3rem 0.85rem;
-  border: 1.5px dashed #fc6c14;
+.mockEmptyPillOnColor {
+  padding: 0.28rem 0.85rem;
+  border: 1.5px dashed rgba(255, 255, 255, 0.75);
   border-radius: 999px;
-  color: #fc6c14;
-  font-size: 0.82rem;
+  color: #ffffff;
+  font-size: 0.8rem;
   font-weight: 700;
-  background: #fff;
-}
-
-.mockPanelHeaderSection {
-  text-align: center;
-  padding: 0.4rem 1.25rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.mockNameZone,
-.mockAddressZone,
-.mockContactInline {
-  padding: 0.35rem 0.5rem;
-  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
 }
 
 .mockPanelTitle {
   margin: 0;
   font-family: var(--font-anton);
-  font-size: 1.7rem;
+  font-size: 1.65rem;
   font-weight: 400;
-  color: #2c3e50;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  color: #ffffff;
 }
 
 .mockPanelAddress {
   margin: 0;
-  color: #2c3e50;
-  font-size: 0.98rem;
-  font-style: italic;
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 0.94rem;
+  line-height: 1.45;
+  font-family: var(--font-fira);
+  font-weight: 400;
 }
 
-.mockPanelPhone {
-  display: inline-block;
-  color: #28a745;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.mockOptionalHint {
+.mockPanelPhonePill {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.78rem;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  font-size: 0.84rem;
   font-weight: 600;
-  color: #5c6470;
+  padding: 0.28rem 0.75rem;
 }
 
+.mockPanelAudioWrap {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.mockPanelPlayerInner {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* Pasek akcji CTA pod kolorowym nagłówkiem (.actionsBar w PlaceInfoPanel) */
+.mockPanelActionsBar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.95rem 1.25rem;
+  background-color: #f8faf8;
+  border-bottom: 2px solid #18222f;
+}
+
+.mockPanelPrimaryCta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.68rem 0.95rem;
+  background-color: #fc6c14;
+  color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 3px 3px 0 #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-sizing: border-box;
+}
+
+.mockPanelSecondaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mockPanelSecondaryCta {
+  flex: 1 1 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  background-color: #ffffff;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.mockPanelSecondaryCtaMuted {
+  border-style: dashed;
+  color: #5a6472;
+  background-color: #f8f8ff;
+}
+
+.mockPanelWebsiteCtaZone {
+  flex: 1 1 120px;
+  display: flex;
+  padding: 0;
+}
+
+.mockPanelWebsiteCtaZone .mockPanelSecondaryCta {
+  width: 100%;
+}
+
+/* Sekcje treści w panelu */
 .mockPanelSection {
-  margin: 0.4rem 1rem;
+  margin: 0.45rem 0.9rem 0;
   padding: 0.75rem;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .mockPanelDescription {
-  font-size: 0.94rem;
-  line-height: 1.6;
-  color: #343a40;
-  text-align: justify;
+  font-size: 0.96rem;
+  line-height: 1.66;
+  color: #1e293b;
+  font-family: var(--font-fira);
+  font-weight: 400;
 }
 
 .mockPanelDescription p {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.85rem;
 }
 
 .mockPanelDescription p:last-child {
@@ -1100,53 +1161,35 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.9rem;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px dashed #b5ad99;
-  color: #495057;
+  background: #f8faf8;
+  border: 1.5px dashed #cbd5e1;
+  color: #475569;
   font-size: 0.85rem;
   line-height: 1.5;
 }
 
-.mockWebsiteButton {
-  display: inline-block;
-  padding: 0.65rem 1.35rem;
-  background: #fc6c14;
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.9rem;
-  border-radius: 8px;
-}
-
-.mockWebsitePlaceholder {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 0.9rem;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px dashed #b5ad99;
-  color: #495057;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
 .mockPanelSubheading {
-  margin: 0 0 0.6rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #2c3e50;
+  margin: 0 0 0.7rem;
+  font-family: var(--font-anton);
+  font-size: 1.08rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #18222f;
 }
 
 .mockPanelGalleryGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.45rem;
+  gap: 0.65rem;
 }
 
 .mockPanelGalleryThumb {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: block;
 }
 
@@ -1155,50 +1198,173 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px dashed #b5ad99;
-  color: #495057;
+  background: #f8faf8;
+  border: 1.5px dashed #cbd5e1;
+  color: #475569;
   font-size: 0.82rem;
   font-weight: 600;
 }
 
 .mockZertGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
 }
 
 .mockZertBadgeItem {
-  background: #fff;
-  padding: 0.35rem 0.6rem;
-  border-radius: 6px;
-  border: 1px solid #e2dccb;
+  height: 72px;
+  padding: 0.35rem;
+  background-color: #f8faf8;
+  border: 1.5px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .mockZertLogo {
-  height: 36px;
+  max-height: 54px;
   width: auto;
-  max-width: 90px;
+  max-width: 100%;
   object-fit: contain;
 }
 
 .mockZertName {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #18222f;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  color: #334155;
+  padding: 0.2rem;
 }
 
-/* ─── WZORZEC 2: AUDIOPIN-DETAILSEITE (/liste/[stadt]/[slug]) ────────────── */
+/* ─── WZORZEC 2: LISTEN-KARTE (PinCard na /liste oraz w App) ────────────── */
+
+.mockPinCardContainer {
+  padding: 1.25rem;
+  background: #f8f8ff;
+  display: flex;
+  justify-content: center;
+}
+
+.mockPinCard {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  height: 390px;
+  border-radius: 12px;
+  border: 2px solid #000000;
+  background-color: #ddd;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.mockPinCardImageArea {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.mockPinCardImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mockPinCardEmptyBg {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 1rem;
+  padding-bottom: 6rem;
+  text-align: center;
+}
+
+.mockPinCardGradientTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+  pointer-events: none;
+}
+
+.mockPinCardGradientBottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: linear-gradient(to top, rgba(252, 108, 20, 0.72), transparent);
+  pointer-events: none;
+}
+
+.mockPinCardBottom {
+  position: relative;
+  z-index: 2;
+  padding: 8px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mockPinCardChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.mockPinCardName {
+  margin: 0;
+  font-family: var(--font-fira);
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.12;
+  color: #ffffff;
+  text-align: center;
+  cursor: pointer;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mockPinCardName:hover,
+.mockPinCardLocation:hover {
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.7);
+}
+
+.mockPinCardLocation {
+  margin: 3px 0 2px;
+  font-family: var(--font-fira);
+  font-size: 18px;
+  font-weight: 400;
+  color: #ffffff;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* ─── WZORZEC 3: AUDIOPIN-DETAILSEITE (/liste/[stadt]/[slug]) ────────────── */
 
 .mockDetailPage {
   display: grid;
-  grid-template-columns: 290px 1fr;
-  min-height: 680px;
-  background: #fff;
+  grid-template-columns: 310px 1fr;
+  min-height: 720px;
+  background: #f8f8ff;
 }
 
 @media (max-width: 760px) {
@@ -1211,16 +1377,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.25rem;
+  padding: 2rem 1.35rem;
   color: #fff;
+  border-right: 2px solid #000000;
   transition: background-color 0.25s ease;
+}
+
+@media (max-width: 760px) {
+  .mockDetailSidebar {
+    border-right: none;
+    border-bottom: 2px solid #000000;
+  }
 }
 
 .mockDetailSidebarInner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.9rem;
   width: 100%;
   text-align: center;
 }
@@ -1252,26 +1426,38 @@
   border: 2px solid #fff;
 }
 
+.mockSidebarCategoryName {
+  font-size: 1.08rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .mockDetailTitle {
   margin: 0;
-  font-size: 1.5rem;
+  font-family: var(--font-fira);
+  font-size: 1.75rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   color: #fff;
 }
 
 .mockDetailAddress {
   margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.45;
+  font-size: 0.96rem;
+  line-height: 1.5;
   color: rgba(255, 255, 255, 0.95);
 }
 
 .mockSidebarContact {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  gap: 0.5rem;
 }
 
 .mockSidebarLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   color: #fff;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -1279,14 +1465,17 @@
 }
 
 .mockSidebarHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .mockSidebarPlayerWrap {
   margin-top: 0.4rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
 }
 
 .mockSidebarAudioEmpty {
@@ -1300,12 +1489,52 @@
   color: #fff;
 }
 
-/* Prawa kolumna Detailseite */
+/* Prawa kolumna Detailseite (na tle #f8f8ff jak w page.module.css) */
 .mockDetailMain {
-  padding: 2rem 1.75rem;
+  padding: 1.75rem 2rem 2.25rem;
+  background-color: #f8f8ff;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+/* Plakietka „Entdeckung in der Nähe” w prawym górnym rogu */
+.mockDiscoveryBadgeRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mockDiscoveryBadge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+  padding: 0.5rem 0.85rem;
+  border: 2px solid #18222f;
+  border-bottom-left-radius: 15px 255px;
+  border-bottom-right-radius: 225px 15px;
+  border-top-left-radius: 255px 15px;
+  border-top-right-radius: 15px 225px;
+  background-color: #ffffff;
+  color: #18222f;
+  box-shadow:
+    rgba(0, 0, 0, 0.35) 0px 2px 4px,
+    rgba(0, 0, 0, 0.25) 0px 6px 11px -3px;
+}
+
+.mockDiscoveryLabel {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.mockDiscoveryMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #3e6b4f;
 }
 
 .mockDetailHeroZone {
@@ -1326,14 +1555,15 @@
   border-top-left-radius: 255px 15px;
   border-top-right-radius: 15px 225px;
   box-shadow:
-    rgba(0, 0, 0, 0.35) 0px 2px 4px,
-    rgba(0, 0, 0, 0.25) 0px 7px 13px -3px;
+    rgba(0, 0, 0, 0.4) 0px 2px 4px,
+    rgba(0, 0, 0, 0.3) 0px 7px 13px -3px,
+    rgba(0, 0, 0, 0.2) 0px -3px 0px inset;
 }
 
 .mockDetailHeroEmpty {
   width: 100%;
   min-height: 180px;
-  background: #f6f4ef;
+  background: #f2efea;
   border: 2px dashed #18222f;
   border-bottom-left-radius: 15px 255px;
   border-bottom-right-radius: 225px 15px;
@@ -1355,13 +1585,14 @@
 }
 
 .mockDetailDescription {
-  font-size: 1rem;
-  line-height: 1.7;
+  font-size: 1.06rem;
+  line-height: 1.74;
   color: #18222f;
+  text-align: justify;
 }
 
 .mockDetailDescription p {
-  margin: 0 0 1rem;
+  margin: 0 0 1.05rem;
 }
 
 .mockDetailDescription p:last-child {
@@ -1370,9 +1601,8 @@
 
 .mockDetailNoText {
   margin: 0;
-  color: #666;
-  font-style: italic;
-  font-size: 0.94rem;
+  color: #5a6472;
+  font-size: 0.98rem;
   line-height: 1.6;
 }
 
@@ -1386,83 +1616,182 @@
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
 .mockDetailZertBadge {
-  height: 52px;
   width: auto;
-  max-width: 130px;
+  height: auto;
+  max-height: 82px;
+  max-width: 140px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 12px rgba(24, 34, 47, 0.22);
   object-fit: contain;
 }
 
 .mockDetailZertPill {
-  padding: 0.3rem 0.75rem;
-  border: 1.5px solid #18222f;
+  padding: 0.4rem 0.8rem;
   border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 700;
+  background-color: #ffffff;
+  box-shadow: 0 2px 12px rgba(24, 34, 47, 0.22);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #18222f;
 }
 
 .mockDetailGalleryZone,
 .mockDetailMapZone {
   padding: 0.75rem;
   border-radius: 8px;
-  border-top: 1px solid #e9ecef;
 }
 
+/* Nagłówki sekcji Bildergalerie i Lage & Routenplaner dokładnie jak .galleryTitle na live stronie */
 .mockDetailSectionTitle {
-  margin: 0 0 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #18222f;
+  margin: 0 0 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 3px solid #fc6c14;
+  font-family: var(--font-anton);
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: #3e6b4f;
 }
 
 .mockDetailGalleryGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.6rem;
 }
 
 .mockDetailGalleryImg {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
-  border: 1.5px solid #18222f;
+  background-color: #f2efea;
   display: block;
 }
 
-.mockMapCard {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 1rem 1.15rem;
-  background: #f4f6f8;
-  border: 1.5px solid #d8dee4;
-  border-radius: 8px;
-}
-
-.mockMapPinCircle {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.mockMapInfo {
+/* Karta „Lage & Routenplaner” w stylu Studio — dokładny odpowiednik .locationCard z page.module.css */
+.mockLocationCard {
+  background-color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 4px 4px 0 #18222f;
+  padding: 1.25rem 1.35rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.88rem;
+  gap: 0.95rem;
 }
 
-.mockMapInfo span {
-  color: #4a5568;
-  font-size: 0.82rem;
+.mockLocationCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.mockLocationIconBadge {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #18222f;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mockLocationAddressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.mockLocationPlaceName {
+  font-family: var(--font-anton);
+  font-size: 1.18rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #18222f;
+  line-height: 1.2;
+}
+
+.mockLocationAddressText {
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.mockLocationHint {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.mockOpenOnMapButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.72rem 1.05rem;
+  background-color: #fc6c14;
+  color: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 3px 3px 0 #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-sizing: border-box;
+}
+
+.mockOpenOnMapButtonLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mockRouteQuickBlock {
+  padding-top: 0.8rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.mockRouteQuickTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #334155;
+}
+
+.mockRouteQuickButtons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.mockRouteQuickBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.52rem 0.6rem;
+  background-color: #f8fafc;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 /* ─── 3. Dolny pasek publikacji nowego pina ──────────────────────────────── */

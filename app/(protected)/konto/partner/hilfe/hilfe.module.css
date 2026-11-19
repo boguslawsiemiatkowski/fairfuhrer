@@ -9,11 +9,11 @@
 .introRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 1rem;
   padding: 1.35rem 1.75rem;
-  background-color: #f8faf8;
+  background-color: antiqueWhite;
   border: 2px solid #18222f;
   box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
 }
@@ -21,6 +21,7 @@
 .intro {
   font-family: var(--font-anton);
   font-size: clamp(1.5rem, 2.5vw, 2rem);
+  text-align: center;
   font-weight: 400;
   color: #18222f;
   line-height: 1.2;

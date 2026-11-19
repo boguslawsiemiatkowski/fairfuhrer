@@ -285,6 +285,14 @@ export async function GET(
     ]);
 
     if (!pinResponse.ok) {
+      if (pinResponse.status === 404) {
+        // Pin został usunięty w Directusie — czyścimy nieaktualny pin_id w partner_profiles,
+        // żeby konto partnera nie utknęło na odwołaniu do nieistniejącego rekordu.
+        await supabase
+          .from("partner_profiles")
+          .update({ pin_id: null })
+          .eq("id", user.id);
+      }
       return NextResponse.json({ error: "Pin nicht gefunden." }, { status: 404 });
     }
 

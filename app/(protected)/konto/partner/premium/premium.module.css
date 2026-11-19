@@ -8,13 +8,13 @@
 
 .intro {
   font-family: var(--font-fira);
-  font-size: 1.15rem;
+  font-size: 1.5rem;
   font-weight: 500;
   color: #18222f;
   line-height: 1.65;
   margin: 0;
-  padding: 1.35rem 1.75rem;
-  background-color: #f8faf8;
+  padding: 1.15rem 1.75rem;
+  background-color: #faebd7;
   border: 2px solid #18222f;
   box-shadow: 0 6px 20px rgba(24, 34, 47, 0.06);
   text-align: center;
