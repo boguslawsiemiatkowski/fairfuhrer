@@ -151,6 +151,11 @@
       "icon footer";
     align-items: center;
   }
+  .card:hover,
+  .card:focus-visible {
+    transform: none;
+    box-shadow: none;
+  }
 
   .iconRing {
     grid-area: icon;
