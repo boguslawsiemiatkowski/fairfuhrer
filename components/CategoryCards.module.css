@@ -150,6 +150,7 @@
       "icon text"
       "icon footer";
     align-items: center;
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
   }
   .card:hover,
   .card:focus-visible {

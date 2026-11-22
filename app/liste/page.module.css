@@ -502,16 +502,6 @@
    einem Handy bleibt für Karten und Bedienelemente deutlich weniger Platz:
    Schrift und Abstände müssen mitgehen, sonst drängt sich alles. */
 @media (max-width: 600px) {
-  .belowCards {
-    min-height: 48px;
-    padding: 4px 0;
-  }
-
-  .chipRow {
-    gap: 6px;
-    padding: 0 14px;
-  }
-
   .chip {
     padding: 6px 12px;
     font-size: 12px;
@@ -524,12 +514,6 @@
 
   .aboveCards {
     padding: 0 14px;
-  }
-
-  .gpsBtn,
-  .gpsLabel {
-    font-size: 11px;
-    letter-spacing: 0.4px;
   }
 }
 

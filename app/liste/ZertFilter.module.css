@@ -32,6 +32,7 @@
   max-width: min(60vw, 260px);
   padding: 0.22rem 0.5rem 0.14rem;
   border: 1px solid #18222f;
+  border-radius: 15px;
   background-color: #fff;
   font-family: var(--font-fira);
   cursor: pointer;
