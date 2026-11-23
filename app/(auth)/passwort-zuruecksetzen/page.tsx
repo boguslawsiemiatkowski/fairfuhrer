@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { updatePassword } from "@/app/actions/auth";
+import { strongPasswordSchema, firstZodError } from "@/lib/validations/api";
 import type { FormErrors } from "@/types/auth";
 import PasswordInput from "@/components/PasswordInput";
 import styles from "./reset-password.module.css";
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
   const [isReady, setIsReady] = useState(false);
   const [isInvalidLink, setIsInvalidLink] = useState(false);
   const [password, setPassword] = useState("");
@@ -33,13 +32,14 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setErrors({});
 
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: "Passwörter stimmen nicht überein." });
+    const pwParsed = strongPasswordSchema.safeParse(password);
+    if (!pwParsed.success) {
+      setErrors({ password: firstZodError(pwParsed.error) });
       return;
     }
 
-    if (password.length < 8) {
-      setErrors({ password: "Das Passwort muss mindestens 8 Zeichen lang sein." });
+    if (password !== confirmPassword) {
+      setErrors({ confirmPassword: "Passwörter stimmen nicht überein." });
       return;
     }
 
@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
     }
 
     setSuccess(true);
-    setTimeout(() => router.push("/konto"), 2000);
+    setTimeout(() => window.location.assign(result.redirectTo ?? "/konto"), 2000);
   }
 
   if (isInvalidLink) {

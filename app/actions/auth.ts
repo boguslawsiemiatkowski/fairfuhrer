@@ -7,6 +7,14 @@ import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  authEmailSchema,
+  strongPasswordSchema,
+  registerConsumerSchema,
+  registerPartnerSchema,
+  firstZodError,
+} from "@/lib/validations/api";
 import type {
   AuthResult,
   AuthUser,
@@ -16,24 +24,59 @@ import type {
 } from "@/types/auth";
 import { getCountry, getTaxBucket } from "@/lib/countries";
 
-
 async function getRemoteIp(): Promise<string | undefined> {
   const h = await headers();
-  return (
-    h.get("CF-Connecting-IP") ?? h.get("X-Forwarded-For") ?? undefined
-  );
+  const cfIp = h.get("CF-Connecting-IP")?.trim();
+  if (cfIp) return cfIp;
+
+  const forwardedFor = h.get("X-Forwarded-For");
+  if (forwardedFor) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+
+  return undefined;
+}
+
+function checkAuthActionRateLimit(
+  bucketPrefix: string,
+  remoteIp: string | undefined,
+  limit: number,
+  windowMs: number
+): AuthResult | null {
+  const rl = checkRateLimit(`${bucketPrefix}:${remoteIp ?? "unknown"}`, {
+    limit,
+    windowMs,
+  });
+  if (!rl.allowed) {
+    return {
+      success: false,
+      error: `Zu viele Versuche. Bitte warten Sie ${rl.retryAfterSeconds} Sekunden und versuchen Sie es erneut.`,
+    };
+  }
+  return null;
 }
 
 export async function loginWithEmail(formData: FormData): Promise<AuthResult> {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const turnstileToken = formData.get("turnstileToken") as string;
+  const rawEmail = (formData.get("email") as string) ?? "";
+  const password = (formData.get("password") as string) ?? "";
+  const turnstileToken = (formData.get("turnstileToken") as string) ?? "";
 
-  if (!email || !password) {
+  if (!rawEmail.trim() || !password) {
     return { success: false, error: "E-Mail und Passwort sind erforderlich." };
   }
 
-  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, await getRemoteIp()))) {
+  const emailParsed = authEmailSchema.safeParse(rawEmail);
+  if (!emailParsed.success) {
+    return { success: false, error: firstZodError(emailParsed.error) };
+  }
+  const email = emailParsed.data;
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:login", remoteIp, 15, 15 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
+  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, remoteIp))) {
     return { success: false, error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
@@ -60,14 +103,24 @@ export async function loginWithEmail(formData: FormData): Promise<AuthResult> {
 export async function loginWithMagicLink(
   formData: FormData
 ): Promise<AuthResult> {
-  const email = formData.get("email") as string;
-  const turnstileToken = formData.get("turnstileToken") as string;
+  const rawEmail = (formData.get("email") as string) ?? "";
+  const turnstileToken = (formData.get("turnstileToken") as string) ?? "";
 
-  if (!email) {
+  if (!rawEmail.trim()) {
     return { success: false, error: "Bitte geben Sie Ihre E-Mail-Adresse ein." };
   }
 
-  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, await getRemoteIp()))) {
+  const emailParsed = authEmailSchema.safeParse(rawEmail);
+  if (!emailParsed.success) {
+    return { success: false, error: firstZodError(emailParsed.error) };
+  }
+  const email = emailParsed.data;
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:magic", remoteIp, 6, 15 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
+  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, remoteIp))) {
     return { success: false, error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
@@ -75,12 +128,27 @@ export async function loginWithMagicLink(
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
+      // Nie twórz automatycznie niekompletnego konta (bez roli i username),
+      // gdy ktoś wpisze niezarejestrowany e-mail w zakładce Magic Link.
+      shouldCreateUser: false,
       emailRedirectTo: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL}/callback`,
     },
   });
 
   if (error) {
     console.error("loginWithMagicLink error:", error.message);
+    if (error.message.includes("Signups not allowed for otp")) {
+      return {
+        success: false,
+        error: "Zu dieser E-Mail-Adresse existiert noch kein Konto. Bitte registrieren Sie sich zuerst.",
+      };
+    }
+    if (error.message.includes("security purposes") || error.status === 429) {
+      return {
+        success: false,
+        error: "Aus Sicherheitsgründen können Sie nur alle 60 Sekunden einen neuen Link anfordern. Bitte warten Sie einen Moment.",
+      };
+    }
     return { success: false, error: "Magic Link konnte nicht gesendet werden." };
   }
 
@@ -91,14 +159,24 @@ export async function loginWithMagicLink(
 }
 
 export async function resendConfirmation(formData: FormData): Promise<AuthResult> {
-  const email = formData.get("email") as string;
-  const turnstileToken = formData.get("turnstileToken") as string;
+  const rawEmail = (formData.get("email") as string) ?? "";
+  const turnstileToken = (formData.get("turnstileToken") as string) ?? "";
 
-  if (!email) {
+  if (!rawEmail.trim()) {
     return { success: false, error: "Bitte geben Sie Ihre E-Mail-Adresse ein." };
   }
 
-  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, await getRemoteIp()))) {
+  const emailParsed = authEmailSchema.safeParse(rawEmail);
+  if (!emailParsed.success) {
+    return { success: false, error: firstZodError(emailParsed.error) };
+  }
+  const email = emailParsed.data;
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:resend", remoteIp, 6, 15 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
+  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, remoteIp))) {
     return { success: false, error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
@@ -141,30 +219,42 @@ export async function loginWithOAuth(
 export async function registerConsumer(
   formData: FormData
 ): Promise<AuthResult> {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const confirmPassword = formData.get("confirmPassword") as string;
-  const username = formData.get("username") as string;
-  const turnstileToken = formData.get("turnstileToken") as string;
+  const rawEmail = (formData.get("email") as string) ?? "";
+  const password = (formData.get("password") as string) ?? "";
+  const confirmPassword = (formData.get("confirmPassword") as string) ?? "";
+  const rawUsername = (formData.get("username") as string) ?? "";
+  const turnstileToken = (formData.get("turnstileToken") as string) ?? "";
 
-  if (!email || !password || !username) {
+  if (!rawEmail.trim() || !password || !rawUsername.trim()) {
     return { success: false, error: "Alle Pflichtfelder müssen ausgefüllt werden." };
-  }
-
-  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, await getRemoteIp()))) {
-    return { success: false, error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
   if (password !== confirmPassword) {
     return { success: false, error: "Die Passwörter stimmen nicht überein." };
   }
 
-  if (password.length < 8) {
-    return { success: false, error: "Das Passwort muss mindestens 8 Zeichen lang sein." };
+  const parsed = registerConsumerSchema.safeParse({
+    email: rawEmail,
+    username: rawUsername,
+    password,
+    confirmPassword,
+  });
+  if (!parsed.success) {
+    return { success: false, error: firstZodError(parsed.error) };
+  }
+
+  const { email, username } = parsed.data;
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:register", remoteIp, 10, 30 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
+  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, remoteIp))) {
+    return { success: false, error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
   const supabase = await getSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -184,37 +274,107 @@ export async function registerConsumer(
     return { success: false, error: "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
+  // Przy włączonym potwierdzaniu e-maili w Supabase signUp dla istniejącego
+  // adresu nie zwraca błędu, lecz obiekt user z pustą tablicą `identities: []`.
+  if (!signUpData.user?.identities || signUpData.user.identities.length === 0) {
+    return { success: false, error: "Diese E-Mail-Adresse ist bereits registriert." };
+  }
+
   return { success: true, redirectTo: "/konto" };
 }
 
 export async function registerPartner(formData: FormData): Promise<AuthResult> {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const confirmPassword = formData.get("confirmPassword") as string;
-  const firstName = formData.get("firstName") as string;
-  const lastName = formData.get("lastName") as string;
-  const companyName = formData.get("companyName") as string;
-  const street = formData.get("street") as string;
-  const postalCode = formData.get("postalCode") as string;
-  const city = formData.get("city") as string;
-  const country = formData.get("country") as string;
-  const businessEmail = formData.get("businessEmail") as string;
-  const turnstileToken = formData.get("turnstileToken") as string;
+  const rawEmail = (formData.get("email") as string) ?? "";
+  const password = (formData.get("password") as string) ?? "";
+  const confirmPassword = (formData.get("confirmPassword") as string) ?? "";
+  const rawFirstName = (formData.get("firstName") as string) ?? "";
+  const rawLastName = (formData.get("lastName") as string) ?? "";
+  const rawCompanyName = (formData.get("companyName") as string) ?? "";
+  const rawStreet = (formData.get("street") as string) ?? "";
+  const rawPostalCode = (formData.get("postalCode") as string) ?? "";
+  const rawCity = (formData.get("city") as string) ?? "";
+  const rawCountry = (formData.get("country") as string) || "DE";
+  const rawBusinessEmail = (formData.get("businessEmail") as string) ?? "";
+  const rawPhone = (formData.get("phone") as string) ?? "";
+  const rawTaxIdValue = (formData.get("taxIdValue") as string) ?? "";
+  const noEuVat = formData.get("noEuVat") === "true";
+  const rawWebsiteUrl = (formData.get("websiteUrl") as string) ?? "";
+  const turnstileToken = (formData.get("turnstileToken") as string) ?? "";
 
-  if (!email || !password || !firstName || !lastName || !companyName || !street || !postalCode || !city) {
+  if (
+    !rawEmail.trim() ||
+    !password ||
+    !rawFirstName.trim() ||
+    !rawLastName.trim() ||
+    !rawCompanyName.trim() ||
+    !rawStreet.trim() ||
+    !rawPostalCode.trim() ||
+    !rawCity.trim()
+  ) {
     return { success: false, error: "Alle Pflichtfelder müssen ausgefüllt werden." };
-  }
-
-  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, await getRemoteIp()))) {
-    return { success: false, error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
   if (password !== confirmPassword) {
     return { success: false, error: "Die Passwörter stimmen nicht überein." };
   }
 
-  if (password.length < 8) {
-    return { success: false, error: "Das Passwort muss mindestens 8 Zeichen lang sein." };
+  const parsed = registerPartnerSchema.safeParse({
+    email: rawEmail,
+    password,
+    confirmPassword,
+    firstName: rawFirstName,
+    lastName: rawLastName,
+    companyName: rawCompanyName,
+    street: rawStreet,
+    postalCode: rawPostalCode,
+    city: rawCity,
+    country: rawCountry,
+    businessEmail: rawBusinessEmail,
+    phone: rawPhone,
+    taxIdValue: rawTaxIdValue,
+    noEuVat,
+    websiteUrl: rawWebsiteUrl,
+  });
+  if (!parsed.success) {
+    return { success: false, error: firstZodError(parsed.error) };
+  }
+
+  const {
+    email,
+    firstName,
+    lastName,
+    companyName,
+    street,
+    postalCode,
+    city,
+    country: countryCode,
+    businessEmail,
+    phone,
+    taxIdValue: trimmedTaxId,
+    websiteUrl,
+  } = parsed.data;
+  const taxIdValue = trimmedTaxId || null;
+
+  const countryMeta = getCountry(countryCode);
+  const taxGroup = countryMeta?.taxGroup ?? "THIRD";
+
+  // Serwerowa walidacja wymagalności numeru podatkowego (DE / EU)
+  if (taxGroup === "DE" && !taxIdValue) {
+    return { success: false, error: "Bitte geben Sie Ihre Steuernummer ein." };
+  }
+  if (taxGroup === "EU" && !noEuVat && !taxIdValue) {
+    return {
+      success: false,
+      error: "Bitte geben Sie Ihre EU-USt-IdNr. ein oder aktivieren Sie die Checkbox.",
+    };
+  }
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:register-partner", remoteIp, 10, 30 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
+  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, remoteIp))) {
+    return { success: false, error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
   const supabase = await getSupabaseServerClient();
@@ -239,16 +399,16 @@ export async function registerPartner(formData: FormData): Promise<AuthResult> {
     return { success: false, error: "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut." };
   }
 
+  // Ochrona przed nadpisaniem istniejącego profilu partnera przez supabaseAdmin (service_role):
+  // gdy e-mail jest już zarejestrowany w Supabase (przy włączonym potwierdzaniu e-maili),
+  // signUp zwraca obiekt user z pustą tablicą `identities: []`. Bez tego sprawdzenia
+  // poniższy upsert przez supabaseAdmin nadpisałby dane firmowe istniejącego konta.
+  if (!signUpData.user?.identities || signUpData.user.identities.length === 0) {
+    return { success: false, error: "Diese E-Mail-Adresse ist bereits registriert." };
+  }
+
   // Zapisz dane firmy do partner_profiles (przez admin client — user nie jest jeszcze zalogowany)
   if (signUpData.user) {
-    const phone = formData.get("phone") as string;
-    const taxIdValue = (formData.get("taxIdValue") as string)?.trim() || null;
-    const noEuVat = formData.get("noEuVat") === "true";
-    const websiteUrl = formData.get("websiteUrl") as string;
-
-    const countryCode = country || "DE";
-    const countryMeta = getCountry(countryCode);
-    const taxGroup = countryMeta?.taxGroup ?? "THIRD";
     const hasEuVatId = taxGroup === "EU" && !noEuVat && !!taxIdValue;
     const taxBucket = getTaxBucket(countryCode, hasEuVatId);
     const crossBorderB2c = taxBucket === "eu_no_vat";
@@ -309,9 +469,38 @@ export async function logout(): Promise<void> {
   redirect("/login");
 }
 
-export async function resetPassword(email: string): Promise<AuthResult> {
-  if (!email) {
+export async function resetPassword(
+  emailOrFormData: string | FormData,
+  turnstileTokenArg?: string
+): Promise<AuthResult> {
+  const rawEmail =
+    typeof emailOrFormData === "string"
+      ? emailOrFormData
+      : ((emailOrFormData.get("email") as string) ?? "");
+  const turnstileToken =
+    typeof emailOrFormData === "string"
+      ? (turnstileTokenArg ?? "")
+      : ((emailOrFormData.get("turnstileToken") as string) ?? "");
+
+  if (!rawEmail.trim()) {
     return { success: false, error: "Bitte geben Sie Ihre E-Mail-Adresse ein." };
+  }
+
+  const emailParsed = authEmailSchema.safeParse(rawEmail);
+  if (!emailParsed.success) {
+    return { success: false, error: firstZodError(emailParsed.error) };
+  }
+  const email = emailParsed.data;
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:reset-pw", remoteIp, 6, 15 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
+  if (!turnstileToken || !(await verifyTurnstileToken(turnstileToken, remoteIp))) {
+    return {
+      success: false,
+      error: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    };
   }
 
   const supabase = await getSupabaseServerClient();
@@ -321,6 +510,12 @@ export async function resetPassword(email: string): Promise<AuthResult> {
 
   if (error) {
     console.error("resetPassword error:", error.message);
+    if (error.message.includes("security purposes") || error.status === 429) {
+      return {
+        success: false,
+        error: "Aus Sicherheitsgründen können Sie nur alle 60 Sekunden einen neuen Link anfordern. Bitte warten Sie einen Moment.",
+      };
+    }
     return { success: false, error: "E-Mail konnte nicht gesendet werden." };
   }
 
@@ -328,9 +523,18 @@ export async function resetPassword(email: string): Promise<AuthResult> {
 }
 
 export async function updateEmail(newEmail: string): Promise<AuthResult> {
+  const emailParsed = authEmailSchema.safeParse(newEmail);
+  if (!emailParsed.success) {
+    return { success: false, error: firstZodError(emailParsed.error) };
+  }
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:update-email", remoteIp, 6, 15 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
   const supabase = await getSupabaseServerClient();
   const { error } = await supabase.auth.updateUser(
-    { email: newEmail },
+    { email: emailParsed.data },
     { emailRedirectTo: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL}/konto` }
   );
   if (error) {
@@ -341,12 +545,17 @@ export async function updateEmail(newEmail: string): Promise<AuthResult> {
 }
 
 export async function updatePassword(password: string): Promise<AuthResult> {
-  if (!password || password.length < 8) {
-    return { success: false, error: "Das Passwort muss mindestens 8 Zeichen lang sein." };
+  const pwParsed = strongPasswordSchema.safeParse(password);
+  if (!pwParsed.success) {
+    return { success: false, error: firstZodError(pwParsed.error) };
   }
 
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:update-pw", remoteIp, 10, 15 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
   const supabase = await getSupabaseServerClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({ password: pwParsed.data });
 
   if (error) {
     console.error("updatePassword error:", error.message);

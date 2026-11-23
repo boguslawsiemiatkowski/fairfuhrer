@@ -14,9 +14,17 @@ import PasswordInput from "@/components/PasswordInput";
 // import SocialLoginButtons from "@/components/SocialLoginButtons";
 import styles from "./login.module.css";
 
+/** Tylko bezpieczne ścieżki względne — blokuje Open Redirect (np. //evil.com, /\evil.com, https://...). */
+function getSafeRedirectPath(value: string | null, fallback = "/konto"): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+    return fallback;
+  }
+  return value;
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") ?? "/konto";
+  const redirectTo = getSafeRedirectPath(searchParams.get("redirect"), "/konto");
   const callbackError = searchParams.get("error");
 
   const [tab, setTab] = useState<"password" | "magic">(

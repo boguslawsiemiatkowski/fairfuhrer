@@ -38,9 +38,9 @@ export async function GET(request: NextRequest) {
   return response;
 }
 
-/** Tylko ścieżki względne — zapobiega przekierowaniu na obcą domenę. */
+/** Tylko ścieżki względne — zapobiega przekierowaniu na obcą domenę (w tym //evil.com oraz /\evil.com). */
 function safeRedirectPath(value: string | null): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
     return "/login";
   }
   return value;
