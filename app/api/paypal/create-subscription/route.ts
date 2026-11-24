@@ -1,13 +1,9 @@
 import "server-only";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
-import { paypalConfig } from "@/lib/paypal";
-
-const PAYPAL_BASE =
-  paypalConfig.mode === "sandbox"
-    ? "https://api-m.sandbox.paypal.com"
-    : "https://api-m.paypal.com";
+import { PAYPAL_BASE, getPayPalAccessToken } from "@/lib/paypal";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Plany netto — dla eu_reverse_charge i third_country (bez DE VAT)
 const PLAN_IDS_NETTO: Record<string, string> = {
@@ -25,27 +21,23 @@ const PLAN_IDS_BRUTTO: Record<string, string> = {
   medium: process.env.PAYPAL_PLAN_ID_MEDIUM_BRUTTO ?? "",
 };
 
-async function getAccessToken(): Promise<string> {
-  const credentials = Buffer.from(
-    `${paypalConfig.client_id}:${paypalConfig.client_secret}`
-  ).toString("base64");
-
-  const res = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-
-  if (!res.ok) throw new Error("Failed to get PayPal access token");
-  const data = await res.json();
-  return data.access_token as string;
-}
-
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const clientIp = getClientIp(request);
+    const rate = checkRateLimit(`paypal:create-sub:${clientIp}`, {
+      limit: 15,
+      windowMs: 15 * 60_000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rate.retryAfterSeconds) },
+        }
+      );
+    }
+
     const supabase = await getSupabaseServerClient();
     const {
       data: { user },
@@ -83,7 +75,14 @@ export async function POST() {
         { status: 400 }
       );
     }
-    const accessToken = await getAccessToken();
+
+    const siteUrl = (
+      process.env.SITE_URL ??
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      request.nextUrl.origin
+    ).replace(/\/+$/, "");
+
+    const accessToken = await getPayPalAccessToken();
 
     const res = await fetch(`${PAYPAL_BASE}/v1/billing/subscriptions`, {
       method: "POST",
@@ -108,8 +107,8 @@ export async function POST() {
           locale: "de-DE",
           shipping_preference: "NO_SHIPPING",
           user_action: "SUBSCRIBE_NOW",
-          return_url: `${process.env.SITE_URL}/konto/partner/premium?success=true`,
-          cancel_url: `${process.env.SITE_URL}/konto/partner/premium?cancelled=true`,
+          return_url: `${siteUrl}/konto/partner/premium?success=true`,
+          cancel_url: `${siteUrl}/konto/partner/premium?cancelled=true`,
         },
       }),
     });

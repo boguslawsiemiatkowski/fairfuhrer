@@ -64,32 +64,44 @@ export function PartnerSubscriptionForm({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Wykrywamy powrót z PayPal już podczas inicjalizacji stanu, aby uniknąć
-  // synchronicznego wywołania setStep("activating") wewnątrz useEffect.
+  // Wykrywamy powrót z PayPal już podczas inicjalizacji stanu (również przy
+  // przedłużaniu aktywnej subskrypcji), aby uniknąć synchronicznego wywołania
+  // setStep("activating") wewnątrz useEffect.
   const isReturningFromPayPal =
-    !isPremiumActive &&
     searchParams.get("success") === "true" &&
     Boolean(searchParams.get("subscription_id"));
+  const isCancelledFromPayPal = searchParams.get("cancelled") === "true";
 
   // Zawsze startujemy od kroku 1, nawet gdy company_size jest już zapisane w
   // profilu — inaczej po powrocie na stronę (AGB, przełączenie zakładki)
   // użytkownik ląduje od razu w "Schritt 2 von 2" i nie wie, skąd się tam wziął.
+  // Wyjątek: powrót z PayPal z `?cancelled=true` (gdy mamy już companySize) wraca od razu do kroku 2.
   const [step, setStep] = useState<"size" | "payment" | "active" | "activating">(
-    isPremiumActive ? "active" : isReturningFromPayPal ? "activating" : "size"
+    isReturningFromPayPal
+      ? "activating"
+      : isCancelledFromPayPal && initialCompanySize
+        ? "payment"
+        : isPremiumActive
+          ? "active"
+          : "size"
   );
   const [companySize, setCompanySize] = useState<CompanySize | null>(initialCompanySize);
   const [savingSize, setSavingSize] = useState(false);
   const [loadingPayment, setLoadingPayment] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    isCancelledFromPayPal
+      ? "Der Zahlungsvorgang bei PayPal wurde abgebrochen. Sie können es jederzeit erneut versuchen."
+      : null
+  );
   const [activatedUntil, setActivatedUntil] = useState<string | null>(null);
 
-  // Po powrocie z PayPal z ?success=true aktywuj subskrypcję
+  // Po powrocie z PayPal z ?success=true aktywuj subskrypcję (również przy przedłużaniu aktywnej subskrypcji)
   useEffect(() => {
     const isSuccess = searchParams.get("success") === "true";
     const subscriptionId = searchParams.get("subscription_id");
-    if (!isSuccess || !subscriptionId || isPremiumActive) return;
+    if (!isSuccess || !subscriptionId) return;
 
-    fetch(`/api/paypal/activate-subscription?subscription_id=${subscriptionId}`)
+    fetch(`/api/paypal/activate-subscription?subscription_id=${encodeURIComponent(subscriptionId)}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
@@ -194,9 +206,24 @@ export function PartnerSubscriptionForm({
           </p>
         )}
 
-        <Link href="/konto/partner/audiopin" className={styles.studioCtaButton}>
-          Zum Partner-Pin Studio (Live-Vorschau &amp; Bearbeitung) →
-        </Link>
+        <div className={styles.activeActions}>
+          <Link href="/konto/partner/audiopin" className={styles.studioCtaButton}>
+            Zum Partner-Pin Studio (Live-Vorschau &amp; Bearbeitung) →
+          </Link>
+
+          <button
+            type="button"
+            className={styles.renewButton}
+            onClick={() => {
+              setError(null);
+              // Wielkość jest już zapisana — prosto do podsumowania. Krok 2 ma
+              // przycisk „zurück", więc partner może ją tam zmienić.
+              setStep(companySize ? "payment" : "size");
+            }}
+          >
+            Partnerschaft um ein weiteres Jahr verlängern
+          </button>
+        </div>
 
         <p className={styles.activeHint}>
           Keine automatische Verlängerung — Ihre Partnerschaft gilt für 12

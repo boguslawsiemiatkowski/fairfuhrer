@@ -3,49 +3,57 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { paypalConfig } from "@/lib/paypal";
-
-const PAYPAL_BASE =
-  paypalConfig.mode === "sandbox"
-    ? "https://api-m.sandbox.paypal.com"
-    : "https://api-m.paypal.com";
-
-async function getAccessToken(): Promise<string> {
-  const credentials = Buffer.from(
-    `${paypalConfig.client_id}:${paypalConfig.client_secret}`
-  ).toString("base64");
-  const res = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-  if (!res.ok) throw new Error("Failed to get PayPal access token");
-  const data = await res.json();
-  return data.access_token as string;
-}
+import {
+  PAYPAL_BASE,
+  computeNextPremiumUntil,
+  getPayPalAccessToken,
+  isValidPayPalSubscriptionId,
+} from "@/lib/paypal";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { resolvePremiumUntil } from "@/types/auth";
 
 // GET /api/paypal/activate-subscription?subscription_id=I-xxx
 export async function GET(request: NextRequest) {
   try {
-    const subscriptionId = request.nextUrl.searchParams.get("subscription_id");
-    if (!subscriptionId) {
+    const clientIp = getClientIp(request);
+    const rate = checkRateLimit(`paypal:activate-sub:${clientIp}`, {
+      limit: 20,
+      windowMs: 15 * 60_000,
+    });
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rate.retryAfterSeconds) },
+        }
+      );
+    }
+
+    const rawSubscriptionId = request.nextUrl.searchParams.get("subscription_id");
+    if (!rawSubscriptionId) {
       return NextResponse.json({ error: "subscription_id required" }, { status: 400 });
     }
 
+    // Ścisła walidacja formatu `I-XXXXXXXXXXXX` — blokuje Path Traversal / SSRF do PayPal API
+    if (!isValidPayPalSubscriptionId(rawSubscriptionId)) {
+      return NextResponse.json({ error: "Invalid subscription_id format" }, { status: 400 });
+    }
+    const subscriptionId = rawSubscriptionId.toUpperCase();
+
     // Sprawdź tożsamość zalogowanego użytkownika
     const supabase = await getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Pobierz status subskrypcji z PayPal
-    const accessToken = await getAccessToken();
+    const accessToken = await getPayPalAccessToken();
     const subRes = await fetch(
-      `${PAYPAL_BASE}/v1/billing/subscriptions/${subscriptionId}`,
+      `${PAYPAL_BASE}/v1/billing/subscriptions/${encodeURIComponent(subscriptionId)}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -85,10 +93,6 @@ export async function GET(request: NextRequest) {
     //    custom_id: e-mail subskrybenta musi zgadzać się z e-mailem sesji.
     //    Nie stosujemy go, gdy custom_id jest obecne — wtedy niezgodność
     //    oznacza odmowę, bez drugiej szansy.
-    //
-    //    Uwaga: samo porównanie e-maili wymagało, żeby adres konta PayPal był
-    //    identyczny z adresem konta w aplikacji. To zawodzi u firm, które mają
-    //    PayPala na inny adres niż konto w serwisie.
     const subscriberEmail: string | undefined =
       subscription.subscriber?.email_address;
     const emailMatches =
@@ -99,11 +103,25 @@ export async function GET(request: NextRequest) {
     const ownedByUser = customId ? customId === user.id : emailMatches;
 
     // 2) subscription_id nie może być już przypisane do innego partnera.
-    const { data: existingOwner } = await supabaseAdmin
-      .from("partner_profiles")
-      .select("id")
-      .eq("paypal_subscription_id", subscriptionId)
-      .maybeSingle();
+    const [{ data: existingOwner }, { data: currentProfile }, { data: currentPartner }] =
+      await Promise.all([
+        supabaseAdmin
+          .from("partner_profiles")
+          .select("id")
+          .eq("paypal_subscription_id", subscriptionId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("profiles")
+          .select("premium_until")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("partner_profiles")
+          .select("premium_until, paypal_subscription_id")
+          .eq("id", user.id)
+          .maybeSingle(),
+      ]);
+
     const claimedByOther = !!existingOwner && existingOwner.id !== user.id;
 
     if (!ownedByUser || claimedByOther) {
@@ -119,19 +137,41 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Zapisz subscription_id w partner_profiles i ustaw premium_until
-    const premiumUntil = new Date();
-    premiumUntil.setMonth(premiumUntil.getMonth() + 13);
+    const existingPremiumUntil = resolvePremiumUntil(
+      currentProfile?.premium_until,
+      currentPartner?.premium_until
+    );
+
+    // IDEMPOTENTNOŚĆ: jeśli ta konkretna subskrypcja (`subscriptionId`) została
+    // już wcześniej zapisana na koncie tego partnera (np. przez równoległy
+    // `subscription-webhook` albo odświeżenie strony), nie przesuwamy daty po raz drugi.
+    if (
+      currentPartner?.paypal_subscription_id === subscriptionId &&
+      existingPremiumUntil &&
+      new Date(existingPremiumUntil).getTime() > Date.now()
+    ) {
+      return NextResponse.json({
+        success: true,
+        premium_until: existingPremiumUntil,
+        subscription_status: status,
+      });
+    }
+
+    // Oblicz nowe premium_until (zawsze 12 miesięcy, zgodnie z AGB 4.1):
+    // - pierwsza subskrypcja lub powrót po wygaśnięciu: teraz + 12 miesięcy
+    // - przedłużenie w trakcie trwania okresu: obecne `premium_until` + 12 miesięcy,
+    //   więc partner nie traci pozostałych opłaconych dni
+    const nextPremiumUntil = computeNextPremiumUntil(existingPremiumUntil);
 
     const [profileUpdate, partnerUpdate] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .update({ premium_until: premiumUntil.toISOString() })
+        .update({ premium_until: nextPremiumUntil })
         .eq("id", user.id),
       supabaseAdmin
         .from("partner_profiles")
         .update({
-          premium_until: premiumUntil.toISOString(),
+          premium_until: nextPremiumUntil,
           paypal_subscription_id: subscriptionId,
         })
         .eq("id", user.id),
@@ -147,7 +187,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      premium_until: premiumUntil.toISOString(),
+      premium_until: nextPremiumUntil,
       subscription_status: status,
     });
   } catch (err) {

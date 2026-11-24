@@ -2,18 +2,16 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { paypalConfig } from "@/lib/paypal";
-
-const PAYPAL_BASE =
-  paypalConfig.mode === "sandbox"
-    ? "https://api-m.sandbox.paypal.com"
-    : "https://api-m.paypal.com";
+import {
+  PAYPAL_BASE,
+  computeNextPremiumUntil,
+  getPayPalAccessToken,
+  paypalConfig,
+} from "@/lib/paypal";
+import { resolvePremiumUntil } from "@/types/auth";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Ile miesięcy premium nadaje jedna opłacona płatność (12 + 1 miesiąc karencji). */
-const PREMIUM_MONTHS = 13;
 
 interface PayPalSubscriptionEvent {
   event_type: string;
@@ -36,28 +34,15 @@ async function verifyWebhookSignature(
     return false;
   }
 
-  const credentials = Buffer.from(
-    `${paypalConfig.client_id}:${paypalConfig.client_secret}`
-  ).toString("base64");
-
   try {
-    const tokenRes = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: "grant_type=client_credentials",
-    });
-    if (!tokenRes.ok) return false;
-    const { access_token } = await tokenRes.json();
+    const accessToken = await getPayPalAccessToken();
 
     const verifyRes = await fetch(
       `${PAYPAL_BASE}/v1/notifications/verify-webhook-signature`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${access_token}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -90,15 +75,15 @@ function asString(value: unknown): string | undefined {
  *
  * UWAGA: dla PAYMENT.SALE.COMPLETED `resource.id` to ID *sprzedaży*, nie
  * subskrypcji — powiązanie z abonamentem niesie `billing_agreement_id`.
- * Jego brak oznacza płatność jednorazową (patrz /api/paypal/webhook), której
- * ten endpoint nie może traktować jak odnowienia.
+ * Jego brak oznacza płatność jednorazową, której ten endpoint nie może
+ * traktować jak odnowienia.
  */
 function getSubscriptionId(event: PayPalSubscriptionEvent): string | undefined {
   const resource = event.resource ?? {};
   if (event.event_type === "PAYMENT.SALE.COMPLETED") {
-    return asString(resource.billing_agreement_id);
+    return asString(resource.billing_agreement_id)?.toUpperCase();
   }
-  return asString(resource.id);
+  return asString(resource.id)?.toUpperCase();
 }
 
 /**
@@ -186,25 +171,76 @@ async function resolveUserId(
 }
 
 /**
- * Ustawia premium_until w OBU tabelach.
+ * Ustawia premium_until w OBU tabelach (oraz opcjonalnie zapisuje nowe `paypal_subscription_id`).
  *
  * `profiles` zasila widoki konta, ale bramki premium dla Partnera czytają
- * `partner_profiles.premium_until` (api/audiopin). Aktualizacja tylko jednej
- * z nich powodowała, że odnowienie nie odblokowywało audiopinów, a anulowanie
- * ich nie odbierało.
+ * `partner_profiles.premium_until` (api/audiopin).
  */
-async function setPremiumUntil(
+async function applySubscriptionChange(
   userId: string,
-  premiumUntil: string | null
+  subscriptionId: string | undefined,
+  action: "grant" | "revoke"
 ): Promise<boolean> {
+  if (action === "revoke") {
+    const [profileRes, partnerRes] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .update({ premium_until: null })
+        .eq("id", userId),
+      supabaseAdmin
+        .from("partner_profiles")
+        .update({ premium_until: null })
+        .eq("id", userId),
+    ]);
+    return !profileRes.error && !partnerRes.error;
+  }
+
+  // Pobierz aktualny stan partnera, aby zachować idempotentność z `activate-subscription`
+  // oraz poprawnie przedłużyć aktywną subskrypcję o 12 miesięcy przy nowej płatności.
+  const [{ data: currentProfile }, { data: currentPartner }] = await Promise.all([
+    supabaseAdmin
+      .from("profiles")
+      .select("premium_until")
+      .eq("id", userId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("partner_profiles")
+      .select("premium_until, paypal_subscription_id")
+      .eq("id", userId)
+      .maybeSingle(),
+  ]);
+
+  const existingPremiumUntil = resolvePremiumUntil(
+    currentProfile?.premium_until,
+    currentPartner?.premium_until
+  );
+
+  // Jeśli dokładnie ta sama subskrypcja (`I-XXX`) została już wcześniej aktywowana
+  // (np. przez `activate-subscription` po powrocie użytkownika z PayPala albo przez
+  // pierwszy z pary eventów `BILLING.SUBSCRIPTION.ACTIVATED` + `PAYMENT.SALE.COMPLETED`),
+  // nie przesuwamy już ustawionej daty po raz drugi.
+  if (
+    subscriptionId &&
+    currentPartner?.paypal_subscription_id === subscriptionId &&
+    existingPremiumUntil &&
+    new Date(existingPremiumUntil).getTime() > Date.now()
+  ) {
+    return true;
+  }
+
+  const nextPremiumUntil = computeNextPremiumUntil(existingPremiumUntil);
+
   const [profileRes, partnerRes] = await Promise.all([
     supabaseAdmin
       .from("profiles")
-      .update({ premium_until: premiumUntil })
+      .update({ premium_until: nextPremiumUntil })
       .eq("id", userId),
     supabaseAdmin
       .from("partner_profiles")
-      .update({ premium_until: premiumUntil })
+      .update({
+        premium_until: nextPremiumUntil,
+        ...(subscriptionId ? { paypal_subscription_id: subscriptionId } : {}),
+      })
       .eq("id", userId),
   ]);
 
@@ -219,12 +255,6 @@ async function setPremiumUntil(
   }
 
   return !profileRes.error && !partnerRes.error;
-}
-
-function grantedUntil(months = PREMIUM_MONTHS): string {
-  const premiumUntil = new Date();
-  premiumUntil.setMonth(premiumUntil.getMonth() + months);
-  return premiumUntil.toISOString();
 }
 
 export async function POST(request: NextRequest) {
@@ -256,17 +286,17 @@ export async function POST(request: NextRequest) {
   // EXPIRED gehört NICHT hierher. Seit die Pläne auf `total_cycles: 1` stehen
   // (keine automatische Verlängerung, § AGB), schickt PayPal dieses Ereignis
   // bei jedem Partner genau dann, wenn das bezahlte Jahr vorbei ist — also im
-  // Regelfall, nicht im Störfall. `premium_until` dort auf null zu setzen
-  // nähme dem Partner den Monat Karenz (PREMIUM_MONTHS = 13), der ihm Zeit
-  // gibt, nach der Erinnerung von Hand zu verlängern. Der Eintrag soll
-  // auslaufen, weil das Datum erreicht ist, nicht weil ein Ereignis ihn löscht.
+  // Regelfall, nicht im Störfall.
+  //
+  // `premium_until` ist das Ende des bezahlten Jahres und läuft von sich aus
+  // ab; der Zugang soll enden, weil das Datum erreicht ist, nicht weil ein
+  // Ereignis ihn löscht. Das Feld hier auf null zu setzen würde ausserdem
+  // einen Partner treffen, der kurz zuvor verlängert hat: das EXPIRED der
+  // ALTEN Subscription käme nach der Zahlung und nähme ihm das neue Jahr.
   const isRevoke =
     event.event_type === "BILLING.SUBSCRIPTION.CANCELLED" ||
     event.event_type === "BILLING.SUBSCRIPTION.SUSPENDED";
 
-  // Das Auslaufen wird vermerkt, aber nicht vollzogen: ohne diese Zeile wäre
-  // später nicht nachvollziehbar, ob ein Partner seinen Zugang verloren hat,
-  // weil das Datum erreicht war oder weil etwas anderes schiefging.
   if (event.event_type === "BILLING.SUBSCRIPTION.EXPIRED") {
     console.info(
       "subscription-webhook: subscription expired (bezahltes Jahr vorbei) — " +
@@ -280,9 +310,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
+  const subscriptionId = getSubscriptionId(event);
+
   // Płatność jednorazowa (bez powiązania z abonamentem) nie może nadawać
-  // 13 miesięcy premium.
-  if (event.event_type === "PAYMENT.SALE.COMPLETED" && !getSubscriptionId(event)) {
+  // roku premium.
+  if (event.event_type === "PAYMENT.SALE.COMPLETED" && !subscriptionId) {
     console.info(
       "subscription-webhook: sale without billing_agreement_id — ignored"
     );
@@ -294,16 +326,17 @@ export async function POST(request: NextRequest) {
   if (!resolved) {
     console.error(
       `subscription-webhook: user not resolved for ${event.event_type}`,
-      { subscriptionId: getSubscriptionId(event) }
+      { subscriptionId }
     );
     // 200, żeby PayPal nie ponawiał w nieskończoność eventu, którego i tak
     // nie umiemy przypisać.
     return NextResponse.json({ received: true });
   }
 
-  const ok = await setPremiumUntil(
+  const ok = await applySubscriptionChange(
     resolved.userId,
-    isGrant ? grantedUntil() : null
+    subscriptionId,
+    isGrant ? "grant" : "revoke"
   );
 
   console.info(

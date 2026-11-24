@@ -412,12 +412,19 @@
   margin: 0;
 }
 
+.activeActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+}
+
 .studioCtaButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.35rem;
-  margin: 0.25rem 0;
   background-color: #2e7d32;
   color: #fff;
   font-family: var(--font-fira);
@@ -432,6 +439,30 @@
 
 .studioCtaButton:hover {
   background-color: #1b5e20;
+}
+
+.renewButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.15rem;
+  background-color: #ffffff;
+  color: #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1.5px solid #18222f;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.renewButton:hover {
+  background-color: #18222f;
+  color: #fc6c14;
 }
 
 .activeHint {

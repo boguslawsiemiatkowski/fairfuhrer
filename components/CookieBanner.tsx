@@ -81,14 +81,15 @@ export default function CookieBanner() {
                   </div>
                   <p className={styles.categoryDescription}>
                     Diese Cookies sind für das Funktionieren der Website
-                    erforderlich. Dazu gehören PayPal für Zahlungen und Mapbox
-                    für Kartenanzeige.
+                    erforderlich. Dazu gehören die Sitzungsverwaltung (Login),
+                    Sicherheitsschutz (Cloudflare Turnstile) und Mapbox für die
+                    Kartenanzeige.
                   </p>
                   <div className={styles.cookieList}>
-                    <span className={styles.cookieTag}>PayPal</span>
                     <span className={styles.cookieTag}>Mapbox</span>
                     <span className={styles.cookieTag}>Supabase</span>
                     <span className={styles.cookieTag}>Directus</span>
+                    <span className={styles.cookieTag}>Cloudflare Turnstile</span>
                   </div>
                 </div>
 
