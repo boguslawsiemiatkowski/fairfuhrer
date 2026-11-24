@@ -469,7 +469,7 @@ export async function deleteAccount(): Promise<AuthResult> {
 export async function logout(): Promise<void> {
   const supabase = await getSupabaseServerClient();
   await supabase.auth.signOut({ scope: "local" });
-  redirect("/login");
+  redirect("/");
 }
 
 export async function resetPassword(

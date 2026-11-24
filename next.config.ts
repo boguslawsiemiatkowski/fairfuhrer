@@ -61,6 +61,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Sprawdzanie typów odbywa się przed buildem za pomocą natywnego kompilatora
+  // TypeScript 7 (`tsgo --noEmit` w skrypcie `npm run build`). Wyłączenie
+  // wbudowanego w `next build` kroku `tsc` (TS 6 w Node.js) eliminuje
+  // duplikację pracy i oszczędza ok. 1–1,5 GB pamięci RAM podczas buildu na Renderze.
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   // Warnt bei `next dev` / `next build`, wenn die installierte Next.js-Version
   // eine bekannte Sicherheitslücke hat. Bewusst "security" statt "latest" —
   // keine Hinweise auf jedes neue Minor-Release.

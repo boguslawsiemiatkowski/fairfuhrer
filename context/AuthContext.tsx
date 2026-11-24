@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut({ scope: "local" });
     setUser(null);
-    router.push("/login");
+    router.push("/");
     router.refresh();
   }, [router]);
 
