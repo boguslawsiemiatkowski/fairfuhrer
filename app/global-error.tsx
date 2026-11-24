@@ -62,9 +62,9 @@ export default function GlobalError({
           </p>
           <p style={{ fontSize: "0.9375rem", color: "#6c757d", margin: 0 }}>
             Bitte versuchen Sie es erneut. Falls das Problem weiterhin besteht,
-            schreiben Sie uns über das{" "}
-            <a href="/kontakt" style={{ color: "#fc6c14" }}>
-              Kontaktformular
+            schreiben Sie uns an{" "}
+            <a href="mailto:info@fairfuehrer.guide" style={{ color: "#fc6c14" }}>
+              info@fairfuehrer.guide
             </a>
             .
           </p>

@@ -30,7 +30,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // als Abschnitt auf /partner-werden, die alte Adresse leitet dorthin
     // weiter (308). Eine weitergeleitete Adresse gehört nicht in die
     // Sitemap: Suchmaschinen sollen nur das Ziel indexieren.
-    "/kontakt",
     "/impressum",
     "/datenschutz",
     "/agb",

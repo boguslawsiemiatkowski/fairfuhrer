@@ -62,8 +62,8 @@ export default async function PartnerPremiumPage() {
           <a href="/agb" className={styles.legalLink}>
             Allgemeinen Geschäftsbedingungen
           </a>{" "}
-          zu. Die Zahlung erfolgt jährlich und verlängert sich automatisch, bis
-          Sie kündigen.
+          zu. Die Zahlung gilt für 12 Monate — es gibt keine automatische
+          Verlängerung und keine Kündigung ist erforderlich.
         </p>
       )}
     </div>

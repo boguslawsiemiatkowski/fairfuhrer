@@ -120,36 +120,6 @@ export const createRedaktionSchema = z.object({
 });
 
 /**
- * Schemat dla POST /api/contact (publiczny formularz kontaktowy z Turnstile).
- */
-export const contactFormSchema = z.object({
-  name: z
-    .string({ error: "Alle Felder sind erforderlich" })
-    .trim()
-    .min(1, "Alle Felder sind erforderlich")
-    .max(150),
-  email: z
-    .string({ error: "Alle Felder sind erforderlich" })
-    .trim()
-    .email("Ungültige E-Mail-Adresse")
-    .max(254),
-  subject: z
-    .string({ error: "Alle Felder sind erforderlich" })
-    .trim()
-    .min(1, "Alle Felder sind erforderlich")
-    .max(200),
-  message: z
-    .string({ error: "Alle Felder sind erforderlich" })
-    .trim()
-    .min(1, "Alle Felder sind erforderlich")
-    .max(5000),
-  turnstileToken: z
-    .string({ error: "Bitte bestätigen Sie, dass Sie kein Roboter sind" })
-    .trim()
-    .min(1, "Bitte bestätigen Sie, dass Sie kein Roboter sind"),
-});
-
-/**
  * Schemat dla POST /api/account-contact (formularz kontaktowy zalogowanego użytkownika).
  */
 export const accountContactSchema = z.object({

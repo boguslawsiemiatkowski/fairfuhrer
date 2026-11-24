@@ -413,21 +413,6 @@ export interface HomePageContent {
   video_button_url?: string;
 }
 
-export interface SupportSectionContent {
-  id: number;
-  page_slug: string;
-  background_color?: string;
-  title?: string;
-  title_font_size?: string;
-  title_color?: string;
-  text?: string;
-  text_font_size?: string;
-  text_color?: string;
-  second_text?: string;
-  second_text_font_size?: string;
-  second_text_color?: string;
-}
-
 export interface ContactFormContent {
   id: string;
   background_color?: string;
@@ -441,23 +426,6 @@ export interface ContactFormContent {
   adresse?: string;
   contact_fields_font_size?: string;
   contact_fields_color?: string;
-}
-
-export interface ContactInfoContent {
-  id: number;
-  page_slug: string;
-  background_color?: string;
-  title?: string;
-  title_color?: string;
-  title_font_size?: string;
-  intro_features?: string;
-  features_h2_color?: string;
-  features_h2_font_size?: string;
-  features_p_color?: string;
-  features_p_font_size?: string;
-  // Seenergien-Sektion (przeniesione z dawnej Mitmachen-Seite)
-  seenergien_title?: string;
-  seenergien_text?: string;
 }
 
 export interface PremiumPageContent {

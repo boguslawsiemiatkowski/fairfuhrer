@@ -3,7 +3,6 @@ export * from "./types/directus";
 export * from "./types/forms";
 export * from "./types/cms";
 export * from "./types/utils";
-export * from "./types/paypal";
 
 export type {
   ReactNode,

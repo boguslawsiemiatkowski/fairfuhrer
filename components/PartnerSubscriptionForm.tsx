@@ -13,35 +13,30 @@ const COMPANY_SIZE_OPTIONS: {
   label: string;
   description: string;
   priceNet: number;
-  isNonprofit: boolean;
 }[] = [
   {
     value: "nonprofit",
     label: "Gemeinnützige Organisation",
     description: "NGO, Verein, ehrenamtliche Organisation",
     priceNet: 25,
-    isNonprofit: true,
   },
   {
     value: "micro",
     label: "Kleinstunternehmen",
     description: "bis 5 Mitarbeitende",
     priceNet: 50,
-    isNonprofit: false,
   },
   {
     value: "small",
     label: "Kleines Unternehmen",
     description: "bis 50 Mitarbeitende",
     priceNet: 100,
-    isNonprofit: false,
   },
   {
     value: "medium",
     label: "Mittleres Unternehmen",
     description: "bis 500 Mitarbeitende",
     priceNet: 200,
-    isNonprofit: false,
   },
 ];
 
@@ -204,17 +199,10 @@ export function PartnerSubscriptionForm({
         </Link>
 
         <p className={styles.activeHint}>
-          Ihre Partnerschaft verlängert sich automatisch jährlich über PayPal.
-          Zur Verwaltung oder Kündigung des Abonnements besuchen Sie Ihr{" "}
-          <a
-            href="https://www.paypal.com/myaccount/autopay/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.activeLink}
-          >
-            PayPal-Konto
-          </a>{" "}
-          oder wenden Sie sich an{" "}
+          Keine automatische Verlängerung — Ihre Partnerschaft gilt für 12
+          Monate und endet nicht in einem versteckten Abo. Vor Ablauf erinnern
+          wir Sie rechtzeitig, sodass Sie frei entscheiden können, ob Sie um ein
+          weiteres Jahr verlängern möchten. Bei Fragen wenden Sie sich gerne an{" "}
           <a href="mailto:info@fairfuehrer.guide" className={styles.activeLink}>
             info@fairfuehrer.guide
           </a>
@@ -239,6 +227,8 @@ export function PartnerSubscriptionForm({
           {COMPANY_SIZE_OPTIONS.map((option) => {
             const vatAmount = option.priceNet * VAT_RATE;
             const gross = option.priceNet + vatAmount;
+            const isNettoBucket =
+              taxBucket === "eu_reverse_charge" || taxBucket === "third_country";
             return (
               <button
                 key={option.value}
@@ -253,17 +243,16 @@ export function PartnerSubscriptionForm({
                   <span className={styles.sizeOptionDesc}>{option.description}</span>
                 </div>
                 <div className={styles.sizeOptionPriceBox}>
-                  {option.isNonprofit ? (
-                    <>
-                      <span className={styles.sizeOptionPrice}>{formatEur(gross)} / Jahr</span>
-                      <span className={styles.sizeOptionVat}>inkl. 19% MwSt.</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className={styles.sizeOptionPrice}>{formatEur(option.priceNet)} / Jahr</span>
-                      <span className={styles.sizeOptionVat}>zzgl. 19% MwSt. ({formatEur(gross)} brutto)</span>
-                    </>
-                  )}
+                  <span className={styles.sizeOptionPrice}>
+                    {formatEur(option.priceNet)} / Jahr
+                  </span>
+                  <span className={styles.sizeOptionVat}>
+                    {isNettoBucket
+                      ? taxBucket === "eu_reverse_charge"
+                        ? "netto (0% MwSt. — Reverse-Charge)"
+                        : "netto (keine deutsche MwSt.)"
+                      : `zzgl. 19% MwSt. (${formatEur(gross)} brutto)`}
+                  </span>
                 </div>
               </button>
             );
@@ -288,8 +277,9 @@ export function PartnerSubscriptionForm({
   const vatAmount = selectedOption ? selectedOption.priceNet * VAT_RATE : 0;
   const gross = selectedOption ? selectedOption.priceNet + vatAmount : 0;
 
-  // Effektiver Koszyk — NGO immer brutto, sonst aus Profil
-  const effectiveBucket: TaxBucket = selectedOption?.isNonprofit ? "de" : taxBucket;
+  // Koszyk podatkowy pochodzi bezpośrednio z profilu partnera (również dla NGO/nonprofit:
+  // organizacja spoza Niemiec z ważnym EU-USt-IdNr. lub z kraju trzeciego płaci stawkę netto bez 19% DE MwSt.)
+  const effectiveBucket: TaxBucket = taxBucket;
 
   return (
     <div className={styles.form}>
@@ -321,22 +311,13 @@ export function PartnerSubscriptionForm({
 
           <div className={styles.summaryRow}>
             <span className={styles.summaryLabel}>Laufzeit</span>
-            <span className={styles.summaryValue}>12 Monate, automatisch verlängernd</span>
+            <span className={styles.summaryValue}>
+              12 Monate (keine automatische Verlängerung)
+            </span>
           </div>
 
-          {/* NGO: brutto inkl. MwSt. */}
-          {selectedOption.isNonprofit && (
-            <div className={`${styles.summaryRow} ${styles.summaryRowTotal}`}>
-              <span className={styles.summaryLabel}>Betrag</span>
-              <span className={styles.summaryValueBold}>
-                {formatEur(gross)} / Jahr{" "}
-                <span className={styles.summaryVat}>(inkl. 19% MwSt.)</span>
-              </span>
-            </div>
-          )}
-
           {/* EU Reverse-Charge: netto, kein VAT */}
-          {!selectedOption.isNonprofit && effectiveBucket === "eu_reverse_charge" && (
+          {effectiveBucket === "eu_reverse_charge" && (
             <>
               <div className={`${styles.summaryRow} ${styles.summaryRowTotal}`}>
                 <span className={styles.summaryLabel}>Nettobetrag</span>
@@ -350,7 +331,7 @@ export function PartnerSubscriptionForm({
           )}
 
           {/* Drittland / EEA: netto, kein DE-VAT */}
-          {!selectedOption.isNonprofit && effectiveBucket === "third_country" && (
+          {effectiveBucket === "third_country" && (
             <>
               <div className={`${styles.summaryRow} ${styles.summaryRowTotal}`}>
                 <span className={styles.summaryLabel}>Nettobetrag</span>
@@ -366,41 +347,41 @@ export function PartnerSubscriptionForm({
           )}
 
           {/* DE oder EU ohne VAT-ID: brutto mit 19% */}
-          {!selectedOption.isNonprofit &&
-            (effectiveBucket === "de" || effectiveBucket === "eu_no_vat") && (
-              <>
+          {(effectiveBucket === "de" || effectiveBucket === "eu_no_vat") && (
+            <>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Nettobetrag</span>
+                <span className={styles.summaryValue}>{formatEur(selectedOption.priceNet)}</span>
+              </div>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>MwSt. 19%</span>
+                <span className={styles.summaryValue}>{formatEur(vatAmount)}</span>
+              </div>
+              <div className={`${styles.summaryRow} ${styles.summaryRowTotal}`}>
+                <span className={styles.summaryLabel}>Gesamtbetrag</span>
+                <span className={styles.summaryValueBold}>{formatEur(gross)} / Jahr</span>
+              </div>
+              {effectiveBucket === "eu_no_vat" && (
                 <div className={styles.summaryRow}>
-                  <span className={styles.summaryLabel}>Nettobetrag</span>
-                  <span className={styles.summaryValue}>{formatEur(selectedOption.priceNet)}</span>
+                  <span className={styles.summaryLabel}></span>
+                  <span className={styles.summaryNote}>
+                    Ohne gültige EU-USt-IdNr. wird deutsche MwSt. 19% berechnet.
+                  </span>
                 </div>
-                <div className={styles.summaryRow}>
-                  <span className={styles.summaryLabel}>MwSt. 19%</span>
-                  <span className={styles.summaryValue}>{formatEur(vatAmount)}</span>
-                </div>
-                <div className={`${styles.summaryRow} ${styles.summaryRowTotal}`}>
-                  <span className={styles.summaryLabel}>Gesamtbetrag</span>
-                  <span className={styles.summaryValueBold}>{formatEur(gross)} / Jahr</span>
-                </div>
-                {effectiveBucket === "eu_no_vat" && (
-                  <div className={styles.summaryRow}>
-                    <span className={styles.summaryLabel}></span>
-                    <span className={styles.summaryNote}>
-                      Ohne gültige EU-USt-IdNr. wird deutsche MwSt. 19% berechnet.
-                    </span>
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </>
+          )}
         </div>
       )}
 
       <div className={styles.paypalInfo}>
         <Image src={paypalLogo} alt="PayPal" height={24} unoptimized />
         <p className={styles.paypalInfoText}>
-          Die Zahlung erfolgt sicher über PayPal Abonnement. Sie werden zu
-          PayPal weitergeleitet, um die Zahlung zu autorisieren. Das Abonnement
-          verlängert sich automatisch jährlich und kann jederzeit in Ihrem
-          PayPal-Konto gekündigt werden.
+          Die Zahlung erfolgt sicher über PayPal. Sie werden zu PayPal
+          weitergeleitet, um die Zahlung für 12 Monate zu autorisieren. Es gibt{" "}
+          <strong>keine automatische Verlängerung</strong> — Ihre Partnerschaft
+          endet nach einem Jahr automatisch, sofern Sie sie nicht selbst
+          verlängern.
         </p>
       </div>
 
@@ -413,7 +394,7 @@ export function PartnerSubscriptionForm({
         disabled={loadingPayment}
       >
         <Image src={paypalLogo} alt="PayPal" height={20} unoptimized />
-        {loadingPayment ? "Wird weitergeleitet…" : "Mit PayPal abonnieren"}
+        {loadingPayment ? "Wird weitergeleitet…" : "Mit PayPal bezahlen"}
       </button>
     </div>
   );

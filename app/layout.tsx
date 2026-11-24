@@ -6,7 +6,6 @@ import "../styles/ios-safari-fixes.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ScrollToTop from "../components/ScrollToTop";
-import { PayPalProvider } from "../components/PayPalProvider";
 import { CookieProvider } from "../context/CookieContext";
 import { AuthProvider } from "../context/AuthContext";
 import CookieBanner from "../components/CookieBanner";
@@ -91,12 +90,10 @@ export default function RootLayout({
           )}
 
           <AuthProvider>
-            <PayPalProvider>
-              <Header />
-              <main>{children}</main>
-              <Footer />
-              <ScrollToTop />
-            </PayPalProvider>
+            <Header />
+            <main>{children}</main>
+            <Footer />
+            <ScrollToTop />
           </AuthProvider>
 
           <CookieBanner />

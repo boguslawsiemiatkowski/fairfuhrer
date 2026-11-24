@@ -7,10 +7,6 @@ import type {
   PartnerPageContent,
   PartnerWerdenContent,
   ContactFormContent,
-  ContactInfoContent,
-  SupportSectionContent,
-  PayPalDonation,
-  WebhookLog,
   PremiumPageContent,
   PremiumComparisonFeature,
   AccountContactFormContent,
@@ -216,27 +212,13 @@ export async function getSightsLockModalContent(): Promise<SightsLockModalConten
 }
 
 // ========================================
-// KONTAKT
+// KONTAKT (sekcja kontaktowa na /ueber-uns)
 // ========================================
-
-export async function getSupportSectionContent(): Promise<SupportSectionContent | null> {
-  return fetchDirectusSingle<SupportSectionContent>(
-    "/items/support_section_content?filter[page_slug][_eq]=kontakt&fields=*&limit=1",
-    { tag: "support-section", revalidate: 3600, label: "support section content" },
-  );
-}
 
 export async function getContactFormContent(): Promise<ContactFormContent | null> {
   return fetchDirectusSingle<ContactFormContent>(
     "/items/contact_form_content?fields=*",
     { tag: "contact-form", revalidate: 3600, label: "contact form content" },
-  );
-}
-
-export async function getContactInfoContent(): Promise<ContactInfoContent | null> {
-  return fetchDirectusSingle<ContactInfoContent>(
-    "/items/contact_info_content?filter[page_slug][_eq]=kontakt&fields=*&limit=1",
-    { tag: "contact-info", revalidate: 3600, label: "contact info content" },
   );
 }
 
@@ -364,118 +346,4 @@ export async function getUeberUnsContent(): Promise<UeberUnsContent | null> {
       "&deep[werte_items][_filter][status][_eq]=published&deep[werte_items][_sort]=sort",
     { tag: "ueber-uns", revalidate: 3600, label: "ueber uns content" },
   );
-}
-
-// ========================================
-// PAYPAL DONACJE & WEBHOOKI
-// ========================================
-
-/**
- * Tworzy nową donację PayPal w Directus
- */
-export async function createPayPalDonation(
-  donation: Omit<PayPalDonation, "id">,
-): Promise<PayPalDonation | null> {
-  try {
-    const response = await fetch(`${DIRECTUS_URL}/items/paypal_donations`, {
-      method: "POST",
-      headers: buildHeaders(),
-      body: JSON.stringify(donation),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to create PayPal donation: ${response.statusText}`);
-    }
-
-    // Directus może zwrócić 204 bez body — wtedy odczytujemy po order_id
-    if (response.status === 204 || response.headers.get("content-length") === "0") {
-      return getPayPalDonationByOrderId(donation.paypal_order_id);
-    }
-
-    const data = await response.json();
-    return data.data as PayPalDonation;
-  } catch (error) {
-    console.error("Error creating PayPal donation:", error);
-    return null;
-  }
-}
-
-/**
- * Aktualizuje status donacji PayPal
- */
-export async function updatePayPalDonationStatus(
-  donationId: string,
-  updates: Partial<PayPalDonation>,
-): Promise<PayPalDonation | null> {
-  try {
-    const response = await fetch(
-      `${DIRECTUS_URL}/items/paypal_donations/${donationId}`,
-      {
-        method: "PATCH",
-        headers: buildHeaders(),
-        body: JSON.stringify(updates),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to update PayPal donation: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.data as PayPalDonation;
-  } catch (error) {
-    console.error("Error updating PayPal donation:", error);
-    return null;
-  }
-}
-
-/**
- * Pobiera donację PayPal po PayPal Order ID
- */
-export async function getPayPalDonationByOrderId(
-  paypalOrderId: string,
-): Promise<PayPalDonation | null> {
-  try {
-    const response = await fetch(
-      `${DIRECTUS_URL}/items/paypal_donations?filter[paypal_order_id][_eq]=${encodeURIComponent(paypalOrderId)}`,
-      { headers: buildHeaders() },
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch PayPal donation by order ID: ${response.statusText}`,
-      );
-    }
-
-    const data = await response.json();
-    return (data.data?.[0] as PayPalDonation) ?? null;
-  } catch (error) {
-    console.error("Error fetching PayPal donation by order ID:", error);
-    return null;
-  }
-}
-
-/**
- * Loguje webhook event
- */
-export async function logWebhookEvent(
-  webhookLog: Omit<WebhookLog, "id">,
-): Promise<WebhookLog | null> {
-  try {
-    const response = await fetch(`${DIRECTUS_URL}/items/webhook_logs`, {
-      method: "POST",
-      headers: buildHeaders(),
-      body: JSON.stringify(webhookLog),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to log webhook event: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.data as WebhookLog;
-  } catch (error) {
-    console.error("Error logging webhook event:", error);
-    return null;
-  }
 }

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   accountContactSchema,
-  contactFormSchema,
   createAudiopinSchema,
   createRedaktionSchema,
   firstZodError,
@@ -105,23 +104,7 @@ describe("API Zod Schemas", () => {
     });
   });
 
-  describe("contactFormSchema & accountContactSchema", () => {
-    it("prüft E-Mail-Format und Turnstile-Token beim Kontaktformular", () => {
-      const invalidEmail = contactFormSchema.safeParse({
-        name: "Max",
-        email: "keine-email",
-        subject: "Frage",
-        message: "Hallo",
-        turnstileToken: "token-123",
-      });
-      expect(invalidEmail.success).toBe(false);
-      if (!invalidEmail.success) {
-        expect(firstZodError(invalidEmail.error)).toBe(
-          "Ungültige E-Mail-Adresse"
-        );
-      }
-    });
-
+  describe("accountContactSchema", () => {
     it("lehnt leere Nachrichten bei accountContactSchema ab", () => {
       const emptyMsg = accountContactSchema.safeParse({
         subject: "Hilfe",
