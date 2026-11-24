@@ -125,6 +125,9 @@ export default function RegisterConsumerPage() {
           <p className={styles.successHint}>
             Keine E-Mail erhalten? Bitte prüfe deinen Spam-Ordner.
           </p>
+          <Link href="/login" className={styles.submitButton} style={{ textAlign: "center", textDecoration: "none" }}>
+            Zur Anmeldung
+          </Link>
         </div>
       </div>
     );

@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
+  updateEmail,
   updatePassword,
   updateConsumerProfile,
+  deleteAccount,
 } from "@/app/actions/auth";
 import type { FormErrors } from "@/types/auth";
 import PasswordInput from "@/components/PasswordInput";
@@ -25,7 +28,8 @@ function validatePassword(password: string): string | null {
 }
 
 export default function EinstellungenPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, refreshUser } = useAuth();
 
   // E-Mail ändern
   const [newEmail, setNewEmail] = useState("");
@@ -65,8 +69,12 @@ export default function EinstellungenPage() {
       return;
     }
     setIsEmailSubmitting(true);
-    // TODO: updateEmail server action
+    const result = await updateEmail(newEmail.trim());
     setIsEmailSubmitting(false);
+    if (!result.success) {
+      setEmailError(result.error);
+      return;
+    }
     setEmailSuccess(true);
     setNewEmail("");
   }
@@ -124,9 +132,15 @@ export default function EinstellungenPage() {
       return;
     }
     setIsDeleting(true);
-    // TODO: deleteUser server action
-    setIsDeleting(false);
-    setDeleteError("Kontolöschung ist noch nicht verfügbar.");
+    const result = await deleteAccount();
+    if (!result.success) {
+      setIsDeleting(false);
+      setDeleteError(result.error ?? "Konto konnte nicht gelöscht werden.");
+      return;
+    }
+    await refreshUser();
+    router.push("/");
+    router.refresh();
   }
 
   return (

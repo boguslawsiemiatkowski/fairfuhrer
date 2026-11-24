@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { Mail } from "lucide-react";
 import Link from "next/link";
 import { registerPartner } from "@/app/actions/auth";
 import type { FormErrors } from "@/types/auth";
@@ -138,21 +139,29 @@ export default function RegisterPartnerPage() {
     }
 
     setSuccess(true);
-    // Pełne przeładowanie z tego samego powodu co przy logowaniu — rejestracja
-    // tworzy sesję w server action, o której klient przeglądarki nie wie.
-    setTimeout(
-      () => window.location.assign(result.redirectTo ?? "/konto/partner"),
-      2000
-    );
   }
 
   if (success) {
     return (
       <div className={styles.card}>
-        <p className={styles.successMessage}>
-          Registrierung erfolgreich! Bitte bestätigen Sie Ihre E-Mail-Adresse.
-          Sie werden zu Ihrem Profil weitergeleitet…
-        </p>
+        <div className={styles.successBox}>
+          <Mail size={48} color="#fc6c14" />
+          <h2 className={styles.successTitle}>Fast geschafft!</h2>
+          <p className={styles.successText}>
+            Wir haben eine Bestätigungs-E-Mail an{" "}
+            <strong>{fields.email}</strong> gesendet.
+          </p>
+          <p className={styles.successText}>
+            Bitte klicken Sie auf den Link in der E-Mail, um Ihr Partnerkonto zu
+            aktivieren. Danach können Sie sich anmelden.
+          </p>
+          <p className={styles.successHint}>
+            Keine E-Mail erhalten? Bitte prüfen Sie Ihren Spam-Ordner.
+          </p>
+          <Link href="/login" className={styles.submitButton} style={{ textAlign: "center", textDecoration: "none" }}>
+            Zur Anmeldung
+          </Link>
+        </div>
       </div>
     );
   }

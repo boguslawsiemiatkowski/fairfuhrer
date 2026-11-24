@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = await getSupabaseServerClient();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
   } catch {
     // Usuniętego użytkownika nie da się wylogować po stronie Supabase.
     // Ciasteczka i tak kasujemy poniżej — to one podtrzymują pętlę.

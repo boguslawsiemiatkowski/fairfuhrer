@@ -179,6 +179,38 @@
   text-align: center;
 }
 
+.successBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.successTitle {
+  font-family: var(--font-anton);
+  font-weight: 400;
+  font-size: 1.75rem;
+  color: #fc6c14;
+  margin: 0;
+}
+
+.successText {
+  font-family: var(--font-fira);
+  font-size: 1rem;
+  color: #18222f;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.successHint {
+  font-family: var(--font-fira);
+  font-size: 0.85rem;
+  color: #888;
+  margin: 0;
+}
+
 .loginLink {
   text-align: center;
   margin-top: 1.5rem;

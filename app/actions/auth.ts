@@ -460,12 +460,15 @@ export async function deleteAccount(): Promise<AuthResult> {
     return { success: false, error: "Konto konnte nicht gelöscht werden." };
   }
 
+  // Wyczyść ciasteczka sesji w przeglądarce po usunięciu konta
+  await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+
   return { success: true };
 }
 
 export async function logout(): Promise<void> {
   const supabase = await getSupabaseServerClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
 }
 
