@@ -24,11 +24,19 @@ function getSafeRedirectPath(value: string | null, fallback = "/konto"): string 
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const redirectTo = getSafeRedirectPath(searchParams.get("redirect"), "/konto");
+  const rawRedirect = searchParams.get("redirect");
+  const redirectTo = getSafeRedirectPath(rawRedirect, "/konto");
+  const registerHref =
+    rawRedirect && redirectTo !== "/konto"
+      ? `/register?redirect=${encodeURIComponent(redirectTo)}`
+      : "/register";
   const callbackError = searchParams.get("error");
 
   const [tab, setTab] = useState<"password" | "magic">(
     callbackError === "magiclink_expired" ? "magic" : "password"
+  );
+  const [showResendView, setShowResendView] = useState(
+    callbackError === "confirmation_expired"
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -156,7 +164,7 @@ function LoginForm() {
     setResendSent(true);
   }
 
-  if (callbackError === "confirmation_expired") {
+  if (showResendView) {
     return (
       <div className={styles.card}>
         <h1 className={styles.title}>Anmelden</h1>
@@ -171,8 +179,9 @@ function LoginForm() {
         ) : (
           <form onSubmit={handleResendConfirmation} className={styles.form} noValidate>
             <p className={styles.magicDescription}>
-              Ihr Bestätigungslink ist abgelaufen oder wurde bereits verwendet.
-              Geben Sie Ihre E-Mail-Adresse ein, um einen neuen zu erhalten.
+              {callbackError === "confirmation_expired"
+                ? "Ihr Bestätigungslink ist abgelaufen oder wurde bereits verwendet. Geben Sie Ihre E-Mail-Adresse ein, um einen neuen zu erhalten."
+                : "Geben Sie Ihre E-Mail-Adresse ein, um einen neuen Bestätigungslink zu erhalten."}
             </p>
             {errors.general && (
               <p className={styles.errorMessage}>{errors.general}</p>
@@ -208,13 +217,26 @@ function LoginForm() {
         )}
 
         <p className={styles.registerLink}>
-          <Link href="/login" className={styles.link}>
-            Zurück zum Login
-          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setShowResendView(false);
+              setResendSent(false);
+              setErrors({});
+              resetTurnstile();
+            }}
+            className={styles.link}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          >
+            ← Zurück zum Login
+          </button>
         </p>
       </div>
     );
   }
+
+  const isUnconfirmedEmailError =
+    errors.general?.includes("bestätigen Sie zuerst Ihre E-Mail-Adresse") ?? false;
 
   return (
     <div className={styles.card}>
@@ -223,14 +245,20 @@ function LoginForm() {
       <div className={styles.tabs}>
         <button
           className={`${styles.tab} ${tab === "password" ? styles.tabActive : ""}`}
-          onClick={() => setTab("password")}
+          onClick={() => {
+            setTab("password");
+            setErrors({});
+          }}
           type="button"
         >
           Passwort
         </button>
         <button
           className={`${styles.tab} ${tab === "magic" ? styles.tabActive : ""}`}
-          onClick={() => setTab("magic")}
+          onClick={() => {
+            setTab("magic");
+            setErrors({});
+          }}
           type="button"
         >
           Magic Link
@@ -238,7 +266,23 @@ function LoginForm() {
       </div>
 
       {errors.general && (
-        <p className={styles.errorMessage}>{errors.general}</p>
+        <div className={styles.errorBox}>
+          <span>{errors.general}</span>
+          {isUnconfirmedEmailError && (
+            <button
+              type="button"
+              className={styles.inlineActionBtn}
+              onClick={() => {
+                setErrors({});
+                setResendSent(false);
+                setShowResendView(true);
+                resetTurnstile();
+              }}
+            >
+              Bestätigungs-E-Mail erneut senden →
+            </button>
+          )}
+        </div>
       )}
 
       {tab === "password" && (
@@ -341,7 +385,7 @@ function LoginForm() {
 
       <p className={styles.registerLink}>
         Noch kein Konto?{" "}
-        <Link href="/register" className={styles.link}>
+        <Link href={registerHref} className={styles.link}>
           Jetzt registrieren
         </Link>
       </p>

@@ -2,8 +2,25 @@ import Link from "next/link";
 import { getRegisterPageContent } from "@/lib/directus";
 import styles from "./register.module.css";
 
-export default async function RegisterPage() {
-  const content = await getRegisterPageContent();
+function getSafeRedirectPath(value: string | undefined): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+    return null;
+  }
+  return value;
+}
+
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect?: string }>;
+}) {
+  const [content, resolvedSearchParams] = await Promise.all([
+    getRegisterPageContent(),
+    searchParams,
+  ]);
+
+  const safeRedirect = getSafeRedirectPath(resolvedSearchParams?.redirect);
+  const redirectQuery = safeRedirect ? `?redirect=${encodeURIComponent(safeRedirect)}` : "";
 
   const t = {
     title: content?.title || "Konto erstellen",
@@ -28,19 +45,19 @@ export default async function RegisterPage() {
       <h1 className={styles.title}>{t.title}</h1>
       <p className={styles.subtitle}>{t.subtitle}</p>
       <div className={styles.cards}>
-        <Link href="/register/consumer" className={styles.card}>
+        <Link href={`/register/consumer${redirectQuery}`} className={styles.card}>
           <div className={styles.cardIcon}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="44"
-              height="44"
+              width="32"
+              height="32"
               viewBox="0 0 24 24"
-              fill="#ff3700"
-              stroke="#000000"
-              strokeWidth="1"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="lucide lucide-user-icon lucide-user"
+              aria-hidden="true"
             >
               <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
@@ -51,19 +68,19 @@ export default async function RegisterPage() {
           <span className={styles.cardCta}>{t.reisender_cta}</span>
         </Link>
 
-        <Link href="/register/partner" className={styles.card}>
+        <Link href={`/register/partner${redirectQuery}`} className={styles.card}>
           <div className={styles.cardIcon}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="44"
-              height="44"
+              width="32"
+              height="32"
               viewBox="0 0 24 24"
-              fill="#ffdd00"
-              stroke="#000000"
-              strokeWidth="1"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="lucide lucide-handshake-icon lucide-handshake"
+              aria-hidden="true"
             >
               <path d="m11 17 2 2a1 1 0 1 0 3-3" />
               <path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" />
@@ -80,7 +97,7 @@ export default async function RegisterPage() {
 
       <p className={styles.loginLink}>
         {t.login_prompt}{" "}
-        <Link href="/login" className={styles.link}>
+        <Link href={`/login${redirectQuery}`} className={styles.link}>
           {t.login_link_text}
         </Link>
       </p>

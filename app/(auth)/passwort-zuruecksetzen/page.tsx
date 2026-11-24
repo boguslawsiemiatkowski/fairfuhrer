@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { updatePassword } from "@/app/actions/auth";
 import { strongPasswordSchema, firstZodError } from "@/lib/validations/api";
 import type { FormErrors } from "@/types/auth";
 import PasswordInput from "@/components/PasswordInput";
+import PasswordChecklist from "@/components/PasswordChecklist";
 import styles from "./reset-password.module.css";
 
 export default function ResetPasswordPage() {
@@ -61,9 +63,9 @@ export default function ResetPasswordPage() {
       <div className={styles.card}>
         <p className={styles.errorMessage}>
           Dieser Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen{" "}
-          <a href="/passwort-vergessen" className={styles.link}>
+          <Link href="/passwort-vergessen" className={styles.link}>
             Passwort-Reset-Link
-          </a>{" "}
+          </Link>{" "}
           an.
         </p>
       </div>
@@ -99,7 +101,7 @@ export default function ResetPasswordPage() {
       <form onSubmit={handleSubmit} className={styles.form} noValidate>
         <div className={styles.field}>
           <label htmlFor="password" className={styles.label}>
-            Neues Passwort <span className={styles.hint}>(min. 8 Zeichen)</span>
+            Neues Passwort *
           </label>
           <PasswordInput
             id="password"
@@ -108,6 +110,7 @@ export default function ResetPasswordPage() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
           />
+          <PasswordChecklist password={password} />
           {errors.password && (
             <span className={styles.fieldError}>{errors.password}</span>
           )}
@@ -115,7 +118,7 @@ export default function ResetPasswordPage() {
 
         <div className={styles.field}>
           <label htmlFor="confirmPassword" className={styles.label}>
-            Passwort bestätigen
+            Passwort bestätigen *
           </label>
           <PasswordInput
             id="confirmPassword"

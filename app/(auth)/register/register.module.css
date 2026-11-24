@@ -1,13 +1,15 @@
 .wrapper {
   width: 100%;
-  max-width: 680px;
+  max-width: 720px;
   text-align: center;
 }
 
 .title {
   font-family: var(--font-anton);
   font-weight: 400;
-  font-size: 2.25rem;
+  font-size: 2.35rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: #18222f;
   margin: 0 0 0.5rem;
 }
@@ -15,20 +17,21 @@
 .subtitle {
   font-family: var(--font-fira);
   font-size: 1rem;
-  color: #666;
-  margin: 0 0 2rem;
+  color: #5c6672;
+  margin: 0 0 2.25rem;
 }
 
 .cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 1.75rem;
+  margin-bottom: 2.25rem;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 600px) {
   .cards {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 }
 
@@ -36,61 +39,98 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: #fff;
-  border: 2px solid #e8e8e8;
-  border-radius: 12px;
-  padding: 2rem 1.5rem;
+  background: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 5px 5px 0 #18222f;
+  padding: 2.25rem 1.75rem;
   text-decoration: none;
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s,
-    transform 0.15s;
+    box-shadow 0.15s,
+    transform 0.15s,
+    border-color 0.15s;
   cursor: pointer;
 }
 
 .card:hover {
-  border-color: #fc6c14;
-  box-shadow: 0 4px 20px rgba(252, 108, 20, 0.15);
-  transform: translateY(-2px);
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 #fc6c14;
 }
 
 .cardIcon {
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #18222f;
+  color: #fc6c14;
+  border: 2px solid #18222f;
+  box-shadow: 3px 3px 0 #fc6c14;
+  margin-bottom: 1.35rem;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+
+.card:hover .cardIcon {
+  background-color: #fc6c14;
+  color: #ffffff;
+  box-shadow: 3px 3px 0 #18222f;
 }
 
 .cardTitle {
-  font-family: var(--font-fira);
-  font-weight: 700;
-  font-size: 1.4rem;
+  font-family: var(--font-anton);
+  font-weight: 400;
+  font-size: 1.55rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: #18222f;
   margin: 0 0 0.75rem;
 }
 
 .cardDesc {
   font-family: var(--font-fira);
-  font-size: 0.9rem;
-  color: #666;
-  line-height: 1.5;
-  margin: 0 0 1.25rem;
+  font-size: 0.92rem;
+  color: #5c6672;
+  line-height: 1.55;
+  margin: 0 0 1.5rem;
   flex: 1;
 }
 
 .cardCta {
-  font-family: var(--font-fira);
-  font-size: 0.9rem;
-  font-weight: 700;
+  display: inline-block;
+  padding: 0.55rem 1.15rem;
+  background: #18222f;
   color: #fc6c14;
+  border: 1.5px solid #18222f;
+  box-shadow: 2px 2px 0 #fc6c14;
+  font-family: var(--font-fira);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+}
+
+.card:hover .cardCta {
+  background: #fc6c14;
+  color: #ffffff;
+  box-shadow: 2px 2px 0 #18222f;
 }
 
 .loginLink {
   font-family: var(--font-fira);
-  font-size: 0.9rem;
-  color: #555;
+  font-size: 0.92rem;
+  color: #18222f;
 }
 
 .link {
   color: #fc6c14;
+  font-weight: 700;
   text-decoration: none;
 }
 

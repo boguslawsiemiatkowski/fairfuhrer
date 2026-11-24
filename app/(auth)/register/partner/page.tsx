@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { Suspense, useState, useCallback, useRef } from "react";
 import { Mail } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { registerPartner } from "@/app/actions/auth";
 import type { FormErrors } from "@/types/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import type { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import PasswordInput from "@/components/PasswordInput";
+import PasswordChecklist from "@/components/PasswordChecklist";
 import styles from "./partner.module.css";
 import { COUNTRIES, getCountry } from "@/lib/countries";
+
+function getSafeRedirectPath(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+    return null;
+  }
+  return value;
+}
 
 function validatePassword(password: string): string | null {
   if (password.length < 8) return "Das Passwort muss mindestens 8 Zeichen lang sein.";
@@ -20,7 +29,11 @@ function validatePassword(password: string): string | null {
   return null;
 }
 
-export default function RegisterPartnerPage() {
+function RegisterPartnerForm() {
+  const searchParams = useSearchParams();
+  const safeRedirect = getSafeRedirectPath(searchParams.get("redirect"));
+  const redirectQuery = safeRedirect ? `?redirect=${encodeURIComponent(safeRedirect)}` : "";
+
   const [fields, setFields] = useState({
     email: "",
     password: "",
@@ -145,7 +158,9 @@ export default function RegisterPartnerPage() {
     return (
       <div className={styles.card}>
         <div className={styles.successBox}>
-          <Mail size={48} color="#fc6c14" />
+          <div className={styles.successIconWrap}>
+            <Mail size={32} />
+          </div>
           <h2 className={styles.successTitle}>Fast geschafft!</h2>
           <p className={styles.successText}>
             Wir haben eine Bestätigungs-E-Mail an{" "}
@@ -158,7 +173,11 @@ export default function RegisterPartnerPage() {
           <p className={styles.successHint}>
             Keine E-Mail erhalten? Bitte prüfen Sie Ihren Spam-Ordner.
           </p>
-          <Link href="/login" className={styles.submitButton} style={{ textAlign: "center", textDecoration: "none" }}>
+          <Link
+            href={`/login${redirectQuery}`}
+            className={styles.submitButton}
+            style={{ textAlign: "center", textDecoration: "none", display: "block", boxSizing: "border-box" }}
+          >
             Zur Anmeldung
           </Link>
         </div>
@@ -168,7 +187,7 @@ export default function RegisterPartnerPage() {
 
   return (
     <div className={styles.card}>
-      <Link href="/register" className={styles.back}>
+      <Link href={`/register${redirectQuery}`} className={styles.back}>
         ← Zurück
       </Link>
       <h1 className={styles.title}>Als Partner*in registrieren</h1>
@@ -180,7 +199,7 @@ export default function RegisterPartnerPage() {
       <form onSubmit={handleSubmit} className={styles.form} noValidate>
 
         {/* ── 1. Unternehmensdaten ── */}
-        <h2 className={styles.sectionTitle}>Unternehmensdaten</h2>
+        <h2 className={styles.sectionTitle}>1. Unternehmensdaten</h2>
 
         <div className={styles.field}>
           <label htmlFor="companyName" className={styles.label}>Unternehmensname *</label>
@@ -290,29 +309,33 @@ export default function RegisterPartnerPage() {
                   }
                 }}
               />
-              Ich habe keine EU-USt-IdNr.{" "}
-              <span className={styles.checkboxHint}>(z.B. Kleinunternehmer, steuerbefreite Organisation)</span>
+              <span>
+                Ich habe keine EU-USt-IdNr.{" "}
+                <span className={styles.checkboxHint}>(z.B. Kleinunternehmer, steuerbefreite Organisation)</span>
+              </span>
             </label>
           </div>
         )}
 
         {/* ── 2. Kontaktdaten ── */}
-        <h2 className={styles.sectionTitle}>Kontaktdaten</h2>
+        <h2 className={styles.sectionTitle}>2. Kontaktdaten</h2>
 
-        <div className={styles.field}>
-          <label htmlFor="firstName" className={styles.label}>Vorname *</label>
-          <input id="firstName" type="text"
-            className={`${styles.input} ${errors.firstName ? styles.inputError : ""}`}
-            value={fields.firstName} onChange={set("firstName")} autoComplete="given-name" />
-          {errors.firstName && <span className={styles.fieldError}>{errors.firstName}</span>}
-        </div>
+        <div className={styles.row}>
+          <div className={styles.field}>
+            <label htmlFor="firstName" className={styles.label}>Vorname *</label>
+            <input id="firstName" type="text"
+              className={`${styles.input} ${errors.firstName ? styles.inputError : ""}`}
+              value={fields.firstName} onChange={set("firstName")} autoComplete="given-name" />
+            {errors.firstName && <span className={styles.fieldError}>{errors.firstName}</span>}
+          </div>
 
-        <div className={styles.field}>
-          <label htmlFor="lastName" className={styles.label}>Nachname *</label>
-          <input id="lastName" type="text"
-            className={`${styles.input} ${errors.lastName ? styles.inputError : ""}`}
-            value={fields.lastName} onChange={set("lastName")} autoComplete="family-name" />
-          {errors.lastName && <span className={styles.fieldError}>{errors.lastName}</span>}
+          <div className={styles.field}>
+            <label htmlFor="lastName" className={styles.label}>Nachname *</label>
+            <input id="lastName" type="text"
+              className={`${styles.input} ${errors.lastName ? styles.inputError : ""}`}
+              value={fields.lastName} onChange={set("lastName")} autoComplete="family-name" />
+            {errors.lastName && <span className={styles.fieldError}>{errors.lastName}</span>}
+          </div>
         </div>
 
         <div className={styles.field}>
@@ -327,7 +350,7 @@ export default function RegisterPartnerPage() {
         </div>
 
         {/* ── 3. Zugangsdaten ── */}
-        <h2 className={styles.sectionTitle}>Zugangsdaten</h2>
+        <h2 className={styles.sectionTitle}>3. Zugangsdaten</h2>
 
         <div className={styles.field}>
           <label htmlFor="email" className={styles.label}>Anmelde-E-Mail *</label>
@@ -345,9 +368,7 @@ export default function RegisterPartnerPage() {
           <PasswordInput id="password"
             className={`${styles.input} ${errors.password ? styles.inputError : ""}`}
             value={fields.password} onChange={set("password")} autoComplete="new-password" />
-          <span className={styles.hint}>
-            Mind. 8 Zeichen, ein Großbuchstabe, ein Kleinbuchstabe, eine Ziffer und ein Sonderzeichen.
-          </span>
+          <PasswordChecklist password={fields.password} />
           {errors.password && <span className={styles.fieldError}>{errors.password}</span>}
         </div>
 
@@ -373,8 +394,16 @@ export default function RegisterPartnerPage() {
 
       <p className={styles.loginLink}>
         Bereits registriert?{" "}
-        <Link href="/login" className={styles.link}>Anmelden</Link>
+        <Link href={`/login${redirectQuery}`} className={styles.link}>Anmelden</Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterPartnerPage() {
+  return (
+    <Suspense>
+      <RegisterPartnerForm />
+    </Suspense>
   );
 }

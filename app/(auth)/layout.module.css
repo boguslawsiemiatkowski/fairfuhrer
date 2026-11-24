@@ -1,8 +1,8 @@
 .wrapper {
-  min-height: 80dvh;
+  min-height: 82dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f0;
-  padding: 2rem 1rem;
+  background-color: #f8f8ff;
+  padding: 2.75rem 1.25rem 3.5rem;
 }

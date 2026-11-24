@@ -1,17 +1,26 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { Suspense, useState, useCallback, useRef } from "react";
 import { Mail } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { registerConsumer } from "@/app/actions/auth";
 import type { FormErrors } from "@/types/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import type { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import PasswordInput from "@/components/PasswordInput";
+import PasswordChecklist from "@/components/PasswordChecklist";
 // Social loginy (Apple/Google) sind in 1.0.3 vorübergehend deaktiviert —
 // Konsistenz mit Mobile (siehe project_social_loginy_zawieszone).
 // import SocialLoginButtons from "@/components/SocialLoginButtons";
 import styles from "./consumer.module.css";
+
+function getSafeRedirectPath(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+    return null;
+  }
+  return value;
+}
 
 function validatePassword(password: string): string | null {
   if (password.length < 8)
@@ -27,7 +36,11 @@ function validatePassword(password: string): string | null {
   return null;
 }
 
-export default function RegisterConsumerPage() {
+function RegisterConsumerForm() {
+  const searchParams = useSearchParams();
+  const safeRedirect = getSafeRedirectPath(searchParams.get("redirect"));
+  const redirectQuery = safeRedirect ? `?redirect=${encodeURIComponent(safeRedirect)}` : "";
+
   const [fields, setFields] = useState({
     email: "",
     password: "",
@@ -112,7 +125,9 @@ export default function RegisterConsumerPage() {
     return (
       <div className={styles.card}>
         <div className={styles.successBox}>
-          <Mail size={48} color="#fc6c14" />
+          <div className={styles.successIconWrap}>
+            <Mail size={32} />
+          </div>
           <h2 className={styles.successTitle}>Fast geschafft!</h2>
           <p className={styles.successText}>
             Wir haben eine Bestätigungs-E-Mail an{" "}
@@ -125,7 +140,11 @@ export default function RegisterConsumerPage() {
           <p className={styles.successHint}>
             Keine E-Mail erhalten? Bitte prüfe deinen Spam-Ordner.
           </p>
-          <Link href="/login" className={styles.submitButton} style={{ textAlign: "center", textDecoration: "none" }}>
+          <Link
+            href={`/login${redirectQuery}`}
+            className={styles.submitButton}
+            style={{ textAlign: "center", textDecoration: "none", display: "block", boxSizing: "border-box" }}
+          >
             Zur Anmeldung
           </Link>
         </div>
@@ -135,7 +154,7 @@ export default function RegisterConsumerPage() {
 
   return (
     <div className={styles.card}>
-      <Link href="/register" className={styles.back}>
+      <Link href={`/register${redirectQuery}`} className={styles.back}>
         ← Zurück
       </Link>
       <h1 className={styles.title}>Werde Teil der Fairführer-Community</h1>
@@ -193,10 +212,7 @@ export default function RegisterConsumerPage() {
             onChange={set("password")}
             autoComplete="new-password"
           />
-          <span className={styles.hint}>
-            Mind. 8 Zeichen, ein Großbuchstabe, ein Kleinbuchstabe, eine Ziffer
-            und ein Sonderzeichen.
-          </span>
+          <PasswordChecklist password={fields.password} />
           {errors.password && (
             <span className={styles.fieldError}>{errors.password}</span>
           )}
@@ -236,10 +252,18 @@ export default function RegisterConsumerPage() {
 
       <p className={styles.loginLink}>
         Bereits registriert?{" "}
-        <Link href="/login" className={styles.link}>
+        <Link href={`/login${redirectQuery}`} className={styles.link}>
           Anmelden
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterConsumerPage() {
+  return (
+    <Suspense>
+      <RegisterConsumerForm />
+    </Suspense>
   );
 }
