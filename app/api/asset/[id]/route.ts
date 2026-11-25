@@ -7,11 +7,25 @@ const UUID_REGEX =
 
 const ALLOWED_MIME_PREFIXES = ["image/", "audio/"];
 
+/**
+ * Pojedyncze typy spoza prefiksów powyżej, które mają przejść.
+ *
+ * `text/vtt` — napisy do filmów (WebVTT). Dziś strona ich przez ten endpoint
+ * nie pobiera (ścieżka napisów jest wgrana do Mux i idzie z `edgemv.mux.com`),
+ * ale plik źródłowy leży w Directusie i blokowanie go na zapas tylko czekałoby
+ * na moment, gdy ktoś doda `<track src>`. WebVTT to czysty tekst, bez skryptów,
+ * a odpowiedź i tak dostaje `sandbox` oraz `nosniff`.
+ */
+const ALLOWED_MIME_EXACT = new Set(["text/vtt"]);
+
 function isAllowedAssetContentType(contentType: string): boolean {
   const normalized = contentType.split(";")[0]?.trim().toLowerCase() ?? "";
   // Blokujemy image/svg+xml pod kątem potencjalnego wykonywania skryptów w bezpośredniej nawigacji
   if (normalized === "image/svg+xml") {
     return false;
+  }
+  if (ALLOWED_MIME_EXACT.has(normalized)) {
+    return true;
   }
   return ALLOWED_MIME_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
