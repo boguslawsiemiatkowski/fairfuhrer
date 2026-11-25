@@ -20,7 +20,7 @@
     "@supabase/supabase-js": "^2.119.2",
     "dompurify": "^3.5.0",
     "focus-trap-react": "^12.0.4",
-    "lucide-react": "^1.79.0",
+    "lucide-react": "^1.80.0",
     "mapbox-gl": "^3.35.2",
     "marked": "^18.3.0",
     "next": "^16.4.6",
@@ -32,15 +32,15 @@
   },
   "devDependencies": {
     "@types/geojson": "^7946.0.16",
-    "@types/node": "^24.19.2",
-    "@types/react": "^19.3.1",
+    "@types/node": "^24.19.4",
+    "@types/react": "^19.3.3",
     "@types/react-dom": "^19.3.0",
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "eslint": "10.14.0",
     "eslint-config-next": "^16.4.6",
     "playwright": "^1.65.1",
     "typescript": "^6.0.3",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.2"
   },
   "allowScripts": {
     "sharp@0.34.5": true,

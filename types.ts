@@ -1,6 +1,5 @@
 export * from "./types/map";
 export * from "./types/directus";
-export * from "./types/forms";
 export * from "./types/cms";
 export * from "./types/utils";
 

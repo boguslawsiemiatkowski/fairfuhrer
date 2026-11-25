@@ -229,6 +229,125 @@ export const registerPartnerSchema = z.object({
 });
 
 /**
+ * Schemat aktualizacji profilu konsumenta / danych osobowych (`updateConsumerProfile`).
+ * Biała lista pól chroni przed nadpisaniem `role`, `premium_until` lub `company_size`.
+ */
+export const updateConsumerProfileSchema = z
+  .object({
+    username: z
+      .string()
+      .trim()
+      .min(2, "Der Benutzername muss mindestens 2 Zeichen lang sein.")
+      .max(60, "Der Benutzername darf höchstens 60 Zeichen lang sein.")
+      .nullish(),
+    first_name: z
+      .string()
+      .trim()
+      .max(100, "Der Vorname darf höchstens 100 Zeichen lang sein.")
+      .nullish(),
+    last_name: z
+      .string()
+      .trim()
+      .max(100, "Der Nachname darf höchstens 100 Zeichen lang sein.")
+      .nullish(),
+  })
+  .strict();
+
+/**
+ * Schemat aktualizacji profilu partnera (`updatePartnerProfile`).
+ * Biała lista pól chroni przed nadpisaniem `premium_until`, `tax_bucket`,
+ * `paypal_subscription_id` lub `pin_id` przez nieuprawnionego klienta.
+ */
+export const updatePartnerProfileSchema = z
+  .object({
+    company_name: z
+      .string()
+      .trim()
+      .max(200, "Der Unternehmensname darf höchstens 200 Zeichen lang sein.")
+      .nullish(),
+    street: z
+      .string()
+      .trim()
+      .max(250, "Die Adresse darf höchstens 250 Zeichen lang sein.")
+      .nullish(),
+    city: z
+      .string()
+      .trim()
+      .max(120, "Die Stadt darf höchstens 120 Zeichen lang sein.")
+      .nullish(),
+    postal_code: z
+      .string()
+      .trim()
+      .max(30, "Die PLZ darf höchstens 30 Zeichen lang sein.")
+      .nullish(),
+    country: z
+      .string()
+      .trim()
+      .max(10, "Ungültiger Ländercode.")
+      .nullish(),
+    country_of_registration: z
+      .string()
+      .trim()
+      .max(10, "Ungültiger Ländercode.")
+      .nullish(),
+    website_url: z
+      .string()
+      .trim()
+      .max(500, "Die Website-URL darf höchstens 500 Zeichen lang sein.")
+      .nullish(),
+    phone_number: z
+      .string()
+      .trim()
+      .max(60, "Die Telefonnummer darf höchstens 60 Zeichen lang sein.")
+      .nullish(),
+    phone_number_2: z
+      .string()
+      .trim()
+      .max(60, "Die Telefonnummer darf höchstens 60 Zeichen lang sein.")
+      .nullish(),
+    business_email: z
+      .union([authEmailSchema, z.literal(""), z.null()])
+      .optional()
+      .transform((val) => (val ? val : null)),
+    contact_person_name: z
+      .string()
+      .trim()
+      .max(150, "Der Name darf höchstens 150 Zeichen lang sein.")
+      .nullish(),
+    tax_id: z
+      .string()
+      .trim()
+      .max(60, "Die Steuernummer darf höchstens 60 Zeichen lang sein.")
+      .nullish(),
+    vat_eu: z
+      .string()
+      .trim()
+      .max(60, "Die USt-IdNr. darf höchstens 60 Zeichen lang sein.")
+      .nullish(),
+    instagram_url: z
+      .string()
+      .trim()
+      .max(500, "Die URL darf höchstens 500 Zeichen lang sein.")
+      .nullish(),
+    facebook_url: z
+      .string()
+      .trim()
+      .max(500, "Die URL darf höchstens 500 Zeichen lang sein.")
+      .nullish(),
+    tiktok_url: z
+      .string()
+      .trim()
+      .max(500, "Die URL darf höchstens 500 Zeichen lang sein.")
+      .nullish(),
+    youtube_url: z
+      .string()
+      .trim()
+      .max(500, "Die URL darf höchstens 500 Zeichen lang sein.")
+      .nullish(),
+  })
+  .strict();
+
+/**
  * Zwraca pierwszy czytelny komunikat błędu z obiektu ZodError.
  */
 export function firstZodError(error: z.ZodError, fallback = "Ungültige Eingabedaten."): string {

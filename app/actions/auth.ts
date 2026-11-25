@@ -13,6 +13,8 @@ import {
   strongPasswordSchema,
   registerConsumerSchema,
   registerPartnerSchema,
+  updateConsumerProfileSchema,
+  updatePartnerProfileSchema,
   firstZodError,
 } from "@/lib/validations/api";
 import type {
@@ -571,6 +573,15 @@ export async function updatePassword(password: string): Promise<AuthResult> {
 export async function updateConsumerProfile(
   data: Partial<Pick<Profile, "username" | "first_name" | "last_name">>
 ): Promise<AuthResult> {
+  const parsed = updateConsumerProfileSchema.safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: firstZodError(parsed.error) };
+  }
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:update-consumer", remoteIp, 20, 15 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -581,9 +592,20 @@ export async function updateConsumerProfile(
     return { success: false, error: "Nicht autorisiert." };
   }
 
+  const safeUpdate: Record<string, string | null> = {};
+  if (parsed.data.username !== undefined) {
+    safeUpdate.username = parsed.data.username || null;
+  }
+  if (parsed.data.first_name !== undefined) {
+    safeUpdate.first_name = parsed.data.first_name || null;
+  }
+  if (parsed.data.last_name !== undefined) {
+    safeUpdate.last_name = parsed.data.last_name || null;
+  }
+
   const { error } = await supabase
     .from("profiles")
-    .update({ ...data })
+    .update(safeUpdate)
     .eq("id", user.id);
 
   if (error) {
@@ -597,6 +619,15 @@ export async function updateConsumerProfile(
 export async function updatePartnerProfile(
   data: Partial<Omit<PartnerProfile, "id" | "created_at" | "updated_at">>
 ): Promise<AuthResult> {
+  const parsed = updatePartnerProfileSchema.safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: firstZodError(parsed.error) };
+  }
+
+  const remoteIp = await getRemoteIp();
+  const rateLimitError = checkAuthActionRateLimit("auth:update-partner", remoteIp, 20, 15 * 60_000);
+  if (rateLimitError) return rateLimitError;
+
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -607,9 +638,67 @@ export async function updatePartnerProfile(
     return { success: false, error: "Nicht autorisiert." };
   }
 
+  const cleanData = parsed.data;
+  const safeUpdate: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(cleanData)) {
+    if (value !== undefined) {
+      safeUpdate[key] = value === "" ? null : value;
+    }
+  }
+
+  // Jeśli partner zmienia kraj, Steuernummer/UID (`tax_id`) lub numer VAT-EU (`vat_eu`),
+  // automatycznie przeliczamy po stronie serwera koszyk podatkowy (`tax_bucket`,
+  // `tax_group`, `no_eu_vat`, `cross_border_b2c`), aby stawka VAT przy płatności
+  // PayPal zawsze odpowiadała aktualnym danym w profilu.
+  const touchesTaxOrCountry =
+    "country" in safeUpdate || "tax_id" in safeUpdate || "vat_eu" in safeUpdate;
+
+  if (touchesTaxOrCountry) {
+    const { data: currentPartner } = await supabase
+      .from("partner_profiles")
+      .select("country, tax_id, vat_eu")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const effectiveCountry =
+      (( "country" in safeUpdate ? safeUpdate.country : currentPartner?.country) as string | null) ||
+      "DE";
+    const effectiveTaxId =
+      (("tax_id" in safeUpdate ? safeUpdate.tax_id : currentPartner?.tax_id) as string | null) ||
+      null;
+    const effectiveVatEu =
+      (("vat_eu" in safeUpdate ? safeUpdate.vat_eu : currentPartner?.vat_eu) as string | null) ||
+      null;
+
+    const countryMeta = getCountry(effectiveCountry);
+    const taxGroup = countryMeta?.taxGroup ?? "THIRD";
+
+    if (taxGroup === "DE" && !effectiveTaxId && !effectiveVatEu) {
+      return {
+        success: false,
+        error: "Für Unternehmen in Deutschland ist die Angabe einer Steuernummer oder USt-IdNr. erforderlich.",
+      };
+    }
+
+    const hasEuVatId = taxGroup === "EU" && Boolean(effectiveVatEu && effectiveVatEu.trim().length > 0);
+    const taxBucket = getTaxBucket(effectiveCountry, hasEuVatId);
+    const noEuVat = taxGroup === "EU" ? !hasEuVatId : false;
+    const crossBorderB2c = taxBucket === "eu_no_vat";
+    const taxIdValue =
+      taxGroup === "EU" ? effectiveVatEu : effectiveTaxId ?? effectiveVatEu;
+
+    safeUpdate.tax_group = taxGroup;
+    safeUpdate.tax_bucket = taxBucket;
+    safeUpdate.tax_id_field_key = countryMeta?.taxIdFieldKey ?? "foreign_tax_id";
+    safeUpdate.tax_id_value = taxIdValue;
+    safeUpdate.no_eu_vat = noEuVat;
+    safeUpdate.cross_border_b2c = crossBorderB2c;
+  }
+
   const { error } = await supabase
     .from("partner_profiles")
-    .update(data)
+    .update(safeUpdate)
     .eq("id", user.id);
 
   if (error) {

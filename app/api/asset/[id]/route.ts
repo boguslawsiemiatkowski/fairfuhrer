@@ -5,6 +5,17 @@ import { NextRequest, NextResponse } from "next/server";
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const ALLOWED_MIME_PREFIXES = ["image/", "audio/"];
+
+function isAllowedAssetContentType(contentType: string): boolean {
+  const normalized = contentType.split(";")[0]?.trim().toLowerCase() ?? "";
+  // Blokujemy image/svg+xml pod kątem potencjalnego wykonywania skryptów w bezpośredniej nawigacji
+  if (normalized === "image/svg+xml") {
+    return false;
+  }
+  return ALLOWED_MIME_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -29,7 +40,7 @@ export async function GET(
     upstreamHeaders.Range = rangeHeader;
   }
 
-  const upstream = await fetch(`${directusUrl}/assets/${id}`, {
+  const upstream = await fetch(`${directusUrl}/assets/${encodeURIComponent(id)}`, {
     headers: upstreamHeaders,
   });
 
@@ -37,11 +48,19 @@ export async function GET(
     return new NextResponse("Not found.", { status: upstream.status });
   }
 
+  const rawContentType =
+    upstream.headers.get("content-type") ?? "application/octet-stream";
+
+  if (!isAllowedAssetContentType(rawContentType)) {
+    return new NextResponse("Nicht unterstützter Dateityp.", { status: 415 });
+  }
+
   const headers = new Headers({
-    "Content-Type":
-      upstream.headers.get("content-type") ?? "application/octet-stream",
+    "Content-Type": rawContentType,
     "Cache-Control": "public, max-age=31536000, immutable",
     "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+    "Cross-Origin-Resource-Policy": "same-origin",
   });
 
   const contentLength = upstream.headers.get("content-length");

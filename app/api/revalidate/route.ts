@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -17,6 +18,14 @@ import { NextRequest, NextResponse } from "next/server";
 const THROTTLE_MS = 5000;
 const lastRevalidated = new Map<string, number>();
 
+function isValidSecret(provided: unknown, expected: string): boolean {
+  if (typeof provided !== "string" || provided.length === 0) return false;
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(provided, "utf8");
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return timingSafeEqual(expectedBuf, providedBuf);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -32,7 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (secret !== revalidateSecret) {
+    if (!isValidSecret(secret, revalidateSecret)) {
       return NextResponse.json(
         { error: "Invalid secret token" },
         { status: 401 },
@@ -51,6 +60,9 @@ export async function POST(request: NextRequest) {
     const throttled: string[] = [];
 
     for (const tag of tags) {
+      if (typeof tag !== "string" || tag.length === 0 || tag.length > 100) {
+        continue;
+      }
       const last = lastRevalidated.get(tag) ?? 0;
       if (now - last < THROTTLE_MS) {
         throttled.push(tag);

@@ -1,7 +1,11 @@
 import "server-only";
 
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Events that grant or extend premium
 const GRANT_EVENTS = new Set([
@@ -23,8 +27,14 @@ const REVOKE_EVENTS = new Set([
 
 function verifySharedSecret(req: NextRequest): boolean {
   const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
-  if (!secret) return false;
-  return req.headers.get("Authorization") === `Bearer ${secret}`;
+  const authHeader = req.headers.get("Authorization");
+  if (!secret || !authHeader) return false;
+
+  const expected = Buffer.from(`Bearer ${secret}`, "utf8");
+  const actual = Buffer.from(authHeader, "utf8");
+  if (expected.length !== actual.length) return false;
+
+  return timingSafeEqual(expected, actual);
 }
 
 async function updatePremiumUntil(userId: string, expirationMs: number | null) {
@@ -73,9 +83,19 @@ export async function POST(request: NextRequest) {
   const type = event.type as string | undefined;
   // app_user_id is the Supabase user UUID we pass to RC via identifyUser()
   const userId = event.app_user_id as string | undefined;
-  const expirationMs = (event.expiration_at_ms as number | null) ?? null;
+  const expirationMs =
+    typeof event.expiration_at_ms === "number" && Number.isFinite(event.expiration_at_ms)
+      ? event.expiration_at_ms
+      : null;
 
   if (!userId || !type) {
+    return NextResponse.json({ received: true });
+  }
+
+  // Ignorujemy anonimowe ID RevenueCat (`$RCAnonymousID:...`) oraz niepoprawne UUID,
+  // aby nie powodować błędów składni typu `uuid` w Postgresie.
+  if (!UUID_REGEX.test(userId)) {
+    console.info("[RC webhook] non-UUID app_user_id ignored:", userId);
     return NextResponse.json({ received: true });
   }
 
