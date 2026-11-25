@@ -245,6 +245,11 @@ export const updateConsumerProfileSchema = z
  * Schemat aktualizacji profilu partnera (`updatePartnerProfile`).
  * Biała lista pól chroni przed nadpisaniem `premium_until`, `tax_bucket`,
  * `paypal_subscription_id` lub `pin_id` przez nieuprawnionego klienta.
+ *
+ * ⚠ Każde pole tutaj MUSI istnieć jako kolumna w `partner_profiles` — inaczej
+ * Supabase odrzuci cały zapis. Pola podatkowe (`tax_group`, `tax_bucket`,
+ * `tax_id_field_key`, `tax_id_value`, `no_eu_vat`, `cross_border_b2c`) są
+ * celowo POZA listą: wylicza je serwer w `updatePartnerProfile`.
  */
 export const updatePartnerProfileSchema = z
   .object({
@@ -273,11 +278,6 @@ export const updatePartnerProfileSchema = z
       .trim()
       .max(10, "Ungültiger Ländercode.")
       .nullish(),
-    country_of_registration: z
-      .string()
-      .trim()
-      .max(10, "Ungültiger Ländercode.")
-      .nullish(),
     website_url: z
       .string()
       .trim()
@@ -297,11 +297,6 @@ export const updatePartnerProfileSchema = z
       .union([authEmailSchema, z.literal(""), z.null()])
       .optional()
       .transform((val) => (val ? val : null)),
-    contact_person_name: z
-      .string()
-      .trim()
-      .max(150, "Der Name darf höchstens 150 Zeichen lang sein.")
-      .nullish(),
     tax_id: z
       .string()
       .trim()

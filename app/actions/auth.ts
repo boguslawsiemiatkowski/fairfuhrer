@@ -641,9 +641,9 @@ export async function updatePartnerProfile(
       .eq("id", user.id)
       .maybeSingle();
 
-    const effectiveCountry =
-      (( "country" in safeUpdate ? safeUpdate.country : currentPartner?.country) as string | null) ||
-      "DE";
+    const effectiveCountry = ((
+      "country" in safeUpdate ? safeUpdate.country : currentPartner?.country
+    ) as string | null) || null;
     const effectiveTaxId =
       (("tax_id" in safeUpdate ? safeUpdate.tax_id : currentPartner?.tax_id) as string | null) ||
       null;
@@ -652,7 +652,20 @@ export async function updatePartnerProfile(
       null;
 
     const countryMeta = getCountry(effectiveCountry);
-    const taxGroup = countryMeta?.taxGroup ?? "THIRD";
+
+    // ⚠ Pusty lub nieznany kraj NIE może domyślać się na "DE": stawka VAT
+    // liczyłaby się wtedy jak dla Niemiec (brutto 19 %), choć w profilu nie ma
+    // żadnego kraju — np. firma ze Szwajcarii, która wyczyści to pole, zapłaciłaby
+    // niemiecki podatek. Lista krajów jest zamknięta (`<select>` z COUNTRIES),
+    // więc brak trafienia oznacza puste pole albo wartość spoza listy.
+    if (!countryMeta) {
+      return {
+        success: false,
+        error: "Bitte wählen Sie das Land Ihres Unternehmens aus.",
+      };
+    }
+
+    const taxGroup = countryMeta.taxGroup;
 
     if (taxGroup === "DE" && !effectiveTaxId && !effectiveVatEu) {
       return {
@@ -670,7 +683,7 @@ export async function updatePartnerProfile(
 
     safeUpdate.tax_group = taxGroup;
     safeUpdate.tax_bucket = taxBucket;
-    safeUpdate.tax_id_field_key = countryMeta?.taxIdFieldKey ?? "foreign_tax_id";
+    safeUpdate.tax_id_field_key = countryMeta.taxIdFieldKey;
     safeUpdate.tax_id_value = taxIdValue;
     safeUpdate.no_eu_vat = noEuVat;
     safeUpdate.cross_border_b2c = crossBorderB2c;
