@@ -1149,7 +1149,7 @@ export default function AudiopinPage() {
               </div>
               <div className={styles.field}>
                 <label htmlFor="studio-url" className={styles.label}>
-                  Website-URL (Button „Website besuchen")
+                  Website-URL (Button „Website besuchen“)
                 </label>
                 <input
                   id="studio-url"

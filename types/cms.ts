@@ -104,95 +104,6 @@ export interface PartnerWerdenContent {
   zahlung_logo?: DirectusFileRef | null;
 }
 
-export interface PartnerPageContent {
-  id: number;
-  // Globalny kolor linków (Markdown-Links) dla całej kolekcji — obie strony
-  link_color?: string;
-  // Mitmachen-Hero (główna strona /partner-werden — layout jak homepage)
-  mitmachen_hero_image?: string;
-  mitmachen_hero_background_color?: string;
-  mitmachen_hero_text_color?: string;
-  mitmachen_hero_headline?: string;
-  mitmachen_hero_intro?: string;
-  // Typografia + kolory (analogicznie do home_page_content hero)
-  mitmachen_hero_headline_font_size?: string;
-  mitmachen_hero_headline_color?: string;
-  mitmachen_hero_headline_mobile_font_size?: string;
-  mitmachen_hero_headline_mobile_color?: string;
-  mitmachen_hero_intro_font_size?: string;
-  mitmachen_hero_intro_color?: string;
-  mitmachen_hero_button_font_size?: string;
-  mitmachen_hero_button_color?: string;
-  mitmachen_hero_button_background_color?: string;
-  mitmachen_hero_button_mobile_font_size?: string;
-  mitmachen_hero_button_mobile_color?: string;
-  mitmachen_hero_button_background_color_mobile?: string;
-  // Wspólny kolor hover dla wszystkich 3 przycisków hero
-  mitmachen_hero_button_background_color_hover?: string;
-  // 3 buttony na hero (skok do sekcji #reisende/#partner/#redaktion)
-  mitmachen_button_1_label?: string;
-  mitmachen_button_1_url?: string;
-  mitmachen_button_2_label?: string;
-  mitmachen_button_2_url?: string;
-  mitmachen_button_3_label?: string;
-  mitmachen_button_3_url?: string;
-  // 3 niezależne przyciski CTA w sekcjach Tashiny (tekst + kolor + kolor hover)
-  mitmachen_reisende_button_label?: string;
-  mitmachen_reisende_button_color?: string;
-  mitmachen_reisende_button_hover_color?: string;
-  mitmachen_partner_button_label?: string;
-  mitmachen_partner_button_color?: string;
-  mitmachen_partner_button_hover_color?: string;
-  mitmachen_redaktion_button_label?: string;
-  mitmachen_redaktion_button_color?: string;
-  mitmachen_redaktion_button_hover_color?: string;
-  // 3 szczegółowe sekcje Tashiny pod hero
-  mitmachen_reisende_section_title?: string;
-  mitmachen_reisende_section_text?: string;
-  mitmachen_partner_section_title?: string;
-  mitmachen_partner_section_text?: string;
-  mitmachen_redaktion_section_title?: string;
-  mitmachen_redaktion_section_text?: string;
-  // Kolory tła kontenerów 3 sekcji ról (fallback do wartości z CSS)
-  mitmachen_reisende_background_color?: string;
-  mitmachen_partner_background_color?: string;
-  mitmachen_redaktion_background_color?: string;
-  // Kolory tytułów 3 sekcji ról (fallback #FC6C14 z CSS)
-  mitmachen_reisende_title_color?: string;
-  mitmachen_partner_title_color?: string;
-  mitmachen_redaktion_title_color?: string;
-  // Subpage Voraussetzungen (/partner-werden/voraussetzungen)
-  voraussetzungen_title?: string;
-  voraussetzungen_text?: string;
-  voraussetzungen_title_color?: string;
-  voraussetzungen_text_color?: string;
-  voraussetzungen_left_background?: string;
-  voraussetzungen_right_background?: string;
-  // Pin-Vergleich (Standard vs Partner Pin)
-  pin_vergleich_standard_text?: string;
-  pin_vergleich_partner_text?: string;
-  pin_vergleich_background?: string;
-  // Kolor tytułów (H2) w kartach porównania pinów
-  pin_vergleich_standard_title_color?: string;
-  pin_vergleich_partner_title_color?: string;
-  // Kosten (4 tiery)
-  kosten_title?: string;
-  kosten_intro?: string;
-  kosten_tier_1?: string;
-  kosten_tier_2?: string;
-  kosten_tier_3?: string;
-  kosten_tier_4?: string;
-  kosten_title_color?: string;
-  kosten_text_color?: string;
-  kosten_background?: string;
-  // CTA na końcu subpage
-  cta_button_label?: string;
-  cta_button_url?: string;
-  cta_button_color?: string; // kolor tekstu
-  cta_button_background_color?: string; // główny kolor (tło)
-  cta_button_hover_color?: string; // kolor tła na hover
-}
-
 export interface UeberUnsProzess {
   id: number;
   status: "published" | "draft" | "archived";
@@ -452,21 +363,6 @@ export interface PremiumComparisonFeature {
   feature: string;
   free: boolean;
   pro: boolean;
-}
-
-// Info-Blase, die auf der Karte erscheint, wenn Web-Nutzer einen gesperrten
-// Sehenswertes-Pin ansteuern. Verweist auf die mobile App und die Stores.
-// Singleton in Directus (Kollektion `sights_lock_modal_content`).
-export interface SightsLockModalContent {
-  id: number;
-  title: string;
-  body: string;
-  cta_headline: string;
-  app_store_label: string;
-  google_play_label: string;
-  app_store_url: string;
-  google_play_url: string;
-  sync_note?: string;
 }
 
 export interface RegisterPageContent {

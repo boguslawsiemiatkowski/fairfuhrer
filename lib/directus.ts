@@ -4,7 +4,6 @@ import "server-only";
 
 import type {
   HomePageContent,
-  PartnerPageContent,
   PartnerWerdenContent,
   ContactFormContent,
   PremiumPageContent,
@@ -12,7 +11,6 @@ import type {
   AccountContactFormContent,
   RedaktionPageContent,
   RegisterPageContent,
-  SightsLockModalContent,
   UeberUnsContent,
 } from "@/types";
 
@@ -158,28 +156,7 @@ export async function getHomePageContent(): Promise<HomePageContent | null> {
   );
 }
 
-export async function getPartnerPageContent(options?: {
-  noStore?: boolean;
-  revalidate?: number;
-}): Promise<PartnerPageContent | null> {
-  return fetchDirectusSingle<PartnerPageContent>(
-    "/items/partner_page_content?fields=*&limit=1",
-    {
-      tag: "partner-werden",
-      revalidate: options?.revalidate ?? 604800,
-      noStore: options?.noStore ?? false,
-      label: "partner page content",
-    },
-  );
-}
-
-// Inhalte der neuen Partnerseite. Eigene Sammlung, weil `partner_page_content`
-// auf 79 Felder angewachsen war und die meisten davon zu einer Struktur
-// gehören, die mit der Umstellung verschwindet. Jene Sammlung ist in Directus
-// rot als „VERALTET“ markiert und bleibt unangetastet.
-//
-// ISR mit Tag "partner-werden": derselbe Tag wie bei der alten Seite, damit
-// ein bestehender Directus-Flow beide Seiten auf einmal erneuert.
+// Inhalte der neuen Partnerseite (`partner_werden_content`).
 export async function getPartnerWerdenContent(options?: {
   noStore?: boolean;
   revalidate?: number;
@@ -198,16 +175,6 @@ export async function getPartnerWerdenContent(options?: {
       noStore: options?.noStore ?? false,
       label: "partner werden content",
     },
-  );
-}
-
-// Info-Blase, die auf der Karte über gesperrten Sehenswertes-Pins erscheint.
-// Singleton in Directus. Cache mit Tag "sights-lock" (revalidate = 86400),
-// damit /karte im ISR bleibt.
-export async function getSightsLockModalContent(): Promise<SightsLockModalContent | null> {
-  return fetchDirectusSingle<SightsLockModalContent>(
-    "/items/sights_lock_modal_content?fields=*",
-    { tag: "sights-lock", revalidate: 86400, label: "sights lock modal content" },
   );
 }
 

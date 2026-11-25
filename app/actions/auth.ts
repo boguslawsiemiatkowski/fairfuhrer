@@ -20,7 +20,6 @@ import {
 import type {
   AuthResult,
   AuthUser,
-  OAuthProvider,
   PartnerProfile,
   Profile,
 } from "@/types/auth";
@@ -197,25 +196,6 @@ export async function resendConfirmation(formData: FormData): Promise<AuthResult
   }
 
   return { success: true, error: undefined };
-}
-
-export async function loginWithOAuth(
-  provider: OAuthProvider
-): Promise<{ url: string } | AuthResult> {
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo: `${process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL}/callback`,
-    },
-  });
-
-  if (error || !data.url) {
-    console.error("loginWithOAuth error:", error?.message);
-    return { success: false, error: "OAuth-Anmeldung fehlgeschlagen." };
-  }
-
-  return { url: data.url };
 }
 
 export async function registerConsumer(

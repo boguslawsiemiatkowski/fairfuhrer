@@ -136,18 +136,6 @@ export const accountContactSchema = z.object({
 });
 
 /**
- * Schemat dla POST /api/partner/set-vat-id (ustawienie numeru VAT UE partnera).
- */
-export const setVatIdSchema = z.object({
-  vat_id: z
-    .string({ error: "USt-IdNr. ist erforderlich." })
-    .trim()
-    .min(4, "USt-IdNr. ist erforderlich.")
-    .max(20, "Ungültiges USt-IdNr.-Format.")
-    .regex(/^[A-Z]{2}[A-Z0-9+\-*.\s]{2,18}$/i, "Ungültiges USt-IdNr.-Format."),
-});
-
-/**
  * Schemat adresu e-mail dla akcji autoryzacyjnych (logowanie, rejestracja, reset hasła).
  */
 export const authEmailSchema = z

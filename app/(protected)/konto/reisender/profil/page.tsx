@@ -61,7 +61,7 @@ export default function ReisenderProfilPage() {
         <p className={styles.infoText}>
           Dein Konto ist vor allem dann nützlich, wenn du in unserer mobilen App
           ein Abo abschließt: Es synchronisiert deine Inhalte über alle deine
-          Geräte hinweg und schaltet die Audiopins der Kategorie „Sehenswertes"
+          Geräte hinweg und schaltet die Audiopins der Kategorie „Sehenswertes“
           frei.
         </p>
       </section>

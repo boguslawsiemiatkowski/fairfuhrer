@@ -4,7 +4,6 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Phone, Navigation, ExternalLink } from "lucide-react";
-import { DirectusImage, PlaceImage } from "./MediaComponents";
 import ColumnAudioPlayer from "./ColumnAudioPlayer";
 import CategoryIcon, { categoryColorFor } from "./CategoryIcon";
 import PlaceGallery from "./PlaceGallery";
@@ -13,6 +12,7 @@ import { getAudioUrl } from "../lib/supabase";
 import {
   cityToSegment,
   galleryUrls,
+  mainImageUrl,
   sanitizeExternalUrl,
   sanitizeWordHtml,
 } from "../lib/orte-shared";
@@ -242,26 +242,20 @@ function PlaceContent({
   const safeDescription =
     initialDescription !== undefined ? initialDescription : lazyDescription;
   const isLoadingDescription = safeDescription === undefined;
+  const heroImageUrl = mainImageUrl(place);
 
   return (
     <>
-      {(place.Titelbild || place.Hauptbild) && (
+      {heroImageUrl && (
         <div className={styles.mainImageSection}>
-          {place.Titelbild ? (
-            <DirectusImage
-              uuid={place.Titelbild}
-              alt={place.Name}
-              className={styles.mainImage}
-            />
-          ) : (
-            <PlaceImage
-              placeId={place.id}
-              filename={place.Hauptbild!}
-              alt={place.Name}
-              type="main"
-              className={styles.mainImage}
-            />
-          )}
+          <Image
+            src={heroImageUrl}
+            alt={place.Name}
+            width={800}
+            height={600}
+            sizes="(max-width: 768px) 100vw, 480px"
+            className={styles.mainImage}
+          />
         </div>
       )}
 

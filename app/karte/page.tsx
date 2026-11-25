@@ -23,14 +23,6 @@ export default async function KartePage() {
     fetchCategories(),
   ]);
 
-  // Die Info-Blase über gesperrten Sehenswertes-Pins entfällt — es gibt kein
-  // Gating für Einzelnutzer mehr (siehe MapBoxMap.tsx). Die Directus-Kollektion
-  // sights_lock_modal_content bleibt bestehen, falls das Modell zurückkehrt.
-
-  console.log(`✅ Erfolgreich geladen:`);
-  console.log(`   - ${places.length} Orte`);
-  console.log(`   - ${categories.length} Kategorien`);
-
   if (places.length === 0) console.warn("⚠️  Keine gültigen Orte gefunden");
   if (categories.length === 0) console.warn("⚠️  Keine gültigen Kategorien gefunden");
 

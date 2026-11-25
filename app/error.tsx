@@ -23,7 +23,7 @@ export default function Error({
     <ErrorScreen
       title="Etwas ist schiefgelaufen"
       message="Beim Laden dieser Seite ist ein unerwarteter Fehler aufgetreten."
-      hint="Bitte versuchen Sie es erneut. Falls das Problem weiterhin besteht, schreiben Sie uns über das Kontaktformular."
+      hint="Bitte versuchen Sie es erneut. Falls das Problem weiterhin besteht, schreiben Sie uns an info@fairfuehrer.guide."
       digest={error.digest}
     >
       <ErrorScreenButton onClick={() => unstable_retry()}>

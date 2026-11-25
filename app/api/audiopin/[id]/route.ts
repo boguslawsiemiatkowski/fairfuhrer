@@ -304,7 +304,6 @@ export async function GET(
       Galerie: (galerieData.data ?? []) as { id: number; directus_files_id: string }[],
     };
 
-    console.log("[audiopin GET] Stadt:", result.Stadt, "Land:", result.Land, "Adresse:", result.Adresse);
     return NextResponse.json(result);
   } catch (error) {
     console.error("GET audiopin error:", error);

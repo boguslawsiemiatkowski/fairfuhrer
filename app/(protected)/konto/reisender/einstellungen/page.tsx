@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { updateEmail, updatePassword, deleteAccount } from "@/app/actions/auth";
 import type { FormErrors } from "@/types/auth";
 import PasswordInput from "@/components/PasswordInput";
+import PasswordChecklist from "@/components/PasswordChecklist";
 import styles from "../../einstellungen/einstellungen.module.css";
 
 function validatePassword(password: string): string | null {
@@ -123,7 +124,7 @@ export default function ReisenderEinstellungenPage() {
           <div className={styles.field}>
             <label htmlFor="pw-new" className={styles.label}>Neues Passwort *</label>
             <PasswordInput id="pw-new" className={`${styles.input} ${pwErrors.password ? styles.inputError : ""}`} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
-            <span className={styles.fieldHint}>Mind. 8 Zeichen, ein Großbuchstabe, ein Kleinbuchstabe, eine Ziffer und ein Sonderzeichen.</span>
+            <PasswordChecklist password={password} />
             {pwErrors.password && <span className={styles.fieldError}>{pwErrors.password}</span>}
           </div>
           <div className={styles.field}>

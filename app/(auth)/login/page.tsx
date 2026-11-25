@@ -8,10 +8,6 @@ import type { FormErrors } from "@/types/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import type { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import PasswordInput from "@/components/PasswordInput";
-// Social loginy (Apple/Google) sind in 1.0.3 vorübergehend deaktiviert —
-// Konsistenz mit Mobile (siehe project_social_loginy_zawieszone). Komponente
-// und Supabase-Provider bleiben, damit eine Wiederaktivierung leicht ist.
-// import SocialLoginButtons from "@/components/SocialLoginButtons";
 import styles from "./login.module.css";
 
 /** Tylko bezpieczne ścieżki względne — blokuje Open Redirect (np. //evil.com, /\evil.com, https://...). */

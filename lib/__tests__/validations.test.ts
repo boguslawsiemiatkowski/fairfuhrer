@@ -5,7 +5,8 @@ import {
   createRedaktionSchema,
   firstZodError,
   patchAudiopinSchema,
-  setVatIdSchema,
+  updateConsumerProfileSchema,
+  updatePartnerProfileSchema,
 } from "@/lib/validations/api";
 
 const VALID_UUID = "739e98a6-b5b7-4ed2-ab94-2eb2f9440104";
@@ -114,17 +115,32 @@ describe("API Zod Schemas", () => {
     });
   });
 
-  describe("setVatIdSchema", () => {
-    it("akzeptiert gültige EU-USt-IdNr. und lehnt Freitext ab", () => {
-      expect(setVatIdSchema.safeParse({ vat_id: "DE123456789" }).success).toBe(
-        true
-      );
-      expect(setVatIdSchema.safeParse({ vat_id: "ATU12345678" }).success).toBe(
-        true
-      );
+  describe("updateConsumerProfileSchema & updatePartnerProfileSchema", () => {
+    it("akzeptiert erlaubte Profilfelder und lehnt nicht autorisierte Felder (z.B. premium_until, tax_bucket) strikt ab", () => {
       expect(
-        setVatIdSchema.safeParse({ vat_id: "<script>alert(1)</script>" })
-          .success
+        updateConsumerProfileSchema.safeParse({
+          first_name: "Anna",
+          last_name: "Müller",
+        }).success
+      ).toBe(true);
+      expect(
+        updateConsumerProfileSchema.safeParse({
+          first_name: "Anna",
+          premium_until: "2099-01-01T00:00:00Z",
+        }).success
+      ).toBe(false);
+
+      expect(
+        updatePartnerProfileSchema.safeParse({
+          company_name: "Biohof Bodensee",
+          vat_eu: "ATU12345678",
+        }).success
+      ).toBe(true);
+      expect(
+        updatePartnerProfileSchema.safeParse({
+          company_name: "Biohof Bodensee",
+          tax_bucket: "third_country",
+        }).success
       ).toBe(false);
     });
   });

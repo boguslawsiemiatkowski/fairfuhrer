@@ -10,9 +10,6 @@ import TurnstileWidget from "@/components/TurnstileWidget";
 import type { TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import PasswordInput from "@/components/PasswordInput";
 import PasswordChecklist from "@/components/PasswordChecklist";
-// Social loginy (Apple/Google) sind in 1.0.3 vorübergehend deaktiviert —
-// Konsistenz mit Mobile (siehe project_social_loginy_zawieszone).
-// import SocialLoginButtons from "@/components/SocialLoginButtons";
 import styles from "./consumer.module.css";
 
 function getSafeRedirectPath(value: string | null): string | null {

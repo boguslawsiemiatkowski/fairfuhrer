@@ -13,6 +13,7 @@ import {
 import type { FormErrors } from "@/types/auth";
 import { COUNTRIES } from "@/lib/countries";
 import PasswordInput from "@/components/PasswordInput";
+import PasswordChecklist from "@/components/PasswordChecklist";
 import styles from "@/app/(protected)/konto/einstellungen/einstellungen.module.css";
 
 function validatePassword(password: string): string | null {
@@ -266,9 +267,7 @@ export default function PartnerEinstellungenPage() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
             />
-            <span className={styles.fieldHint}>
-              Mind. 8 Zeichen, ein Großbuchstabe, ein Kleinbuchstabe, eine Ziffer und ein Sonderzeichen.
-            </span>
+            <PasswordChecklist password={password} />
             {pwErrors.password && <span className={styles.fieldError}>{pwErrors.password}</span>}
           </div>
           <div className={styles.field}>

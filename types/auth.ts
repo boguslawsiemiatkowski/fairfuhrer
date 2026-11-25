@@ -142,5 +142,3 @@ export interface AuthResult {
   error?: string;
   redirectTo?: string;
 }
-
-export type OAuthProvider = "google" | "apple" | "facebook" | "twitter" | "spotify";
