@@ -1,39 +1,40 @@
 // ✅ Server-only protection - prevents accidental client-side imports
 import "server-only";
 
+import { getPayPalEnv } from "./env";
+
 export interface PayPalConfig {
   client_id: string;
   client_secret: string;
   mode: "sandbox" | "production";
 }
 
-const requiredEnvVars = {
-  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID,
-  PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
-  PAYPAL_MODE: process.env.PAYPAL_MODE,
-};
-
-for (const [key, value] of Object.entries(requiredEnvVars)) {
-  if (!value) {
-    console.error(`❌ Missing environment variable: ${key}`);
-    console.error(
-      "Available PayPal env vars:",
-      Object.keys(process.env).filter((k) => k.startsWith("PAYPAL"))
-    );
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
+/**
+ * Dane aplikacji REST PayPala, sprawdzane przy pierwszym użyciu.
+ *
+ * ⚠ Odczyt jest LENIWY (w funkcji), a nie na poziomie modułu. Wcześniej
+ * `const env = getServerEnv()` wykonywało się już przy importowaniu pliku,
+ * więc brak sekretu przerywał `next build` na etapie zbierania tras —
+ * zamiast dopiero przy realnym wywołaniu płatności.
+ *
+ * ⚠ Świadomie `getPayPalEnv()`, nie `getServerEnv()`: płatności nie powinny
+ * zależeć od zmiennych Directusa ani Supabase.
+ */
+export function getPayPalConfig(): PayPalConfig {
+  const env = getPayPalEnv();
+  return {
+    client_id: env.PAYPAL_CLIENT_ID,
+    client_secret: env.PAYPAL_CLIENT_SECRET,
+    mode: env.PAYPAL_MODE,
+  };
 }
 
-export const paypalConfig: PayPalConfig = {
-  client_id: process.env.PAYPAL_CLIENT_ID!,
-  client_secret: process.env.PAYPAL_CLIENT_SECRET!,
-  mode: (process.env.PAYPAL_MODE as "sandbox" | "production") || "sandbox",
-};
-
-export const PAYPAL_BASE =
-  paypalConfig.mode === "sandbox"
+/** Adres bazowy REST API PayPala — sandbox albo produkcja. */
+export function getPayPalBase(): string {
+  return getPayPalConfig().mode === "sandbox"
     ? "https://api-m.sandbox.paypal.com"
     : "https://api-m.paypal.com";
+}
 
 /**
  * Waliduje identyfikator subskrypcji PayPal (format `I-XXXXXXXXXXXX`).
@@ -57,11 +58,12 @@ export async function getPayPalAccessToken(): Promise<string> {
     return cachedAccessToken.token;
   }
 
+  const config = getPayPalConfig();
   const credentials = Buffer.from(
-    `${paypalConfig.client_id}:${paypalConfig.client_secret}`
+    `${config.client_id}:${config.client_secret}`
   ).toString("base64");
 
-  const res = await fetch(`${PAYPAL_BASE}/v1/oauth2/token`, {
+  const res = await fetch(`${getPayPalBase()}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: `Basic ${credentials}`,

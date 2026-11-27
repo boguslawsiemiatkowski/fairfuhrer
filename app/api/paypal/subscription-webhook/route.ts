@@ -3,10 +3,10 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
-  PAYPAL_BASE,
   computeNextPremiumUntil,
   getPayPalAccessToken,
-  paypalConfig,
+  getPayPalBase,
+  getPayPalConfig,
 } from "@/lib/paypal";
 import { resolvePremiumUntil } from "@/types/auth";
 
@@ -38,7 +38,7 @@ async function verifyWebhookSignature(
     const accessToken = await getPayPalAccessToken();
 
     const verifyRes = await fetch(
-      `${PAYPAL_BASE}/v1/notifications/verify-webhook-signature`,
+      `${getPayPalBase()}/v1/notifications/verify-webhook-signature`,
       {
         method: "POST",
         headers: {
@@ -48,7 +48,7 @@ async function verifyWebhookSignature(
         body: JSON.stringify({
           auth_algo: headers["paypal-auth-algo"],
           cert_url: headers["paypal-cert-url"],
-          client_id: paypalConfig.client_id,
+          client_id: getPayPalConfig().client_id,
           webhook_id: webhookId,
           webhook_event: JSON.parse(rawBody),
           transmission_id: headers["paypal-transmission-id"],

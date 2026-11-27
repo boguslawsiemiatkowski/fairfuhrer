@@ -8,6 +8,12 @@ import {
   updateConsumerProfileSchema,
   updatePartnerProfileSchema,
 } from "@/lib/validations/api";
+import {
+  clientEnvSchema,
+  directusEnvSchema,
+  paypalEnvSchema,
+  serverEnvSchema,
+} from "@/lib/env";
 
 const VALID_UUID = "739e98a6-b5b7-4ed2-ab94-2eb2f9440104";
 
@@ -142,6 +148,69 @@ describe("API Zod Schemas", () => {
           tax_bucket: "third_country",
         }).success
       ).toBe(false);
+    });
+  });
+
+  describe("clientEnvSchema & serverEnvSchema (lib/env.ts)", () => {
+    it("waliduje zmienne środowiskowe i usuwa końcowe slashe z adresów URL", () => {
+      const validClient = clientEnvSchema.safeParse({
+        NEXT_PUBLIC_DIRECTUS_URL: "https://cms.fairfuehrer.guide///",
+        NEXT_PUBLIC_SUPABASE_URL: "https://abc.supabase.co/",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_123",
+        NEXT_PUBLIC_MAPBOX_TOKEN: "pk.eyJ123",
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: "0x4AAA",
+      });
+      expect(validClient.success).toBe(true);
+      if (validClient.success) {
+        expect(validClient.data.NEXT_PUBLIC_DIRECTUS_URL).toBe(
+          "https://cms.fairfuehrer.guide"
+        );
+        expect(validClient.data.NEXT_PUBLIC_SUPABASE_URL).toBe(
+          "https://abc.supabase.co"
+        );
+      }
+
+      const missingServerSecret = serverEnvSchema.safeParse({
+        NEXT_PUBLIC_DIRECTUS_URL: "https://cms.fairfuehrer.guide",
+        NEXT_PUBLIC_SUPABASE_URL: "https://abc.supabase.co",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_123",
+        NEXT_PUBLIC_MAPBOX_TOKEN: "pk.eyJ123",
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: "0x4AAA",
+        DIRECTUS_URL: "https://cms.fairfuehrer.guide",
+      });
+      expect(missingServerSecret.success).toBe(false);
+    });
+
+    it("grupa Directusa NIE wymaga sekretów PayPala ani Supabase", () => {
+      // ⚠ To najważniejsza własność podziału na grupy: `lib/directus.ts`
+      // importuje 11 stron (główna, /agb, /datenschutz, /impressum …).
+      // Gdyby wymagał pełnego zestawu zmiennych, brak sekretu PayPala
+      // wywracałby całą witrynę — a strony treściowe o płatnościach nic nie wiedzą.
+      const onlyDirectus = directusEnvSchema.safeParse({
+        DIRECTUS_URL: "https://cms.fairfuehrer.guide//",
+      });
+      expect(onlyDirectus.success).toBe(true);
+      if (onlyDirectus.success) {
+        expect(onlyDirectus.data.DIRECTUS_URL).toBe(
+          "https://cms.fairfuehrer.guide"
+        );
+        // Token jest opcjonalny — treści publiczne czyta polityka publiczna Directusa.
+        expect(onlyDirectus.data.DIRECTUS_TOKEN).toBeUndefined();
+      }
+    });
+
+    it("grupa PayPala wymaga swoich sekretów, ale nie zmiennych Directusa", () => {
+      expect(
+        paypalEnvSchema.safeParse({ PAYPAL_CLIENT_ID: "abc" }).success
+      ).toBe(false);
+
+      const valid = paypalEnvSchema.safeParse({
+        PAYPAL_CLIENT_ID: "abc",
+        PAYPAL_CLIENT_SECRET: "secret",
+      });
+      expect(valid.success).toBe(true);
+      // Domyślnie sandbox: literówka w PAYPAL_MODE nie może uruchomić prawdziwych płatności.
+      if (valid.success) expect(valid.data.PAYPAL_MODE).toBe("sandbox");
     });
   });
 });

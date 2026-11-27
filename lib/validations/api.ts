@@ -331,6 +331,16 @@ export const updatePartnerProfileSchema = z
   .strict();
 
 /**
+ * Schemat dla POST /api/error-report (lekki raport błędów 1st-party do kolekcji `web_error_logs` w Directusie).
+ */
+export const errorReportSchema = z.object({
+  context: z.string().trim().min(1).max(120),
+  message: z.string().trim().min(1).max(2000),
+  digest: z.string().trim().max(120).nullish(),
+  url: z.string().trim().max(500).nullish(),
+});
+
+/**
  * Zwraca pierwszy czytelny komunikat błędu z obiektu ZodError.
  */
 export function firstZodError(error: z.ZodError, fallback = "Ungültige Eingabedaten."): string {

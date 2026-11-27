@@ -2,7 +2,7 @@ import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
-import { PAYPAL_BASE, getPayPalAccessToken } from "@/lib/paypal";
+import { getPayPalAccessToken, getPayPalBase } from "@/lib/paypal";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 // Plany netto — dla eu_reverse_charge i third_country (bez DE VAT)
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const accessToken = await getPayPalAccessToken();
 
-    const res = await fetch(`${PAYPAL_BASE}/v1/billing/subscriptions`, {
+    const res = await fetch(`${getPayPalBase()}/v1/billing/subscriptions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,

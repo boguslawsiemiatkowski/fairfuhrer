@@ -18,12 +18,24 @@ import type {
 // Environment Variable Validation
 // ========================================
 
-const DIRECTUS_URL = process.env.DIRECTUS_URL?.replace(/\/+$/, "");
-if (!DIRECTUS_URL) {
-  throw new Error("❌ Missing required environment variable: DIRECTUS_URL");
-}
+import { getDirectusEnv } from "./env";
 
-const DIRECTUS_TOKEN = process.env.DIRECTUS_TOKEN;
+/**
+ * Adres i token Directusa, sprawdzane przy pierwszym użyciu.
+ *
+ * ⚠ Świadomie `getDirectusEnv()`, a NIE `getServerEnv()`: ten moduł importuje
+ * 11 stron (strona główna, /agb, /datenschutz, /impressum, /ueber-uns,
+ * /partner-werden …). Walidacja wszystkich zmiennych naraz oznaczałaby, że brak
+ * np. sekretu PayPala wywraca całą witrynę, choć strony treściowe o płatnościach
+ * nic nie wiedzą.
+ *
+ * ⚠ Odczyt leniwy (wewnątrz funkcji, nie na poziomie modułu), żeby `next build`
+ * nie wymagał tych zmiennych już na etapie zbierania tras.
+ */
+function getDirectusConfig(): { url: string; token?: string } {
+  const env = getDirectusEnv();
+  return { url: env.DIRECTUS_URL, token: env.DIRECTUS_TOKEN };
+}
 
 // ========================================
 // Wspólne helpery komunikacji z Directus REST API
@@ -44,10 +56,10 @@ interface DirectusFetchOptions {
   label: string;
 }
 
-function buildHeaders(): HeadersInit {
+function buildHeaders(token?: string): HeadersInit {
   return {
     "Content-Type": "application/json",
-    ...(DIRECTUS_TOKEN && { Authorization: `Bearer ${DIRECTUS_TOKEN}` }),
+    ...(token && { Authorization: `Bearer ${token}` }),
   };
 }
 
@@ -62,8 +74,9 @@ async function fetchDirectusSingle<T>(
 ): Promise<T | null> {
   const isDev = process.env.NODE_ENV === "development";
   try {
-    const response = await fetch(`${DIRECTUS_URL}${path}`, {
-      headers: buildHeaders(),
+    const { url, token } = getDirectusConfig();
+    const response = await fetch(`${url}${path}`, {
+      headers: buildHeaders(token),
       ...(isDev || noStore
         ? { cache: "no-store" as const }
         : { next: { revalidate, tags: [tag] } }),
@@ -95,8 +108,9 @@ async function fetchDirectusList<T>(
 ): Promise<T[]> {
   const isDev = process.env.NODE_ENV === "development";
   try {
-    const response = await fetch(`${DIRECTUS_URL}${path}`, {
-      headers: buildHeaders(),
+    const { url, token } = getDirectusConfig();
+    const response = await fetch(`${url}${path}`, {
+      headers: buildHeaders(token),
       ...(isDev || noStore
         ? { cache: "no-store" as const }
         : { next: { revalidate, tags: [tag] } }),

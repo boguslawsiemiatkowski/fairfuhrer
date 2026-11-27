@@ -4,9 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
-  PAYPAL_BASE,
   computeNextPremiumUntil,
   getPayPalAccessToken,
+  getPayPalBase,
   isValidPayPalSubscriptionId,
 } from "@/lib/paypal";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     // Pobierz status subskrypcji z PayPal
     const accessToken = await getPayPalAccessToken();
     const subRes = await fetch(
-      `${PAYPAL_BASE}/v1/billing/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      `${getPayPalBase()}/v1/billing/subscriptions/${encodeURIComponent(subscriptionId)}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
