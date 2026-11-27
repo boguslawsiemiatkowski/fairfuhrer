@@ -21,6 +21,13 @@ interface CookieContextType {
   preferences: CookiePreferences;
   hasConsented: boolean;
   showBanner: boolean;
+  /**
+   * `true`, gdy baner otwarto przyciskiem „Cookies" (stopka) albo
+   * „Cookie-Einstellungen ändern" (pod filmem) — wtedy pokazujemy od razu
+   * widok z przełącznikami, bo użytkownik przyszedł je zmienić, a nie
+   * zobaczyć pytanie o zgodę po raz pierwszy.
+   */
+  openDetails: boolean;
   updatePreferences: (preferences: Partial<CookiePreferences>) => void;
   acceptAll: () => void;
   rejectAll: () => void;
@@ -46,16 +53,55 @@ function isValidCookiePreferences(obj: unknown): obj is CookiePreferences {
   );
 }
 
-function trackPreferencesChange(prefs: CookiePreferences): void {
+/** Bezpieczne operacje na localStorage — odporne na tryb prywatny Safari / SecurityError. */
+function safeGetLocalStorage(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetLocalStorage(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignorujemy błąd zapisu w trybie prywatnym — stan Reacta i ciasteczko HTTP nadal działają.
+  }
+}
+
+function safeRemoveLocalStorage(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Ignorujemy błąd w trybie prywatnym
+  }
+}
+
+/**
+ * Aktualizuje Google Consent Mode v2 (`gtag('consent', 'update', ...)`).
+ * Wywoływane zarówno przy kliknięciu w baner (`emitManualEvent = true`),
+ * jak i przy starcie strony dla powracających użytkowników (`emitManualEvent = false`),
+ * ponieważ skrypt `ga-consent-default` w `app/layout.tsx` przy każdym przeładowaniu
+ * startuje od `denied` z `wait_for_update: 2000`.
+ */
+function syncGtagConsent(
+  prefs: CookiePreferences,
+  emitManualEvent: boolean
+): void {
+  if (typeof window === "undefined") return;
+
   window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({
-    event: "consent_preferences_saved",
-    consent_analytics: prefs.analytics,
-    consent_functional: prefs.functional,
-    consent_necessary: prefs.necessary,
-    timestamp: new Date().toISOString(),
-    integration: "nextjs_third_parties",
-  });
+  if (emitManualEvent) {
+    window.dataLayer.push({
+      event: "consent_preferences_saved",
+      consent_analytics: prefs.analytics,
+      consent_functional: prefs.functional,
+      consent_necessary: prefs.necessary,
+      timestamp: new Date().toISOString(),
+      integration: "nextjs_third_parties",
+    });
+  }
 
   const sendConsentToGtag = (p: CookiePreferences) => {
     const consentData = {
@@ -67,7 +113,7 @@ function trackPreferencesChange(prefs: CookiePreferences): void {
 
     window.gtag("consent", "update", consentData);
 
-    if (p.analytics) {
+    if (emitManualEvent && p.analytics) {
       window.gtag("event", "manual_consent_granted", {
         event_category: "consent",
         event_label: "nextjs_manual_update",
@@ -88,10 +134,6 @@ function trackPreferencesChange(prefs: CookiePreferences): void {
       setTimeout(() => {
         checkGtagAvailability(attempt + 1, maxAttempts, delay * 2);
       }, delay);
-    } else {
-      console.warn(
-        "window.gtag not available after multiple checks. GA may not be loaded."
-      );
     }
   };
 
@@ -103,6 +145,7 @@ export function CookieProvider({ children }: { children: ReactNode }) {
     useState<CookiePreferences>(defaultCookiePreferences);
   const [hasConsented, setHasConsented] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
+  const [openDetails, setOpenDetails] = useState(false);
 
   useEffect(() => {
     try {
@@ -128,32 +171,32 @@ export function CookieProvider({ children }: { children: ReactNode }) {
       }
 
       if (!parsedPreferences) {
-        const savedPreferences = localStorage.getItem(STORAGE_KEY);
+        const savedPreferences = safeGetLocalStorage(STORAGE_KEY);
         if (savedPreferences) {
           try {
             const parsed = JSON.parse(savedPreferences);
             if (isValidCookiePreferences(parsed)) {
               parsedPreferences = parsed;
             } else {
-              console.warn("Invalid preferences format in localStorage");
-              localStorage.removeItem(STORAGE_KEY);
+              safeRemoveLocalStorage(STORAGE_KEY);
             }
-          } catch (error) {
-            console.error("Failed to parse localStorage preferences:", error);
-            localStorage.removeItem(STORAGE_KEY);
+          } catch {
+            safeRemoveLocalStorage(STORAGE_KEY);
           }
         }
       }
 
       const consentGiven =
         document.cookie.includes("cookie-consent-given=true") ||
-        localStorage.getItem(CONSENT_KEY) === "true";
+        safeGetLocalStorage(CONSENT_KEY) === "true";
 
       /* eslint-disable react-hooks/set-state-in-effect */
       if (consentGiven && parsedPreferences) {
         setPreferences(parsedPreferences);
         setHasConsented(true);
         setShowBanner(false);
+        // Przywróć stan Google Consent Mode v2 dla powracającego użytkownika
+        syncGtagConsent(parsedPreferences, false);
       } else {
         setShowBanner(true);
       }
@@ -171,6 +214,7 @@ export function CookieProvider({ children }: { children: ReactNode }) {
           const parsed = JSON.parse(e.newValue);
           if (isValidCookiePreferences(parsed)) {
             setPreferences(parsed);
+            syncGtagConsent(parsed, false);
           }
         } catch (error) {
           console.error(
@@ -192,26 +236,34 @@ export function CookieProvider({ children }: { children: ReactNode }) {
 
   const savePreferences = useCallback(
     async (newPreferences: CookiePreferences) => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
-      localStorage.setItem(CONSENT_KEY, "true");
+      const normalized: CookiePreferences = {
+        necessary: true,
+        functional: Boolean(newPreferences.functional),
+        analytics: Boolean(newPreferences.analytics),
+      };
+
+      // Najpierw aktualizujemy stan Reacta, aby baner zamknął się natychmiast
+      // nawet w restrykcyjnym trybie prywatnym przeglądarki.
+      setPreferences(normalized);
+      setHasConsented(true);
+
+      safeSetLocalStorage(STORAGE_KEY, JSON.stringify(normalized));
+      safeSetLocalStorage(CONSENT_KEY, "true");
+
+      syncGtagConsent(normalized, true);
 
       try {
-        await saveCookiePreferences(newPreferences);
+        await saveCookiePreferences(normalized);
       } catch (error) {
         console.error("Failed to save preferences to server:", error);
       }
-
-      setPreferences(newPreferences);
-      setHasConsented(true);
-
-      trackPreferencesChange(newPreferences);
     },
     []
   );
 
   const updatePreferences = useCallback(
     (newPreferences: Partial<CookiePreferences>) => {
-      const updated = { ...preferences, ...newPreferences };
+      const updated = { ...preferences, ...newPreferences, necessary: true };
       savePreferences(updated);
     },
     [preferences, savePreferences]
@@ -223,8 +275,9 @@ export function CookieProvider({ children }: { children: ReactNode }) {
       functional: true,
       analytics: true,
     };
-    savePreferences(allAccepted);
     setShowBanner(false);
+    setOpenDetails(false);
+    savePreferences(allAccepted);
   }, [savePreferences]);
 
   const rejectAll = useCallback(() => {
@@ -233,16 +286,22 @@ export function CookieProvider({ children }: { children: ReactNode }) {
       functional: false,
       analytics: false,
     };
-    savePreferences(onlyNecessary);
     setShowBanner(false);
+    setOpenDetails(false);
+    savePreferences(onlyNecessary);
   }, [savePreferences]);
 
+  // Otwarcie przyciskiem „Cookies" / „Cookie-Einstellungen ändern" prowadzi
+  // od razu do przełączników: kto klika ten przycisk, chce zmienić wybór,
+  // a nie przeczytać pytanie o zgodę po raz drugi.
   const showSettings = useCallback(() => {
+    setOpenDetails(true);
     setShowBanner(true);
   }, []);
 
   const hideBanner = useCallback(() => {
     setShowBanner(false);
+    setOpenDetails(false);
   }, []);
 
   const contextValue = useMemo(
@@ -250,6 +309,7 @@ export function CookieProvider({ children }: { children: ReactNode }) {
       preferences,
       hasConsented,
       showBanner,
+      openDetails,
       updatePreferences,
       acceptAll,
       rejectAll,
@@ -260,6 +320,7 @@ export function CookieProvider({ children }: { children: ReactNode }) {
       preferences,
       hasConsented,
       showBanner,
+      openDetails,
       updatePreferences,
       acceptAll,
       rejectAll,

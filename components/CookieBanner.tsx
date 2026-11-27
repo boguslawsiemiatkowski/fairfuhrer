@@ -13,20 +13,41 @@ export default function CookieBanner() {
     updatePreferences,
     preferences,
     hideBanner,
+    openDetails,
   } = useCookies();
-  const [showDetails, setShowDetails] = useState(false);
-  const [tempPreferences, setTempPreferences] = useState(preferences);
+  const [detailsToggledByUser, setDetailsToggledByUser] = useState<
+    boolean | null
+  >(null);
+  const [draftOverrides, setDraftOverrides] = useState<{
+    functional?: boolean;
+    analytics?: boolean;
+  }>({});
 
   if (!showBanner) return null;
 
+  // Widok szczegółowy pokazujemy, gdy użytkownik sam go rozwinął
+  // albo gdy baner otwarto przyciskiem „Cookies" / „Cookie-Einstellungen ändern"
+  // (wtedy `openDetails` z kontekstu jest `true`).
+  const showDetails = detailsToggledByUser ?? openDetails;
+
+  const effectivePreferences = {
+    necessary: true,
+    functional: draftOverrides.functional ?? preferences.functional,
+    analytics: draftOverrides.analytics ?? preferences.analytics,
+  };
+
   const handleSavePreferences = () => {
-    updatePreferences(tempPreferences);
+    updatePreferences(effectivePreferences);
+    setDraftOverrides({});
+    setDetailsToggledByUser(null);
     hideBanner();
   };
 
+  // Przy każdym przełączeniu widoku porzucamy niezapisane zmiany przełączników,
+  // żeby po powrocie do szczegółów pokazać faktycznie zapisany stan zgód.
   const toggleDetails = () => {
-    setShowDetails(!showDetails);
-    setTempPreferences(preferences);
+    setDraftOverrides({});
+    setDetailsToggledByUser(!showDetails);
   };
 
   return (
@@ -99,12 +120,12 @@ export default function CookieBanner() {
                     <label className={styles.checkboxLabel}>
                       <input
                         type="checkbox"
-                        checked={tempPreferences.functional}
+                        checked={effectivePreferences.functional}
                         onChange={(e) =>
-                          setTempPreferences({
-                            ...tempPreferences,
+                          setDraftOverrides((prev) => ({
+                            ...prev,
                             functional: e.target.checked,
-                          })
+                          }))
                         }
                         className={styles.checkbox}
                         aria-label="Funktionale Cookies aktivieren oder deaktivieren"
@@ -112,7 +133,7 @@ export default function CookieBanner() {
                       />
                       <span className={styles.visuallyHidden}>
                         Funktionale Cookies{" "}
-                        {tempPreferences.functional
+                        {effectivePreferences.functional
                           ? "aktiviert"
                           : "deaktiviert"}
                       </span>
@@ -133,12 +154,12 @@ export default function CookieBanner() {
                     <label className={styles.checkboxLabel}>
                       <input
                         type="checkbox"
-                        checked={tempPreferences.analytics}
+                        checked={effectivePreferences.analytics}
                         onChange={(e) =>
-                          setTempPreferences({
-                            ...tempPreferences,
+                          setDraftOverrides((prev) => ({
+                            ...prev,
                             analytics: e.target.checked,
-                          })
+                          }))
                         }
                         className={styles.checkbox}
                         aria-label="Analytische Cookies aktivieren oder deaktivieren"
@@ -146,7 +167,7 @@ export default function CookieBanner() {
                       />
                       <span className={styles.visuallyHidden}>
                         Analytische Cookies{" "}
-                        {tempPreferences.analytics
+                        {effectivePreferences.analytics
                           ? "aktiviert"
                           : "deaktiviert"}
                       </span>

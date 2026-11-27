@@ -6,18 +6,26 @@ import type { CookiePreferences } from "@/types/cookies";
 
 /**
  * Server Action to save cookie preferences
- * Uses Next.js cookies() API for server-side cookie management with security options
+ * Uses Next.js async cookies() API for server-side cookie management with security options
  */
 export async function saveCookiePreferences(
   preferences: CookiePreferences
 ): Promise<void> {
   const cookieStore = await cookies();
 
+  // Jawna normalizacja wejścia po stronie serwera — chroni przed zapisaniem
+  // nadmiarowych lub nieprawidłowych właściwości w ciasteczku JSON.
+  const sanitizedPreferences: CookiePreferences = {
+    necessary: true,
+    functional: Boolean(preferences?.functional),
+    analytics: Boolean(preferences?.analytics),
+  };
+
   // Cookie options for security and longevity
   const cookieOptions = {
-    httpOnly: false, // Must be false so client-side JS can read it
+    httpOnly: false, // Must be false so client-side JS can read it on hydration
     secure: process.env.NODE_ENV === "production", // HTTPS only in production
-    sameSite: "strict" as const, // CSRF protection
+    sameSite: "lax" as const, // CSRF protection on POST while sent on top-level external GET navigation
     maxAge: 60 * 60 * 24 * 365, // 1 year
     path: "/",
   };
@@ -25,7 +33,7 @@ export async function saveCookiePreferences(
   // Save preferences as JSON
   cookieStore.set(
     "cookie-preferences",
-    JSON.stringify(preferences),
+    JSON.stringify(sanitizedPreferences),
     cookieOptions
   );
 
@@ -48,7 +56,6 @@ export async function getCookiePreferences(): Promise<CookiePreferences | null> 
   try {
     const parsed = JSON.parse(preferencesCookie.value);
 
-    // Validate the parsed object has the correct structure
     if (
       typeof parsed === "object" &&
       parsed !== null &&
@@ -56,7 +63,11 @@ export async function getCookiePreferences(): Promise<CookiePreferences | null> 
       typeof parsed.functional === "boolean" &&
       typeof parsed.analytics === "boolean"
     ) {
-      return parsed as CookiePreferences;
+      return {
+        necessary: true,
+        functional: parsed.functional,
+        analytics: parsed.analytics,
+      };
     }
 
     return null;
@@ -80,6 +91,6 @@ export async function hasUserConsented(): Promise<boolean> {
  */
 export async function deleteCookiePreferences(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete("cookie-preferences");
-  cookieStore.delete("cookie-consent-given");
+  cookieStore.delete({ name: "cookie-preferences", path: "/" });
+  cookieStore.delete({ name: "cookie-consent-given", path: "/" });
 }
