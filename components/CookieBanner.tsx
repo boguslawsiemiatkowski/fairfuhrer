@@ -1,4 +1,4 @@
-// fairfuhrer/app/components/CookieBanner.tsx
+// fairfuhrer/components/CookieBanner.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -51,10 +51,20 @@ export default function CookieBanner() {
   };
 
   return (
-    <div className={styles.overlay}>
+    <div
+      className={styles.overlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cookie-banner-title"
+    >
       <div className={styles.banner}>
         <div className={styles.content}>
-          <h3 className={styles.title}>Cookie-Einstellungen</h3>
+          <div className={styles.headerRow}>
+            <h3 id="cookie-banner-title" className={styles.title}>
+              Cookie-Einstellungen
+            </h3>
+            <span className={styles.badge}>Datenschutz</span>
+          </div>
 
           {!showDetails ? (
             <>
@@ -67,15 +77,24 @@ export default function CookieBanner() {
 
               <div className={styles.actions}>
                 <button
+                  type="button"
                   className={styles.buttonSecondary}
                   onClick={toggleDetails}
                 >
                   Einstellungen
                 </button>
-                <button className={styles.buttonSecondary} onClick={rejectAll}>
+                <button
+                  type="button"
+                  className={styles.buttonSecondary}
+                  onClick={rejectAll}
+                >
                   Nur notwendige
                 </button>
-                <button className={styles.buttonPrimary} onClick={acceptAll}>
+                <button
+                  type="button"
+                  className={styles.buttonPrimary}
+                  onClick={acceptAll}
+                >
                   Alle akzeptieren
                 </button>
               </div>
@@ -83,10 +102,17 @@ export default function CookieBanner() {
           ) : (
             <>
               <div className={styles.cookieDetails}>
-                <div className={styles.cookieCategory}>
+                <div
+                  className={`${styles.cookieCategory} ${styles.cookieCategoryActive}`}
+                >
                   <div className={styles.categoryHeader}>
                     <h4>Notwendige Cookies</h4>
                     <label className={styles.checkboxLabel}>
+                      <span
+                        className={`${styles.statusPill} ${styles.statusPillActive}`}
+                      >
+                        Immer aktiv
+                      </span>
                       <input
                         type="checkbox"
                         checked={true}
@@ -110,14 +136,31 @@ export default function CookieBanner() {
                     <span className={styles.cookieTag}>Mapbox</span>
                     <span className={styles.cookieTag}>Supabase</span>
                     <span className={styles.cookieTag}>Directus</span>
-                    <span className={styles.cookieTag}>Cloudflare Turnstile</span>
+                    <span className={styles.cookieTag}>
+                      Cloudflare Turnstile
+                    </span>
                   </div>
                 </div>
 
-                <div className={styles.cookieCategory}>
+                <div
+                  className={`${styles.cookieCategory} ${
+                    effectivePreferences.functional
+                      ? styles.cookieCategoryActive
+                      : ""
+                  }`}
+                >
                   <div className={styles.categoryHeader}>
                     <h4>Funktionale Cookies</h4>
                     <label className={styles.checkboxLabel}>
+                      <span
+                        className={`${styles.statusPill} ${
+                          effectivePreferences.functional
+                            ? styles.statusPillActive
+                            : ""
+                        }`}
+                      >
+                        {effectivePreferences.functional ? "Aktiv" : "Inaktiv"}
+                      </span>
                       <input
                         type="checkbox"
                         checked={effectivePreferences.functional}
@@ -148,10 +191,25 @@ export default function CookieBanner() {
                   </div>
                 </div>
 
-                <div className={styles.cookieCategory}>
+                <div
+                  className={`${styles.cookieCategory} ${
+                    effectivePreferences.analytics
+                      ? styles.cookieCategoryActive
+                      : ""
+                  }`}
+                >
                   <div className={styles.categoryHeader}>
                     <h4>Analytische Cookies</h4>
                     <label className={styles.checkboxLabel}>
+                      <span
+                        className={`${styles.statusPill} ${
+                          effectivePreferences.analytics
+                            ? styles.statusPillActive
+                            : ""
+                        }`}
+                      >
+                        {effectivePreferences.analytics ? "Aktiv" : "Inaktiv"}
+                      </span>
                       <input
                         type="checkbox"
                         checked={effectivePreferences.analytics}

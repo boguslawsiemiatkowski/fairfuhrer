@@ -1,17 +1,14 @@
-/* fairfuhrer/app/components/CookieBanner.module.css */
+/* fairfuhrer/components/CookieBanner.module.css */
 
 .overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background-color: rgba(24, 34, 47, 0.72);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   z-index: 9999;
-  padding: 20px;
+  padding: 1.25rem;
 }
 
 @media (min-width: 768px) {
@@ -21,19 +18,20 @@
 }
 
 .banner {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  max-width: 600px;
+  background: #ffffff;
+  border: 2px solid #18222f;
+  box-shadow: 6px 6px 0 #18222f;
+  border-radius: 0;
+  max-width: 620px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  animation: slideUp 0.3s ease-out;
+  animation: slideUp 0.25s ease-out;
 }
 
 @keyframes slideUp {
   from {
-    transform: translateY(100%);
+    transform: translateY(24px);
     opacity: 0;
   }
   to {
@@ -43,20 +41,44 @@
 }
 
 .content {
-  padding: 32px 24px;
+  padding: 2rem 2rem;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .title {
-  margin: 0 0 16px 0;
-  font-size: 1.5rem;
+  margin: 0;
+  font-size: 1.85rem;
   font-weight: 400;
-  color: #1a1a1a;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #18222f;
   font-family: var(--font-anton);
 }
 
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  background-color: #18222f;
+  color: #fc6c14;
+  border: 1.5px solid #18222f;
+  font-family: var(--font-fira);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
 .description {
-  margin: 0 0 24px 0;
-  color: #4a4a4a;
+  margin: 0 0 1.5rem 0;
+  color: #18222f;
   line-height: 1.6;
   font-size: 0.95rem;
   font-family: var(--font-fira);
@@ -64,93 +86,150 @@
 
 .actions {
   display: flex;
-  gap: 12px;
+  gap: 0.75rem;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
 .buttonPrimary {
-  background-color: #0066cc;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  background-color: #18222f;
+  color: #fc6c14;
+  border: 2px solid #18222f;
+  box-shadow: 3px 3px 0 #fc6c14;
+  border-radius: 0;
+  padding: 0.75rem 1.35rem;
+  font-family: var(--font-fira);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
 }
 
 .buttonPrimary:hover {
-  background-color: #0052a3;
+  background-color: #fc6c14;
+  color: #ffffff;
+  box-shadow: 3px 3px 0 #18222f;
+}
+
+.buttonPrimary:active {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 #18222f;
 }
 
 .buttonSecondary {
-  background-color: transparent;
-  color: #666;
-  border: 2px solid #e1e1e1;
-  padding: 10px 24px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  background-color: #f8f8ff;
+  color: #18222f;
+  border: 2px solid #18222f;
+  box-shadow: 3px 3px 0 #18222f;
+  border-radius: 0;
+  padding: 0.75rem 1.25rem;
+  font-family: var(--font-fira);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
 }
 
 .buttonSecondary:hover {
-  border-color: #ccc;
-  background-color: #f8f9fa;
+  background-color: #18222f;
+  color: #ffffff;
+  box-shadow: 3px 3px 0 #fc6c14;
+}
+
+.buttonSecondary:active {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 #fc6c14;
 }
 
 .cookieDetails {
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .cookieCategory {
-  margin-bottom: 24px;
-  padding: 20px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
+  padding: 1.15rem 1.25rem;
+  background-color: #f8f8ff;
+  border-radius: 0;
+  border: 1.5px solid #18222f;
+  border-left: 4px solid #18222f;
+  transition: border-left-color 0.15s ease;
 }
 
-.cookieCategory:last-child {
-  margin-bottom: 0;
+.cookieCategoryActive {
+  border-left-color: #fc6c14;
 }
 
 .categoryHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
 }
 
 .categoryHeader h4 {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #2d3748;
+  font-family: var(--font-anton);
+  font-size: 1.15rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #18222f;
 }
 
 .checkbox {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
+  accent-color: #fc6c14;
 }
 
 .checkbox:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.65;
 }
 
 .checkboxLabel {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   cursor: pointer;
 }
 
 .checkboxLabel:has(input:disabled) {
   cursor: not-allowed;
+}
+
+.statusPill {
+  font-family: var(--font-fira);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.18rem 0.5rem;
+  border: 1.5px solid #18222f;
+  background-color: #ffffff;
+  color: #18222f;
+}
+
+.statusPillActive {
+  background-color: #2e7d32;
+  color: #ffffff;
+  border-color: #18222f;
 }
 
 .visuallyHidden {
@@ -166,90 +245,59 @@
 }
 
 .categoryDescription {
-  margin: 0 0 16px 0;
-  color: #4a4a4a;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  margin: 0 0 0.85rem 0;
+  color: #5c6672;
+  font-family: var(--font-fira);
+  font-size: 0.88rem;
+  line-height: 1.55;
 }
 
 .cookieList {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0.45rem;
 }
 
 .cookieTag {
-  background-color: #e2e8f0;
-  color: #2d3748;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  background-color: #ffffff;
+  color: #18222f;
+  border: 1.5px solid #18222f;
+  border-radius: 0;
+  padding: 0.2rem 0.6rem;
+  font-family: var(--font-fira);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* Mobile responsiveness */
 @media (max-width: 767px) {
   .overlay {
-    padding: 0;
+    padding: 0.75rem;
   }
 
   .banner {
-    border-radius: 12px 12px 0 0;
-    max-height: 80vh;
+    max-height: 85vh;
+    box-shadow: 4px 4px 0 #18222f;
   }
 
   .content {
-    padding: 24px 20px;
+    padding: 1.5rem 1.25rem;
+  }
+
+  .title {
+    font-size: 1.55rem;
   }
 
   .actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
   }
 
   .buttonPrimary,
   .buttonSecondary {
     width: 100%;
+    text-align: center;
     justify-content: center;
-  }
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .banner {
-    background: #1a1a1a;
-    color: #e1e1e1;
-  }
-
-  .title {
-    color: #ffffff;
-  }
-
-  .description,
-  .categoryDescription {
-    color: #b0b0b0;
-  }
-
-  .cookieCategory {
-    background-color: #2d2d2d;
-    border-color: #404040;
-  }
-
-  .categoryHeader h4 {
-    color: #ffffff;
-  }
-
-  .cookieTag {
-    background-color: #404040;
-    color: #e1e1e1;
-  }
-
-  .buttonSecondary {
-    color: #b0b0b0;
-    border-color: #404040;
-  }
-
-  .buttonSecondary:hover {
-    border-color: #606060;
-    background-color: #2d2d2d;
   }
 }
